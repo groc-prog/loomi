@@ -1,0 +1,13 @@
+[MAIN]
+jobs=0
+ignore=CVS,
+       .git,
+       __pycache__,
+       .pytest_cache,
+       venv,
+       .venv,
+       env,
+       .env,
+       node_modules,
+       build,
+       dist
