@@ -1,10 +1,10 @@
 import re
 from typing import ClassVar
 
-from loomi.models._base import _LoomiBase, _LoomiBaseConfiguration
+from loomi.models.base import LoomiBaseConfiguration, _LoomiBase
 
 
-class LoomiRelationshipConfiguration(_LoomiBaseConfiguration, total=False):
+class LoomiRelationshipConfiguration(LoomiBaseConfiguration, total=False):
     """TypedDict for configuring Loomi relationship behavior."""
 
     type: str

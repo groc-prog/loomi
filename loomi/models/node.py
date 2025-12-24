@@ -1,9 +1,9 @@
 from typing import ClassVar, Set, cast
 
-from loomi.models._base import _LoomiBase, _LoomiBaseConfiguration
+from loomi.models.base import LoomiBaseConfiguration, _LoomiBase
 
 
-class LoomiNodeConfiguration(_LoomiBaseConfiguration, total=False):
+class LoomiNodeConfiguration(LoomiBaseConfiguration, total=False):
     """TypedDict for configuring Loomi node behavior."""
 
     labels: Set[str]

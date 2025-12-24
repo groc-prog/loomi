@@ -5,7 +5,9 @@ from neo4j.graph import Graph
 from pydantic import BaseModel, ConfigDict, PrivateAttr, computed_field
 
 
-class _LoomiBaseConfiguration(TypedDict, total=False):
+class LoomiBaseConfiguration(TypedDict, total=False):
+    """TypedDict for configuring Loomi model/client behavior."""
+
     skip_constraints: bool
     """Skips creating defined constraints when initializing model."""
 
@@ -57,14 +59,3 @@ class _LoomiBase(BaseModel, ABC):
             Optional[int]: The ElementID or `None` if not hydrated.
         """
         return self._element_id
-
-    @computed_field
-    @property
-    def graph(self) -> Optional[Graph]:
-        """
-        Graph this entity belongs to. Will be `None` as long as the model is `not hydrated`.
-
-        Returns:
-            Optional[Graph]: The corresponding `Graph` or `None` if not hydrated.
-        """
-        return self._graph
