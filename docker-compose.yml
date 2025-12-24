@@ -1,0 +1,42 @@
+services:
+  neo4j:
+    image: neo4j:latest
+    container_name: neo4j
+    pull_policy: always
+    ports:
+      - 7687:7687
+      - 7474:7474
+    volumes:
+      - neo4j:/data
+    environment:
+      NEO4J_AUTH: neo4j/password
+
+  memgraph:
+    image: memgraph/memgraph
+    container_name: memgraph-mage
+    pull_policy: always
+    ports:
+      - "7688:7687"
+      - "7444:7444"
+    volumes:
+      - memgraph:/var/lib
+    environment:
+      - MEMGRAPH="--storage-properties-on-edges=true --log-level=TRACE"
+      - MEMGRAPH_USER=memgraph
+      - MEMGRAPH_PASSWORD=password
+
+  lab:
+    image: memgraph/lab:latest
+    container_name: memgraph-lab
+    pull_policy: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - memgraph
+    environment:
+      - QUICK_CONNECT_MG_HOST=memgraph
+      - QUICK_CONNECT_MG_PORT=7688
+
+volumes:
+  neo4j:
+  memgraph:

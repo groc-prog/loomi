@@ -13,4 +13,5 @@ ignore=CVS,
        dist
 
 [MESSAGE CONTROL]
-disable=missing-module-docstring
+disable=missing-module-docstring,
+       broad-exception-caught

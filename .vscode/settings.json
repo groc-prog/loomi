@@ -1,6 +1,7 @@
 {
   "cSpell.words": [
-    "Loomi"
+    "Loomi",
+    "Memgraph"
   ],
   "python.testing.pytestArgs": [
     "tests"
