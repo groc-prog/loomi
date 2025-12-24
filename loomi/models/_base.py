@@ -1,6 +1,7 @@
 from abc import ABC
 from typing import Any, Dict, Optional, TypedDict
 
+from neo4j.graph import Graph
 from pydantic import BaseModel, ConfigDict, PrivateAttr, computed_field
 
 
@@ -22,6 +23,7 @@ class _LoomiBase(BaseModel, ABC):
     _dirty_fields: Dict[str, Any] = PrivateAttr(default_factory=dict)
     _id: Optional[int] = PrivateAttr(default=None)
     _element_id: Optional[str] = PrivateAttr(default=None)
+    _graph: Optional[Graph] = PrivateAttr(default=None)
 
     model_config = ConfigDict(validate_assignment=True)
 
@@ -34,22 +36,35 @@ class _LoomiBase(BaseModel, ABC):
         return super().__setattr__(name, value)
 
     @computed_field
+    @property
     def id(self) -> Optional[int]:
         """
         ID of the database entity. Will be `None` as long as the model is `not hydrated`.
 
         Returns:
-            Optional[int]: The ID or None if not hydrated.
+            Optional[int]: The ID or `None` if not hydrated.
         """
         return self._id
 
     @computed_field
+    @property
     def element_id(self) -> Optional[str]:
         """
         Element ID of the database entity. Will be `None` as long as the model is `not hydrated`.
         For clients using `Memgraph`, this will be the same as `id`.
 
         Returns:
-            Optional[int]: The ID or None if not hydrated.
+            Optional[int]: The ElementID or `None` if not hydrated.
         """
         return self._element_id
+
+    @computed_field
+    @property
+    def graph(self) -> Optional[Graph]:
+        """
+        Graph this entity belongs to. Will be `None` as long as the model is `not hydrated`.
+
+        Returns:
+            Optional[Graph]: The corresponding `Graph` or `None` if not hydrated.
+        """
+        return self._graph
