@@ -5,10 +5,10 @@ description = ""
 authors = [{ name = "Marc Troisner", email = "marc.troisner@gmail.com" }]
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = ["pydantic (>=2.12.5,<3.0.0)"]
 
 [tool.poetry]
-packages = [{ include = "loomi", from = "src" }]
+packages = [{ include = "loomi" }]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

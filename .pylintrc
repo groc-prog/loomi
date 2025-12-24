@@ -11,3 +11,6 @@ ignore=CVS,
        node_modules,
        build,
        dist
+
+[MESSAGE CONTROL]
+disable=missing-module-docstring
