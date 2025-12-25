@@ -1,4 +1,6 @@
-from typing import ClassVar, Set, cast
+import hashlib
+import json
+from typing import ClassVar, List, Set, cast
 
 from loomi.models.base import LoomiBaseConfiguration, _LoomiBase
 
@@ -35,6 +37,8 @@ class LoomiNode(_LoomiBase):
 
             cls.__merge_loomi_config(inherited_config)
 
+        cls._hash = cls._generate_loomi_hash(list(cls.loomi_config["labels"]))
+
     @classmethod
     def __merge_loomi_config(cls, config: LoomiNodeConfiguration) -> None:
         for key, value in config.items():
@@ -46,3 +50,8 @@ class LoomiNode(_LoomiBase):
                 cls.loomi_config[key] = cast(Set[str], cls.loomi_config[key]).union(
                     value
                 )
+
+    @classmethod
+    def _generate_loomi_hash(cls, labels: List[str]) -> str:
+        labels = sorted(labels)
+        return hashlib.sha256(json.dumps(labels).encode("utf-8")).hexdigest()

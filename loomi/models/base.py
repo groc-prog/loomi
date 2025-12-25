@@ -1,7 +1,6 @@
 from abc import ABC
 from typing import Any, Dict, Optional, TypedDict
 
-from neo4j.graph import Graph
 from pydantic import BaseModel, ConfigDict, PrivateAttr, computed_field
 
 
@@ -14,18 +13,12 @@ class LoomiBaseConfiguration(TypedDict, total=False):
     skip_indexes: bool
     """Skips creating defined indexes when initializing model."""
 
-    serialize_nested: bool
-    """
-    Serializes nested objects when storing fields (Neo4j only). If set to `False`,
-    attempting to store a nested objects will result in a exception.
-    """
-
 
 class _LoomiBase(BaseModel, ABC):
     _dirty_fields: Dict[str, Any] = PrivateAttr(default_factory=dict)
-    _id: Optional[int] = PrivateAttr(default=None)
-    _element_id: Optional[str] = PrivateAttr(default=None)
-    _graph: Optional[Graph] = PrivateAttr(default=None)
+    _id: Optional[int] = PrivateAttr(None)
+    _element_id: Optional[str] = PrivateAttr(None)
+    _hash: Optional[str] = PrivateAttr(None)
 
     model_config = ConfigDict(validate_assignment=True)
 

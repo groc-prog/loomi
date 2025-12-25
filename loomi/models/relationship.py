@@ -1,3 +1,5 @@
+import hashlib
+import json
 import re
 from typing import ClassVar
 
@@ -37,6 +39,8 @@ class LoomiRelationship(_LoomiBase):
         if "type" not in cls.loomi_config or cls.loomi_config["type"] is None:
             cls.loomi_config["type"] = cls.__get_normalized_type()
 
+        cls._hash = cls._generate_loomi_hash(cls.loomi_config["type"])
+
     @classmethod
     def __merge_loomi_config(cls, config: LoomiRelationshipConfiguration) -> None:
         for key, value in config.items():
@@ -56,3 +60,7 @@ class LoomiRelationship(_LoomiBase):
     def __get_normalized_type(cls) -> str:
         pattern = re.compile(r"(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
         return pattern.sub("_", cls.__name__).upper()
+
+    @classmethod
+    def _generate_loomi_hash(cls, type_: str) -> str:
+        return hashlib.sha256(json.dumps([type_]).encode("utf-8")).hexdigest()
