@@ -14,4 +14,6 @@ ignore=CVS,
 
 [MESSAGE CONTROL]
 disable=missing-module-docstring,
-       broad-exception-caught
+       broad-exception-caught,
+       protected-access,
+       too-few-public-methods

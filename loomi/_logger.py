@@ -8,7 +8,8 @@ log_ctx = ContextVar("loomi_log_ctx", default={})
 
 
 class _LogContextKey(StrEnum):
-    EXECUTION_MODE = "loomi.execution_mode"
+    DRIVER = "loomi.driver"
+    SERVER_TYPE = "loomi.server_type"
 
 
 class _LogContextFilter(logging.Filter):

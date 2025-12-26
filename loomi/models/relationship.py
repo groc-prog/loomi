@@ -1,5 +1,4 @@
 import hashlib
-import json
 import re
 from typing import ClassVar
 
@@ -63,4 +62,5 @@ class LoomiRelationship(_LoomiBase):
 
     @classmethod
     def _generate_loomi_hash(cls, type_: str) -> str:
-        return hashlib.sha256(json.dumps([type_]).encode("utf-8")).hexdigest()
+        normalized = f"r_{type_}"
+        return hashlib.sha256(normalized.encode("utf-8")).hexdigest()

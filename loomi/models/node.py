@@ -1,5 +1,4 @@
 import hashlib
-import json
 from typing import ClassVar, List, Set, cast
 
 from loomi.models.base import LoomiBaseConfiguration, _LoomiBase
@@ -53,5 +52,5 @@ class LoomiNode(_LoomiBase):
 
     @classmethod
     def _generate_loomi_hash(cls, labels: List[str]) -> str:
-        labels = sorted(labels)
-        return hashlib.sha256(json.dumps(labels).encode("utf-8")).hexdigest()
+        normalized = f"n_{"_".join(sorted(labels))}"
+        return hashlib.sha256(normalized.encode("utf-8")).hexdigest()

@@ -28,7 +28,7 @@ class LoomiPath:
 
     def __repr__(self) -> str:
         return (
-            f"<Path start={self.start_node!r} end={self.end_node!r} "
+            f"<LoomiPath start={self.start_node!r} end={self.end_node!r} "
             f"size={len(self)}>"
         )
 

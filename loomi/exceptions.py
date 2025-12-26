@@ -2,9 +2,9 @@ class LoomiError(Exception):
     """Base Loomi error."""
 
 
-class NonHydratedModelError(LoomiError):
-    """Error related to usage of non hydrated Loomi models."""
+class ModelInitializationError(LoomiError):
+    """Error related to model initialization."""
 
 
-class EmptyGraphError(LoomiError):
-    """Error related to the LoomiPath class."""
+class ClientError(LoomiError):
+    """Error related to the Loomi client class."""
