@@ -1,79 +1,138 @@
-# pylint: disable=protected-access, missing-class-docstring, unused-variable, comparison-with-callable
+# pylint: disable=missing-class-docstring, unused-variable
 
-from loomi.models.node import LoomiNode, LoomiNodeConfiguration
+import pytest
+
+from loomi.exceptions import ModelInitializationError
+from loomi.models.node import LoomiNode
 
 
-class TestLoomiNode:
+class TestModelHash:
+    def test_node_hash_is_deterministic(self):
+        """Verify that the hash generated for each model is deterministic."""
 
-    def test_default_label_is_class_name(self):
-        """Verify that a node with no config uses its class name as the default label."""
+        class Human(LoomiNode): ...
 
-        class UserNode(LoomiNode):
-            pass
+        hash_1 = Human._generate_loomi_hash(Human.loomi_config["labels"])  # type: ignore
+        hash_2 = Human._generate_loomi_hash(Human.loomi_config["labels"])  # type: ignore
+        assert hash_1 == hash_2
 
-        assert "labels" in UserNode.loomi_config
-        assert "UserNode" in UserNode.loomi_config["labels"]
-        assert len(UserNode.loomi_config["labels"]) == 1
 
-    def test_explicit_labels_preserved(self):
-        """Verify that providing explicit labels prevents the class name fallback."""
+class TestConfiguration:
+    def test_config_can_be_defined(self):
+        """Verify that all configuration options can be defined via the class variable."""
 
-        class CustomNode(LoomiNode):
-            loomi_config = LoomiNodeConfiguration(labels={"CustomLabel"})
+        class Human(LoomiNode):
+            loomi_config = {
+                "labels": {"Humanoid"},
+                "skip_constraints": True,
+                "skip_indexes": False,
+            }
 
-        assert "labels" in CustomNode.loomi_config
-        assert "CustomLabel" in CustomNode.loomi_config["labels"]
-        assert "CustomNode" not in CustomNode.loomi_config["labels"]
+        assert "labels" in Human.loomi_config
+        assert Human.loomi_config["labels"] == {"Humanoid"}
+        assert "skip_constraints" in Human.loomi_config
+        assert Human.loomi_config["skip_constraints"]
+        assert "skip_indexes" in Human.loomi_config
+        assert not Human.loomi_config["skip_indexes"]
 
-    def test_label_inheritance_merging(self):
-        """Verify that child nodes merge their labels with parent nodes."""
+    def test_sets_labels_if_not_defined(self):
+        """Verify that labels get set to the class name if not explicitly defined."""
 
-        class ParentNode(LoomiNode):
-            loomi_config = LoomiNodeConfiguration(labels={"Parent"})
+        class Human(LoomiNode): ...
 
-        class ChildNode(ParentNode):
-            loomi_config = LoomiNodeConfiguration(labels={"Child"})
+        assert "labels" in Human.loomi_config
+        assert Human.loomi_config["labels"] == {"Human"}
 
-        assert "labels" in ChildNode.loomi_config
-        assert ChildNode.loomi_config["labels"] == {"Parent", "Child"}
 
-    def test_multi_level_inheritance(self):
-        """Verify labels accumulate across multiple levels of inheritance."""
+class TestInheritance:
+    def test_inherits_config(self):
+        """Verify that the configuration is inherited from other Loomi models."""
 
-        class GrandParent(LoomiNode):
-            loomi_config = LoomiNodeConfiguration(labels={"GP"})
+        class Human(LoomiNode):
+            loomi_config = {
+                "labels": {"Human"},
+                "skip_constraints": True,
+                "skip_indexes": False,
+            }
 
-        class Parent(GrandParent):
-            loomi_config = LoomiNodeConfiguration(labels={"P"})
+        class Worker(Human):
+            loomi_config = {
+                "labels": {"Worker"},
+                "skip_constraints": False,
+            }
 
-        class Child(Parent):
-            loomi_config = LoomiNodeConfiguration(labels={"C"})
+        assert "labels" in Worker.loomi_config
+        assert Worker.loomi_config["labels"] == {"Human", "Worker"}
+        assert "skip_constraints" in Worker.loomi_config
+        assert not Worker.loomi_config["skip_constraints"]
+        assert "skip_indexes" in Worker.loomi_config
+        assert not Worker.loomi_config["skip_indexes"]
 
-        assert "labels" in Child.loomi_config
-        assert Child.loomi_config["labels"] == {"GP", "P", "C"}
+    def test_inherits_multiple_configs(self):
+        """Verify that the configuration is inherited from multiple other Loomi models."""
 
-    def test_dirty_fields_tracking(self):
-        """Verify that setting attributes adds them to the _dirty_fields set."""
+        class Human(LoomiNode):
+            loomi_config = {
+                "labels": {"Human"},
+                "skip_constraints": True,
+                "skip_indexes": False,
+            }
 
-        class DataNode(LoomiNode):
-            name: str = "default"
+        class Worker(LoomiNode):
+            loomi_config = {
+                "labels": {"Worker"},
+                "skip_constraints": False,
+            }
 
-        node = DataNode()
-        node.name = "updated"
-        assert "name" in node._dirty_fields
+        class Person(Human, Worker):
+            loomi_config = {
+                "labels": {"Person"},
+            }
 
-        node.name = "default"
-        assert "name" not in node._dirty_fields
+        assert "labels" in Person.loomi_config
+        assert Person.loomi_config["labels"] == {"Human", "Worker", "Person"}
+        assert "skip_constraints" in Person.loomi_config
+        assert Person.loomi_config["skip_constraints"]
+        assert "skip_indexes" in Person.loomi_config
+        assert not Person.loomi_config["skip_indexes"]
 
-    def test_id_and_element_id_computed_fields(self):
-        """Verify that private IDs are correctly exposed via computed properties."""
+    def test_inheritance_ignores_non_model_parents(self):
+        """
+        Verify that inheriting from classes which are not Loomi models does not affect the final
+        config.
+        """
 
-        class IdNode(LoomiNode):
-            pass
+        class Human(LoomiNode):
+            loomi_config = {
+                "labels": {"Human"},
+                "skip_constraints": True,
+                "skip_indexes": False,
+            }
 
-        node = IdNode()
-        node._id = 123
-        node._element_id = "uuid-abc"
+        class HumanUtils: ...
 
-        assert node.id == 123
-        assert node.element_id == "uuid-abc"
+        class Person(Human, HumanUtils):
+            loomi_config = {
+                "labels": {"Person"},
+            }
+
+        assert "labels" in Person.loomi_config
+        assert Person.loomi_config["labels"] == {"Human", "Person"}
+        assert "skip_constraints" in Person.loomi_config
+        assert Person.loomi_config["skip_constraints"]
+        assert "skip_indexes" in Person.loomi_config
+        assert not Person.loomi_config["skip_indexes"]
+
+    def test_raises_if_parent_does_not_expose_config(self):
+        """Verify that a exception is raised if a parent class does not expose a configuration."""
+
+        class Human(LoomiNode): ...
+
+        with pytest.raises(ModelInitializationError):
+            Human.loomi_config = None  # type: ignore
+
+            class Worker(Human):
+                loomi_config = {
+                    "labels": {"Worker"},
+                    "skip_constraints": False,
+                }

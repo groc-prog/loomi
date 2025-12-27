@@ -1,67 +1,144 @@
-# pylint: disable=protected-access, missing-class-docstring, unused-variable, comparison-with-callable
+# pylint: disable=missing-class-docstring, unused-variable
 
-from loomi.models.relationship import LoomiRelationship, LoomiRelationshipConfiguration
+import pytest
+
+from loomi.exceptions import ModelInitializationError
+from loomi.models.relationship import LoomiRelationship
 
 
-class TestLoomiRelationship:
+class TestModelHash:
 
-    def test_default_type_is_class_name(self):
-        """Verify that a relationship with no config uses its class name as the type."""
+    def test_relationship_hash_is_deterministic(self):
+        """Verify that the hash generated for each model is deterministic."""
 
-        class ActedIn(LoomiRelationship):
-            pass
+        class Likes(LoomiRelationship): ...
 
-        assert "type" in ActedIn.loomi_config
-        assert ActedIn.loomi_config["type"] == "ACTED_IN"
+        hash_1 = Likes._generate_loomi_hash(set(Likes.loomi_config["type"]))  # type: ignore
+        hash_2 = Likes._generate_loomi_hash(set(Likes.loomi_config["type"]))  # type: ignore
+        assert hash_1 == hash_2
 
-    def test_explicit_type_preserved(self):
-        """Verify that providing an explicit type prevents the class name fallback."""
 
-        class CustomRel(LoomiRelationship):
-            loomi_config = LoomiRelationshipConfiguration(type="FOLLOWS")
+class TestConfiguration:
+    def test_config_can_be_defined(self):
+        """Verify that all configuration options can be defined via the class variable."""
 
-        assert "type" in CustomRel.loomi_config
-        assert CustomRel.loomi_config["type"] == "FOLLOWS"
-        assert CustomRel.loomi_config["type"] != "CustomRel"
+        class Likes(LoomiRelationship):
+            loomi_config = {
+                "type": "LIKES_VERY_MUCH",
+                "skip_constraints": True,
+                "skip_indexes": False,
+            }
 
-    def test_type_not_overwritten_by_parent(self):
+        assert "type" in Likes.loomi_config
+        assert Likes.loomi_config["type"] == "LIKES_VERY_MUCH"
+        assert "skip_constraints" in Likes.loomi_config
+        assert Likes.loomi_config["skip_constraints"]
+        assert "skip_indexes" in Likes.loomi_config
+        assert not Likes.loomi_config["skip_indexes"]
+
+    def test_sets_type_if_not_defined(self):
+        """Verify that type get set to the class name if not explicitly defined."""
+
+        class Likes(LoomiRelationship): ...
+
+        assert "type" in Likes.loomi_config
+        assert Likes.loomi_config["type"] == "LIKES"
+
+    def test_normalizes_multi_work_type_name(self):
+        """Verify that the type for multi-name classes get normalized correctly."""
+
+        class LikesVeryMuch(LoomiRelationship): ...
+
+        assert "type" in LikesVeryMuch.loomi_config
+        assert LikesVeryMuch.loomi_config["type"] == "LIKES_VERY_MUCH"
+
+
+class TestInheritance:
+    def test_inherits_config(self):
+        """Verify that the configuration is inherited from other Loomi models."""
+
+        class Likes(LoomiRelationship):
+            loomi_config = {
+                "type": "LIKES",
+                "skip_constraints": True,
+                "skip_indexes": False,
+            }
+
+        class Loves(Likes):
+            loomi_config = {
+                "type": "LOVES",
+                "skip_constraints": False,
+            }
+
+        assert "type" in Loves.loomi_config
+        assert Loves.loomi_config["type"] == "LOVES"
+        assert "skip_constraints" in Loves.loomi_config
+        assert not Loves.loomi_config["skip_constraints"]
+        assert "skip_indexes" in Loves.loomi_config
+        assert not Loves.loomi_config["skip_indexes"]
+
+    def test_inherits_multiple_configs(self):
+        """Verify that the configuration is inherited from multiple other Loomi models."""
+
+        class Likes(LoomiRelationship):
+            loomi_config = {
+                "type": "LIKES",
+                "skip_constraints": True,
+                "skip_indexes": False,
+            }
+
+        class Loves(LoomiRelationship):
+            loomi_config = {
+                "skip_constraints": False,
+            }
+
+        class CanNotLiveWithout(Likes, Loves):
+            loomi_config = {"skip_indexes": True}
+
+        assert "type" in CanNotLiveWithout.loomi_config
+        assert CanNotLiveWithout.loomi_config["type"] == "CAN_NOT_LIVE_WITHOUT"
+        assert "skip_constraints" in CanNotLiveWithout.loomi_config
+        assert CanNotLiveWithout.loomi_config["skip_constraints"]
+        assert "skip_indexes" in CanNotLiveWithout.loomi_config
+        assert CanNotLiveWithout.loomi_config["skip_indexes"]
+
+    def test_inheritance_ignores_non_model_parents(self):
         """
-        Verify that the child's type is NOT merged or overwritten by the parent.
-        In LoomiRelationship, 'type' is skipped during merging if already set.
+        Verify that inheriting from classes which are not Loomi models does not affect the final
+        config.
         """
 
-        class ParentRel(LoomiRelationship):
-            loomi_config = LoomiRelationshipConfiguration(type="PARENT_TYPE")
+        class Likes(LoomiRelationship):
+            loomi_config = {
+                "type": "LIKES",
+                "skip_constraints": True,
+                "skip_indexes": False,
+            }
 
-        class ChildRel(ParentRel):
-            loomi_config = LoomiRelationshipConfiguration(type="CHILD_TYPE")
+        class LikesUtils: ...
 
-        assert "type" in ChildRel.loomi_config
-        assert ChildRel.loomi_config["type"] == "CHILD_TYPE"
+        class Loves(Likes, LikesUtils):
+            loomi_config = {
+                "type": "LOVES",
+            }
 
-    def test_config_inheritance_other_fields(self):
-        """Verify that non-'type' config keys (like skip_indexes) are inherited."""
+        assert "type" in Loves.loomi_config
+        assert Loves.loomi_config["type"] == "LOVES"
+        assert "skip_constraints" in Loves.loomi_config
+        assert Loves.loomi_config["skip_constraints"]
+        assert "skip_indexes" in Loves.loomi_config
+        assert not Loves.loomi_config["skip_indexes"]
 
-        class BaseRel(LoomiRelationship):
-            loomi_config = LoomiRelationshipConfiguration(skip_indexes=True)
+    def test_raises_if_parent_does_not_expose_config(self):
+        """Verify that a exception is raised if a parent class does not expose a configuration."""
 
-        class SubRel(BaseRel):
-            pass
+        class Likes(LoomiRelationship): ...
 
-        assert "skip_indexes" in SubRel.loomi_config
-        assert SubRel.loomi_config["skip_indexes"] is True
-        assert "type" in SubRel.loomi_config
-        assert SubRel.loomi_config["type"] == "SUB_REL"
+        with pytest.raises(ModelInitializationError):
+            Likes.loomi_config = None  # type: ignore
 
-    def test_instance_dirty_fields(self):
-        """Verify that LoomiRelationship (via _LoomiBase) tracks attribute changes."""
-
-        class MyRel(LoomiRelationship):
-            since: int = 2020
-
-        rel = MyRel()
-        rel.since = 2024
-        assert "since" in rel._dirty_fields
-
-        rel.since = 2020
-        assert "since" not in rel._dirty_fields
+            class Loves(Likes):
+                loomi_config = {
+                    "type": "LOVES",
+                    "skip_constraints": False,
+                }

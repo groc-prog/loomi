@@ -1,6 +1,7 @@
 import hashlib
 from typing import ClassVar, List, Set, cast
 
+from loomi.exceptions import ModelInitializationError
 from loomi.models._base import LoomiBaseConfiguration, _LoomiBase
 
 
@@ -32,7 +33,9 @@ class LoomiNode(_LoomiBase):
 
             inherited_config = getattr(parent, "loomi_config", None)
             if not inherited_config:
-                continue
+                raise ModelInitializationError(
+                    f"Parent class {parent.__name__} has no `loomi_config` attribute"
+                )
 
             cls.__merge_loomi_config(inherited_config)
 

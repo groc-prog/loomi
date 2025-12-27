@@ -22,4 +22,22 @@ dev = [
     "pylint (>=4.0.4,<5.0.0)",
     "black (>=25.12.0,<26.0.0)",
     "pre-commit (>=4.5.1,<5.0.0)",
+    "pytest-cov (>=7.0.0,<8.0.0)",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = "--cov=loomi --cov-report=term-missing"
+
+[tool.coverage.run]
+# Only measure coverage in your source code folder
+source = ["your_package_name"]
+# Explicitly omit the tests directory
+omit = ["tests/*"]
+
+[tool.coverage.report]
+show_missing = true
