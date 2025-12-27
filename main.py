@@ -1,5 +1,3 @@
-import pickle
-
 from neo4j import AsyncGraphDatabase, GraphDatabase
 
 from loomi.client.sync_client import LoomiClient
@@ -25,16 +23,23 @@ c1 = LoomiClient(neo4j_driver)
 c1._register_model(Human)
 c1._register_model(Owns)
 
+
+def do_cypher_tx(tx, cypher):
+    result = tx.run(cypher)
+    values = [record.values() for record in result]
+    return values
+
+
 with c1.session(True) as session:
-    # r1 = session.run("MATCH p=()-[]->() RETURN p")
-    r1 = session.run("MATCH (a)-[b]->(c) RETURN a, b, c")
-    # r1 = session.run("MATCH (n) RETURN n")
-    v1 = r1.peek()
+    with session.begin_transaction() as tx:
+        r1 = tx.run("MATCH (a)-[b]->(c) RETURN a, b, c")
+        v1 = r1.values()
+
 
 with c1.session(False) as session:
-    # r2 = session.run("MATCH p=()-[]->() RETURN p")
-    r2 = session.run("MATCH (a)-[b]->(c) RETURN a, b, c")
-    # r2 = session.run("MATCH (n) RETURN n")
-    v2 = r2.peek()
+    with session.begin_transaction() as tx:
+        r2 = tx.run("MATCH (a)-[b]->(c) RETURN a, b, c")
+        v2 = r2.values()
+
 
 pass
