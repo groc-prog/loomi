@@ -1,7 +1,7 @@
 import hashlib
 from typing import ClassVar, List, Set, cast
 
-from loomi.models.base import LoomiBaseConfiguration, _LoomiBase
+from loomi.models._base import LoomiBaseConfiguration, _LoomiBase
 
 
 class LoomiNodeConfiguration(LoomiBaseConfiguration, total=False):

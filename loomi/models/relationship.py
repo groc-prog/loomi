@@ -2,7 +2,7 @@ import hashlib
 import re
 from typing import ClassVar
 
-from loomi.models.base import LoomiBaseConfiguration, _LoomiBase
+from loomi.models._base import LoomiBaseConfiguration, _LoomiBase
 
 
 class LoomiRelationshipConfiguration(LoomiBaseConfiguration, total=False):

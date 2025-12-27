@@ -1,6 +1,9 @@
+from typing import Annotated
+
 from neo4j import AsyncGraphDatabase, GraphDatabase
 
 from loomi.client.sync_client import LoomiClient
+from loomi.fields.annotations import UniquenessConstraint
 from loomi.models.node import LoomiNode
 from loomi.models.relationship import LoomiRelationship
 
@@ -12,7 +15,7 @@ memgraph_driver = AsyncGraphDatabase.driver(
 
 
 class Human(LoomiNode):
-    uid: str
+    uid: Annotated[str, UniquenessConstraint]
 
 
 class Owns(LoomiRelationship):

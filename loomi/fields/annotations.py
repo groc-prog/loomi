@@ -31,8 +31,8 @@ class UniquenessConstraint:
     """Name for the constraint. Will be auto generated if not defined."""
     labels: Optional[Set[str]] = None
     """
-    Labels for which the constraint will be created. Will be created for the first label of
-    the model if not defined.
+    Labels for which the constraint will be created. Will be created for all labels
+    if not defined.
     """
 
 
@@ -47,8 +47,8 @@ class ExistenceConstraint:
     """Name for the constraint. Will be auto generated if not defined."""
     labels: Optional[Set[str]] = None
     """
-    Labels for which the constraint will be created. Will be created for the first label of
-    the model if not defined.
+    Labels for which the constraint will be created. Will be created for all labels
+    if not defined.
     """
 
 
@@ -65,8 +65,8 @@ class DataTypeConstraint:
     """Name for the constraint. Will be auto generated if not defined."""
     labels: Optional[Set[str]] = None
     """
-    Labels for which the constraint will be created. Will be created for the first label of
-    the model if not defined.
+    Labels for which the constraint will be created. Will be created for all labels
+    if not defined.
     """
 
 
@@ -83,8 +83,8 @@ class PropertyIndex:
     """Name for the index. Will be auto generated if not defined."""
     labels: Optional[Set[str]] = None
     """
-    Labels for which the index will be created. Will be created for the first label of
-    the model if not defined.
+    Labels for which the index will be created. Will be created for all labels
+    if not defined.
     """
 
 
@@ -101,8 +101,8 @@ class RangeIndex:
     """Name for the index. Will be auto generated if not defined."""
     labels: Optional[Set[str]] = None
     """
-    Labels for which the index will be created. Will be created for the first label of
-    the model if not defined.
+    Labels for which the index will be created. Will be created for all labels
+    if not defined.
     """
 
 
@@ -117,8 +117,8 @@ class TextIndex:
     """Name for the index. Will be auto generated if not defined."""
     labels: Optional[Set[str]] = None
     """
-    Labels for which the index will be created. Will be created for the first label of
-    the model if not defined.
+    Labels for which the index will be created. Will be created for all labels
+    if not defined.
     """
 
 
@@ -132,8 +132,8 @@ class PointIndex:
     """Name for the index. Will be auto generated if not defined."""
     labels: Optional[Set[str]] = None
     """
-    Labels for which the index will be created. Will be created for the first label of
-    the model if not defined.
+    Labels for which the index will be created. Will be created for all labels
+    if not defined.
     """
 
 
@@ -150,8 +150,8 @@ class FullTextIndex:
     """Name for the index. Will be auto generated if not defined."""
     labels: Optional[Set[str]] = None
     """
-    Labels for which the index will be created. Will be created for the first label of
-    the model if not defined.
+    Labels for which the index will be created. Will be created for all labels
+    if not defined.
     """
 
 
@@ -166,6 +166,6 @@ class VectorIndex:
     """Name for the index. Will be auto generated if not defined."""
     labels: Optional[Set[str]] = None
     """
-    Labels for which the index will be created. Will be created for the first label of
-    the model if not defined.
+    Labels for which the index will be created. Will be created for all labels
+    if not defined.
     """

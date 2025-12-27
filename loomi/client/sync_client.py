@@ -1,25 +1,14 @@
-from typing import Any, Literal, Optional, Union, overload
+from typing import Any, Literal, Union, overload
 
 from neo4j import Driver, Session
 
 from loomi._driver._session import LoomiSession
+from loomi._logger import _LogContextKey, _scoped_log_ctx
 from loomi.client._base import _LoomiBaseClient
-from loomi.models.base import LoomiBaseConfiguration
 
 
-class LoomiClient(_LoomiBaseClient):
+class LoomiClient(_LoomiBaseClient[Driver]):
     """Database client for interacting with Loomi models."""
-
-    __driver: Driver
-
-    def __init__(
-        self,
-        driver: Driver,
-        config: Optional[LoomiBaseConfiguration] = None,
-    ) -> None:
-        super().__init__(config)
-
-        self.__driver = driver
 
     @overload
     def session(
@@ -44,9 +33,15 @@ class LoomiClient(_LoomiBaseClient):
             Defaults to `True`.
             session_config: Key-word arguments passed to the session directly.
         """
-        session = self.__driver.session(**session_config)
+        with _scoped_log_ctx(
+            {
+                _LogContextKey.DRIVER: self._driver.__class__.__name__,
+                _LogContextKey.SERVER_TYPE: self._server_type,
+            }
+        ):
+            session = self._driver.session(**session_config)
 
-        if to_models:
-            return LoomiSession(session, self)
+            if to_models:
+                return LoomiSession(session, self)
 
-        return session
+            return session

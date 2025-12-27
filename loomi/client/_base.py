@@ -1,14 +1,28 @@
 from abc import ABC
 from enum import StrEnum
-from typing import Any, Dict, Optional, Tuple, Type, Union, cast, overload
+from typing import (
+    Any,
+    Dict,
+    Generic,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+    overload,
+)
 
+from neo4j import AsyncDriver, Driver
 from neo4j.graph import Node, Path, Relationship
 
-from loomi._logger import logger
-from loomi.models.base import LoomiBaseConfiguration
+from loomi._logger import _LogContextKey, _scoped_log_ctx, logger
+from loomi.models._base import LoomiBaseConfiguration
 from loomi.models.node import LoomiNode
 from loomi.models.path import LoomiPath
 from loomi.models.relationship import LoomiRelationship
+
+T = TypeVar("T", bound=Union[Driver, AsyncDriver])
 
 
 class _ServerType(StrEnum):
@@ -16,39 +30,59 @@ class _ServerType(StrEnum):
     MEMGRAPH = "Memgraph"
 
 
-class _LoomiBaseClient(ABC):
+class _LoomiBaseClient(Generic[T], ABC):
+    _driver: T
     _config: Optional[LoomiBaseConfiguration]
     _server_type: Optional[_ServerType]
     _server_version: Optional[Tuple[int, ...]]
-    _models: Dict[str, Union[LoomiNode, LoomiRelationship]]
+    _models: Dict[str, Union[Type[LoomiNode], Type[LoomiRelationship]]]
 
-    def __init__(self, config: Optional[LoomiBaseConfiguration] = None):
+    def __init__(self, driver: T, config: Optional[LoomiBaseConfiguration] = None):
+        self._driver = driver
         self._config = config
         self._server_type = None
         self._server_version = None
         self._models = {}
 
+    def register(
+        self, *models: Union[Type[LoomiNode], Type[LoomiRelationship]]
+    ) -> None:
+        """
+        Registers models with the current client. Models which have not been registered can not be
+        resolved from query results.
+
+        Args:
+            *models (Union[Type[LoomiNode], Type[LoomiRelationship]]): The models to register.
+        """
+        with _scoped_log_ctx(
+            {
+                _LogContextKey.DRIVER: self._driver.__class__.__name__,
+                _LogContextKey.SERVER_TYPE: self._server_type,
+            }
+        ):
+            for model in models:
+                if not issubclass(model, (LoomiNode, LoomiRelationship)):
+                    logger.warning(
+                        (
+                            "Invalid model %s provided during model registration. Class ",
+                            "will be ignored",
+                        ),
+                        model.__name__,
+                    )
+                    return
+
+                if model._hash is None:
+                    logger.warning(
+                        "Hash on model %s is not initialized yet. Model will be skipped",
+                        model.__name__,
+                    )
+                    return
+
+                logger.debug("Registering model %s with client %s", model, self)
+                self._models[model._hash] = model
+
     def _extract_version(self, version: str) -> None:
         self._server_version = tuple(int(part) for part in version.split("."))
-
-    def _register_model(
-        self, model: Union[Type[LoomiNode], Type[LoomiRelationship]]
-    ) -> None:
-        if not issubclass(model, (LoomiNode, LoomiRelationship)):
-            logger.warning(
-                "Invalid model %s provided during model registration. Class will be ignored",
-                model.__name__,
-            )
-            return
-
-        if model._hash is None:
-            logger.warning(
-                "Hash on model %s is not initialized yet. Model will be skipped",
-                model.__name__,
-            )
-            return
-
-        self._models[model._hash] = model
 
     def _transform_entity(self, entity: Any) -> Any:
         if isinstance(entity, (Node, Relationship)):
@@ -86,7 +120,7 @@ class _LoomiBaseClient(ABC):
 
         if model_hash not in self._models:
             logger.warning(
-                "Model with hash %s is not registered with client. Record will not be resolved "
+                "No model with hash %s registered with client. Record will not be resolved "
                 "to model",
                 model_hash,
             )
@@ -101,12 +135,14 @@ class _LoomiBaseClient(ABC):
 
         return instance
 
-    def _type_to_model(self, type_: str) -> Optional[Type[LoomiRelationship]]:
+    def _relationship_type_to_model(
+        self, type_: str
+    ) -> Optional[Type[LoomiRelationship]]:
         model_hash = LoomiRelationship._generate_loomi_hash(type_)
 
         if model_hash not in self._models:
             logger.warning(
-                "Model with hash %s is not registered with client. Record will not be resolved "
+                "No model with hash %s registered with client. Record will not be resolved "
                 "to model",
                 model_hash,
             )

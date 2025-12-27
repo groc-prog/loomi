@@ -48,8 +48,8 @@ class LoomiTransaction(Transaction):
 
 class LoomiAsyncTransaction(AsyncTransaction):
     """
-    Wrapper for `neo4j.AsyncTransaction` allowing for automatic transformation of entities returned by
-    queries.
+    Wrapper for `neo4j.AsyncTransaction` allowing for automatic transformation of entities returned
+    by queries.
     """
 
     __transaction: AsyncTransaction
@@ -73,8 +73,8 @@ class LoomiAsyncTransaction(AsyncTransaction):
 
     async def run(self, *args, **kwargs):
         """
-        Method providing the same interface as `neo4j.AsyncTransaction.run`. If a entity is returned,
-        it will be transformed to it's corresponding model.
+        Method providing the same interface as `neo4j.AsyncTransaction.run`. If a entity is
+        returned, it will be transformed to it's corresponding model.
         """
         original_result = await self.__transaction.run(*args, **kwargs)
         return LoomiAsyncResult(original_result, self.__client)

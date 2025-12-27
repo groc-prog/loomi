@@ -173,7 +173,7 @@ class LoomiResult(Result):
             for element_id, relationship in original_result._relationships.items()
         }
         graph._relationship_types = {
-            type_: self.__client._type_to_model(type_) or relationship
+            type_: self.__client._relationship_type_to_model(type_) or relationship
             for type_, relationship in original_result._relationship_types.items()
         }
         graph._node_set_view = EntitySetView(graph._nodes)
@@ -339,7 +339,7 @@ class LoomiAsyncResult(AsyncResult):
             for element_id, relationship in original_result._relationships.items()
         }
         graph._relationship_types = {
-            type_: self.__client._type_to_model(type_) or relationship
+            type_: self.__client._relationship_type_to_model(type_) or relationship
             for type_, relationship in original_result._relationship_types.items()
         }
         graph._node_set_view = EntitySetView(graph._nodes)
