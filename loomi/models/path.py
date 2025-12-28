@@ -1,9 +1,15 @@
-from typing import Any, Iterator, Tuple, Union
+from typing import TYPE_CHECKING, Any, Iterator, Tuple, Union
 
-from neo4j.graph import Graph, Node, Relationship
+from neo4j.graph import EntitySetView, Graph, Node, Relationship
 
+from loomi._driver._graph import LoomiGraph
 from loomi.models.node import LoomiNode
 from loomi.models.relationship import LoomiRelationship
+
+if TYPE_CHECKING:
+    from loomi.clients._base import _LoomiBaseClient
+else:
+    _LoomiBaseClient = object
 
 LoomiPathNode = Union[LoomiNode, Node]
 LoomiPathRelationship = Union[LoomiRelationship, Relationship]
@@ -12,16 +18,19 @@ LoomiPathRelationship = Union[LoomiRelationship, Relationship]
 class LoomiPath:
     """Graph path containing resolved Loomi nodes."""
 
+    __client: _LoomiBaseClient
     _nodes: Tuple[LoomiPathNode, ...]
     _relationships: Tuple[LoomiPathRelationship, ...]
     _graph: Graph
 
     def __init__(
         self,
+        client: _LoomiBaseClient,
         nodes: Tuple[LoomiPathNode, ...],
         relationships: Tuple[LoomiPathRelationship, ...],
         graph: Graph,
     ):
+        self.__client = client
         self._nodes = nodes
         self._relationships = relationships
         self._graph = graph
@@ -54,9 +63,26 @@ class LoomiPath:
         return iter(self._relationships)
 
     @property
-    def graph(self) -> Graph:
-        """The `Graph` to which this path belongs."""
-        return self._graph
+    def graph(self) -> LoomiGraph:
+        """The `LoomiGraph` to which this path belongs."""
+        graph = LoomiGraph()
+
+        graph._nodes = {
+            element_id: self.__client._transform_entity(node)
+            for element_id, node in self._graph._nodes.items()
+        }
+        graph._relationships = {
+            element_id: self.__client._transform_entity(relationship)
+            for element_id, relationship in self._graph._relationships.items()
+        }
+        graph._relationship_types = {
+            type_: self.__client._relationship_type_to_model(type_) or relationship
+            for type_, relationship in self._graph._relationship_types.items()
+        }
+        graph._node_set_view = EntitySetView(graph._nodes)
+        graph._relationship_set_view = EntitySetView(graph._relationships)
+
+        return graph
 
     @property
     def nodes(self) -> tuple[LoomiPathNode, ...]:

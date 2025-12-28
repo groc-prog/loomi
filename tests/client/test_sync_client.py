@@ -11,6 +11,7 @@ from loomi._driver._session import LoomiSession
 from loomi._driver._transaction import LoomiTransaction
 from loomi.clients.sync_client import LoomiClient
 from loomi.models.node import LoomiNode
+from loomi.models.path import LoomiPath
 from loomi.models.relationship import LoomiRelationship
 from tests.fixtures.db import sync_driver
 
@@ -833,3 +834,101 @@ class TestLoomiGraph:
 
             loaded = pickle.loads(pickled)
             assert isinstance(loaded, LoomiGraph)
+
+
+class TestLoomiPath:
+    def test_entities_from_path_are_transformed(self, sync_driver: Driver):
+        """Verify that any returned paths have their entities transformed to Loomi equivalents."""
+
+        class Human(LoomiNode):
+            name: str
+
+        class Owns(LoomiRelationship): ...
+
+        with sync_driver.session() as session:
+            session.run(
+                "CREATE (h:Human {name: $name}), (a:Animal {kind: $kind}), (h)-[:OWNS]->(a)-[:FED_BY]->(h)",
+                {"name": "John", "kind": "dog"},
+            )
+
+        client = LoomiClient(sync_driver)
+        client.register(Human, Owns)
+
+        with client.session(True) as session:
+            result = session.run(
+                "MATCH p=(:Human)-[:OWNS]->(:Animal)-[:FED_BY]->(:Human) RETURN p"
+            )
+            data = result.value()
+            path = data[0]
+
+            assert isinstance(path, LoomiPath)
+            assert isinstance(path.start_node, Human)
+            assert path.start_node.name == "John"
+            assert isinstance(path.end_node, Human)
+            assert path.end_node.name == "John"
+
+            for node in path.nodes:
+                if isinstance(node, Node):
+                    assert node.labels == {"Animal"}
+
+                    properties = dict(node)
+                    assert "kind" in properties
+                    assert properties["kind"] == "dog"
+                else:
+                    assert isinstance(node, Human)
+                    assert node.name == "John"
+
+            for relationship in path.relationships:
+                if isinstance(relationship, Relationship):
+                    assert relationship.type == "FED_BY"
+                else:
+                    assert isinstance(relationship, Owns)
+
+    def test_path_graph_is_transformed(self, sync_driver: Driver):
+        """Verify that the graph inside the path is transformed."""
+
+        class Human(LoomiNode):
+            name: str
+
+        class Owns(LoomiRelationship): ...
+
+        with sync_driver.session() as session:
+            session.run(
+                "CREATE (h:Human {name: $name}), (a:Animal {kind: $kind}), (h)-[:OWNS]->(a)-[:FED_BY]->(h)",
+                {"name": "John", "kind": "dog"},
+            )
+
+        client = LoomiClient(sync_driver)
+        client.register(Human, Owns)
+
+        with client.session(True) as session:
+            result = session.run(
+                "MATCH p=(:Human)-[:OWNS]->(:Animal)-[:FED_BY]->(:Human) RETURN p"
+            )
+            data = result.value()
+            path = data[0]
+            assert isinstance(path, LoomiPath)
+
+            graph = path.graph
+            assert len(graph.nodes) == 2
+            assert len(graph.relationships) == 2
+
+            for node in graph.nodes:
+                if isinstance(node, Node):
+                    assert node.labels == {"Animal"}
+
+                    properties = dict(node)
+                    assert "kind" in properties
+                    assert properties["kind"] == "dog"
+                else:
+                    assert isinstance(node, Human)
+                    assert node.name == "John"
+
+            for relationship in graph.relationships:
+                if isinstance(relationship, Relationship):
+                    assert relationship.type == "FED_BY"
+                else:
+                    assert isinstance(relationship, Owns)
+
+            rel_type = graph.relationship_type("OWNS")
+            assert rel_type == Owns

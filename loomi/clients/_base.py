@@ -89,6 +89,7 @@ class _LoomiBaseClient(Generic[T], ABC):
         if isinstance(entity, Path):
             logger.debug("Transforming nodes and relationships from path %s", entity)
             return LoomiPath(
+                self,
                 tuple(self._entity_to_model(node) for node in entity.nodes),
                 tuple(
                     self._entity_to_model(relationship)
