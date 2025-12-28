@@ -21,22 +21,22 @@ class LoomiSession(Session):
     queries.
     """
 
-    __session: Session
-    __client: LoomiClient
+    _session: Session
+    _client: LoomiClient
 
     def __init__(self, session: Session, client: LoomiClient):
-        self.__session = session
-        self.__client = client
+        self._session = session
+        self._client = client
 
     def __getattr__(self, name: str):
-        return getattr(self.__session, name)
+        return getattr(self._session, name)
 
     def __enter__(self):
-        self.__session.__enter__()
+        self._session.__enter__()
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        return self.__session.__exit__(exception_type, exception_value, traceback)
+        return self._session.__exit__(exception_type, exception_value, traceback)
 
     def run(
         self,
@@ -48,8 +48,8 @@ class LoomiSession(Session):
         Method providing the same interface as `neo4j.Session.run`. If a entity is returned,
         it will be transformed to it's corresponding model.
         """
-        original_result = self.__session.run(query, parameters, **kwargs)
-        return LoomiResult(original_result, self.__client)
+        original_result = self._session.run(query, parameters, **kwargs)
+        return LoomiResult(original_result, self._client)
 
     def begin_transaction(
         self, metadata: Dict[str, Any] | None = None, timeout: float | None = None
@@ -58,8 +58,8 @@ class LoomiSession(Session):
         Method providing the same interface as `neo4j.Session.begin_transaction`. If a entity is
         returned, it will be transformed to it's corresponding model.
         """
-        original_transaction = self.__session.begin_transaction(metadata, timeout)
-        return LoomiTransaction(original_transaction, self.__client)
+        original_transaction = self._session.begin_transaction(metadata, timeout)
+        return LoomiTransaction(original_transaction, self._client)
 
 
 class LoomiAsyncSession(AsyncSession):
@@ -68,24 +68,22 @@ class LoomiAsyncSession(AsyncSession):
     queries.
     """
 
-    __session: AsyncSession
-    __client: LoomiAsyncClient
+    _session: AsyncSession
+    _client: LoomiAsyncClient
 
     def __init__(self, session: AsyncSession, client: LoomiAsyncClient):
-        self.__session = session
-        self.__client = client
+        self._session = session
+        self._client = client
 
     def __getattr__(self, name: str):
-        return getattr(self.__session, name)
+        return getattr(self._session, name)
 
     async def __aenter__(self):
-        await self.__session.__aenter__()
+        await self._session.__aenter__()
         return self
 
     async def __aexit__(self, exception_type, exception_value, traceback):
-        return await self.__session.__aexit__(
-            exception_type, exception_value, traceback
-        )
+        return await self._session.__aexit__(exception_type, exception_value, traceback)
 
     async def run(
         self,
@@ -97,8 +95,8 @@ class LoomiAsyncSession(AsyncSession):
         Method providing the same interface as `neo4j.AsyncSession.run`. If a entity is returned,
         it will be transformed to it's corresponding model.
         """
-        original_result = await self.__session.run(query, parameters, **kwargs)
-        return LoomiAsyncResult(original_result, self.__client)
+        original_result = await self._session.run(query, parameters, **kwargs)
+        return LoomiAsyncResult(original_result, self._client)
 
     async def begin_transaction(
         self, metadata: Dict[str, Any] | None = None, timeout: float | None = None
@@ -107,5 +105,5 @@ class LoomiAsyncSession(AsyncSession):
         Method providing the same interface as `neo4j.AsyncSession.begin_transaction`. If a entity is
         returned, it will be transformed to it's corresponding model.
         """
-        original_transaction = await self.__session.begin_transaction(metadata, timeout)
-        return LoomiAsyncTransaction(original_transaction, self.__client)
+        original_transaction = await self._session.begin_transaction(metadata, timeout)
+        return LoomiAsyncTransaction(original_transaction, self._client)

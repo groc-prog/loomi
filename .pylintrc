@@ -16,4 +16,5 @@ ignore=CVS,
 disable=missing-module-docstring,
        broad-exception-caught,
        protected-access,
-       too-few-public-methods
+       too-few-public-methods,
+       import-outside-toplevel

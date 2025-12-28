@@ -1,11 +1,11 @@
 import hashlib
-from typing import ClassVar, List, Set, cast
+from typing import ClassVar, List, Set, TypedDict, cast
 
 from loomi.exceptions import ModelInitializationError
-from loomi.models._base import LoomiBaseConfiguration, _LoomiBase
+from loomi.models._base import _LoomiBase
 
 
-class LoomiNodeConfiguration(LoomiBaseConfiguration, total=False):
+class LoomiNodeConfiguration(TypedDict, total=False):
     """TypedDict for configuring Loomi node behavior."""
 
     labels: Set[str]
@@ -37,12 +37,12 @@ class LoomiNode(_LoomiBase):
                     f"Parent class {parent.__name__} has no `loomi_config` attribute"
                 )
 
-            cls.__merge_loomi_config(inherited_config)
+            cls._merge_loomi_config(inherited_config)
 
         cls._hash = cls._generate_loomi_hash(list(cls.loomi_config["labels"]))
 
     @classmethod
-    def __merge_loomi_config(cls, config: LoomiNodeConfiguration) -> None:
+    def _merge_loomi_config(cls, config: LoomiNodeConfiguration) -> None:
         for key, value in config.items():
             # If the key has not been set before, always set it
             if key not in cls.loomi_config:

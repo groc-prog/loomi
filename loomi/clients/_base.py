@@ -17,7 +17,7 @@ from neo4j import AsyncDriver, Driver
 from neo4j.graph import Node, Path, Relationship
 
 from loomi._logger import _LogContextKey, _scoped_log_ctx, logger
-from loomi.models._base import LoomiBaseConfiguration
+from loomi.constants._graph import _ModelType
 from loomi.models.node import LoomiNode
 from loomi.models.path import LoomiPath
 from loomi.models.relationship import LoomiRelationship
@@ -32,10 +32,9 @@ class _ServerType(StrEnum):
 
 class _LoomiBaseClient(Generic[T], ABC):
     _driver: T
-    _config: Optional[LoomiBaseConfiguration]
     _server_type: Optional[_ServerType]
     _server_version: Optional[Tuple[int, ...]]
-    _models: Dict[str, Union[Type[LoomiNode], Type[LoomiRelationship]]]
+    _models: Dict[str, _ModelType]
 
     def __init__(self, driver: T):
         self._driver = driver
@@ -43,9 +42,7 @@ class _LoomiBaseClient(Generic[T], ABC):
         self._server_version = None
         self._models = {}
 
-    def register(
-        self, *models: Union[Type[LoomiNode], Type[LoomiRelationship]]
-    ) -> None:
+    def register(self, *models: _ModelType) -> None:
         """
         Registers models with the current client. Models which have not been registered can not be
         resolved from query results.
@@ -70,6 +67,8 @@ class _LoomiBaseClient(Generic[T], ABC):
                     )
                     return
 
+                # Normally, the hash should always be initialized, but if there is some edge case
+                # we want to make it clear
                 if model._hash is None:
                     logger.warning(
                         "Hash on model %s is not initialized yet. Model will be skipped",

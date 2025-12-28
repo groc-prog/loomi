@@ -24,22 +24,22 @@ class LoomiResult(Result):
     corresponding Loomi models.
     """
 
-    __result: Result
-    __client: LoomiClient
+    _result: Result
+    _client: LoomiClient
 
     def __init__(self, result: Result, client: LoomiClient):
-        self.__result = result
-        self.__client = client
+        self._result = result
+        self._client = client
 
     def __getattr__(self, name: str):
-        return getattr(self.__result, name)
+        return getattr(self._result, name)
 
     def __iter__(self):
-        original_iterator = iter(self.__result)
+        original_iterator = iter(self._result)
 
         for record in original_iterator:
             transformed_record = [
-                (key, self.__client._transform_entity(record))
+                (key, self._client._transform_entity(record))
                 for key, record in record.items()
             ]
             yield Record(transformed_record)
@@ -52,12 +52,12 @@ class LoomiResult(Result):
         Method providing the same interface as `neo4j.Result.peek`. If a entity is returned,
         it will be transformed to it's corresponding model.
         """
-        original_result = self.__result.peek()
+        original_result = self._result.peek()
         if original_result is None:
             return original_result
 
         transformed_result = [
-            (key, self.__client._transform_entity(record))
+            (key, self._client._transform_entity(record))
             for key, record in original_result.items()
         ]
 
@@ -68,12 +68,12 @@ class LoomiResult(Result):
         Method providing the same interface as `neo4j.Result.fetch`. If entities are returned,
         they will be transformed to their corresponding models.
         """
-        original_result = self.__result.fetch(n)
+        original_result = self._result.fetch(n)
 
         transformed_result: List[Record] = []
         for result in original_result:
             transformed_record = [
-                (key, self.__client._transform_entity(record))
+                (key, self._client._transform_entity(record))
                 for key, record in result.items()
             ]
             transformed_result.append(Record(transformed_record))
@@ -85,12 +85,12 @@ class LoomiResult(Result):
         Method providing the same interface as `neo4j.Result.to_eager_result`. If entities are
         returned, they will be transformed to their corresponding models.
         """
-        original_result = self.__result.to_eager_result()
+        original_result = self._result.to_eager_result()
 
         transformed_result: List[Record] = []
         for original_record in original_result.records:
             transformed_record = [
-                (key, self.__client._transform_entity(record))
+                (key, self._client._transform_entity(record))
                 for key, record in original_record.items()
             ]
             transformed_result.append(Record(transformed_record))
@@ -111,12 +111,12 @@ class LoomiResult(Result):
         Method providing the same interface as `neo4j.Result.single`. If a entity is returned,
         it will be transformed to it's corresponding model.
         """
-        original_result = self.__result.single(strict)
+        original_result = self._result.single(strict)
         if original_result is None:
             return original_result
 
         transformed_result = [
-            (key, self.__client._transform_entity(record))
+            (key, self._client._transform_entity(record))
             for key, record in original_result.items()
         ]
 
@@ -127,14 +127,14 @@ class LoomiResult(Result):
         Method providing the same interface as `neo4j.Result.values`. Entities returned in
         the values list will be transformed to their corresponding models.
         """
-        original_result = self.__result.values(*keys)
+        original_result = self._result.values(*keys)
 
         transformed_result: List[List[Any]] = []
         for result_list in original_result:
             transformed_list: List[Any] = []
 
             for result in result_list:
-                transformed_list.append(self.__client._transform_entity(result))
+                transformed_list.append(self._client._transform_entity(result))
 
             transformed_result.append(transformed_list)
 
@@ -145,11 +145,11 @@ class LoomiResult(Result):
         Method providing the same interface as `neo4j.Result.value`. Entities returned in
         the values list will be transformed to their corresponding models.
         """
-        original_result = self.__result.value(key, default)
+        original_result = self._result.value(key, default)
 
         transformed_result: List[Any] = []
         for result in original_result:
-            transformed_result.append(self.__client._transform_entity(result))
+            transformed_result.append(self._client._transform_entity(result))
 
         return transformed_result
 
@@ -161,19 +161,19 @@ class LoomiResult(Result):
         Returns:
             LoomiGraph: Graph containing transformed entities.
         """
-        original_result = self.__result.graph()
+        original_result = self._result.graph()
         graph = LoomiGraph()
 
         graph._nodes = {
-            element_id: self.__client._transform_entity(node)
+            element_id: self._client._transform_entity(node)
             for element_id, node in original_result._nodes.items()
         }
         graph._relationships = {
-            element_id: self.__client._transform_entity(relationship)
+            element_id: self._client._transform_entity(relationship)
             for element_id, relationship in original_result._relationships.items()
         }
         graph._relationship_types = {
-            type_: self.__client._relationship_type_to_model(type_) or relationship
+            type_: self._client._relationship_type_to_model(type_) or relationship
             for type_, relationship in original_result._relationship_types.items()
         }
         graph._node_set_view = EntitySetView(graph._nodes)
@@ -188,22 +188,22 @@ class LoomiAsyncResult(AsyncResult):
     corresponding Loomi models.
     """
 
-    __result: AsyncResult
-    __client: LoomiAsyncClient
+    _result: AsyncResult
+    _client: LoomiAsyncClient
 
     def __init__(self, result: AsyncResult, client: LoomiAsyncClient):
-        self.__result = result
-        self.__client = client
+        self._result = result
+        self._client = client
 
     def __getattr__(self, name: str):
-        return getattr(self.__result, name)
+        return getattr(self._result, name)
 
     async def __aiter__(self):
-        original_iterator = aiter(self.__result)
+        original_iterator = aiter(self._result)
 
         async for record in original_iterator:
             transformed_record = [
-                (key, self.__client._transform_entity(record))
+                (key, self._client._transform_entity(record))
                 for key, record in record.items()
             ]
             yield Record(transformed_record)
@@ -216,12 +216,12 @@ class LoomiAsyncResult(AsyncResult):
         Method providing the same interface as `neo4j.Result.peek`. If a entity is returned,
         it will be transformed to it's corresponding model.
         """
-        original_result = await self.__result.peek()
+        original_result = await self._result.peek()
         if original_result is None:
             return original_result
 
         transformed_result = [
-            (key, self.__client._transform_entity(record))
+            (key, self._client._transform_entity(record))
             for key, record in original_result.items()
         ]
 
@@ -232,12 +232,12 @@ class LoomiAsyncResult(AsyncResult):
         Method providing the same interface as `neo4j.Result.fetch`. If entities are returned,
         they will be transformed to their corresponding models.
         """
-        original_result = await self.__result.fetch(n)
+        original_result = await self._result.fetch(n)
 
         transformed_result: List[Record] = []
         for result in original_result:
             transformed_record = [
-                (key, self.__client._transform_entity(record))
+                (key, self._client._transform_entity(record))
                 for key, record in result.items()
             ]
             transformed_result.append(Record(transformed_record))
@@ -249,12 +249,12 @@ class LoomiAsyncResult(AsyncResult):
         Method providing the same interface as `neo4j.Result.to_eager_result`. If entities are
         returned, they will be transformed to their corresponding models.
         """
-        original_result = await self.__result.to_eager_result()
+        original_result = await self._result.to_eager_result()
 
         transformed_result: List[Record] = []
         for original_record in original_result.records:
             transformed_record = [
-                (key, self.__client._transform_entity(record))
+                (key, self._client._transform_entity(record))
                 for key, record in original_record.items()
             ]
             transformed_result.append(Record(transformed_record))
@@ -275,12 +275,12 @@ class LoomiAsyncResult(AsyncResult):
         Method providing the same interface as `neo4j.Result.single`. If a entity is returned,
         it will be transformed to it's corresponding model.
         """
-        original_result = await self.__result.single(strict)
+        original_result = await self._result.single(strict)
         if original_result is None:
             return original_result
 
         transformed_result = [
-            (key, self.__client._transform_entity(record))
+            (key, self._client._transform_entity(record))
             for key, record in original_result.items()
         ]
 
@@ -291,14 +291,14 @@ class LoomiAsyncResult(AsyncResult):
         Method providing the same interface as `neo4j.Result.values`. Entities returned in
         the values list will be transformed to their corresponding models.
         """
-        original_result = await self.__result.values(*keys)
+        original_result = await self._result.values(*keys)
 
         transformed_result: List[List[Any]] = []
         for result_list in original_result:
             transformed_list: List[Any] = []
 
             for result in result_list:
-                transformed_list.append(self.__client._transform_entity(result))
+                transformed_list.append(self._client._transform_entity(result))
 
             transformed_result.append(transformed_list)
 
@@ -309,11 +309,11 @@ class LoomiAsyncResult(AsyncResult):
         Method providing the same interface as `neo4j.Result.value`. Entities returned in
         the values list will be transformed to their corresponding models.
         """
-        original_result = await self.__result.value(key, default)
+        original_result = await self._result.value(key, default)
 
         transformed_result: List[Any] = []
         for result in original_result:
-            transformed_result.append(self.__client._transform_entity(result))
+            transformed_result.append(self._client._transform_entity(result))
 
         return transformed_result
 
@@ -327,19 +327,19 @@ class LoomiAsyncResult(AsyncResult):
         Returns:
             LoomiGraph: Graph containing transformed entities.
         """
-        original_result = await self.__result.graph()
+        original_result = await self._result.graph()
         graph = LoomiGraph()
 
         graph._nodes = {
-            element_id: self.__client._transform_entity(node)
+            element_id: self._client._transform_entity(node)
             for element_id, node in original_result._nodes.items()
         }
         graph._relationships = {
-            element_id: self.__client._transform_entity(relationship)
+            element_id: self._client._transform_entity(relationship)
             for element_id, relationship in original_result._relationships.items()
         }
         graph._relationship_types = {
-            type_: self.__client._relationship_type_to_model(type_) or relationship
+            type_: self._client._relationship_type_to_model(type_) or relationship
             for type_, relationship in original_result._relationship_types.items()
         }
         graph._node_set_view = EntitySetView(graph._nodes)

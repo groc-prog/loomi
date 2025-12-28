@@ -6,5 +6,5 @@ class ModelInitializationError(LoomiError):
     """Error related to model initialization."""
 
 
-class ClientError(LoomiError):
-    """Error related to the Loomi client class."""
+class QueryCompileError(LoomiError):
+    """Error related to compiling a query."""

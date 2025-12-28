@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional, Set
 
-from loomi.constants.constraint import DataTypeConstraintType
+from loomi.constants.constraints import DataTypeConstraintType
 
 
 @dataclass

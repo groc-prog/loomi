@@ -1,12 +1,12 @@
 import hashlib
 import re
-from typing import ClassVar
+from typing import ClassVar, TypedDict
 
 from loomi.exceptions import ModelInitializationError
-from loomi.models._base import LoomiBaseConfiguration, _LoomiBase
+from loomi.models._base import _LoomiBase
 
 
-class LoomiRelationshipConfiguration(LoomiBaseConfiguration, total=False):
+class LoomiRelationshipConfiguration(TypedDict, total=False):
     """TypedDict for configuring Loomi relationship behavior."""
 
     type: str
@@ -25,7 +25,7 @@ class LoomiRelationship(_LoomiBase):
             setattr(cls, "loomi_config", LoomiRelationshipConfiguration())
 
         if "type" not in cls.loomi_config:
-            cls.loomi_config["type"] = cls.__get_normalized_type()
+            cls.loomi_config["type"] = cls._get_normalized_type()
 
         for parent in cls.__mro__[1:]:
             if not hasattr(parent, "loomi_config"):
@@ -37,12 +37,12 @@ class LoomiRelationship(_LoomiBase):
                     f"Parent class {parent.__name__} has no `loomi_config` attribute"
                 )
 
-            cls.__merge_loomi_config(inherited_config)
+            cls._merge_loomi_config(inherited_config)
 
         cls._hash = cls._generate_loomi_hash(cls.loomi_config["type"])
 
     @classmethod
-    def __merge_loomi_config(cls, config: LoomiRelationshipConfiguration) -> None:
+    def _merge_loomi_config(cls, config: LoomiRelationshipConfiguration) -> None:
         for key, value in config.items():
             # We can not merge the type here and we do not want duplicate types, so
             # we skip
@@ -53,7 +53,7 @@ class LoomiRelationship(_LoomiBase):
                 cls.loomi_config[key] = value
 
     @classmethod
-    def __get_normalized_type(cls) -> str:
+    def _get_normalized_type(cls) -> str:
         pattern = re.compile(r"(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
         return pattern.sub("_", cls.__name__).upper()
 

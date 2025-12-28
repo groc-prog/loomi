@@ -1,20 +1,34 @@
 from abc import ABC
-from typing import Any, Dict, Optional, TypedDict
+from dataclasses import dataclass
+from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, ConfigDict, PrivateAttr, computed_field
 
 
-class LoomiBaseConfiguration(TypedDict, total=False):
-    """TypedDict for configuring Loomi model/client behavior."""
-
-    skip_constraints: bool
-    """Skips creating defined constraints when initializing model."""
-
-    skip_indexes: bool
-    """Skips creating defined indexes when initializing model."""
+@dataclass(frozen=True)
+class _QueryAccessor:
+    name: str
+    annotation: Any
 
 
-class _LoomiBase(BaseModel, ABC):
+class _LoomiModelMetaclass(type(BaseModel)):
+    def __getattribute__(cls, name):
+        # To prevent any recursive __getattribute__ calls we need to skip this handler if any
+        # of the following are accessed
+        # Note that accessing model_fields also accesses __pydantic_fields__
+        if name in ["model_fields", "__pydantic_fields__", "__pydantic_complete__"]:
+            return super().__getattribute__(name)
+
+        # If we do not wait for the model building to complete, we will run into recursion issues
+        if cls.__pydantic_complete__:
+            model_fields = cls.model_fields
+            if name in model_fields:
+                return _QueryAccessor(name, model_fields[name].annotation)
+
+        return super().__getattribute__(name)
+
+
+class _LoomiBase(BaseModel, ABC, metaclass=_LoomiModelMetaclass):
     _dirty_fields: Dict[str, Any] = PrivateAttr(default_factory=dict)
     _id: Optional[int] = PrivateAttr(None)
     _element_id: Optional[str] = PrivateAttr(None)
