@@ -1,0 +1,89 @@
+name: Lint, type-check and format
+
+on:
+  push:
+    branches:
+      - feature/**
+      - hotfix/**
+  pull_request:
+    branches:
+      - main
+      - feature/**
+      - hotfix/**
+
+jobs:
+  install-dependencies:
+    name: Setup Dependencies
+    runs-on: ubuntu-latest
+    outputs:
+      venv-path: ${{ steps.setup-poetry.outputs.venv-path }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Cache Poetry virtualenv
+        uses: actions/cache@v3
+        id: cache-venv
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+      - name: Install Dependencies
+        if: steps.cache-venv.outputs.cache-hit != 'true'
+        run: |
+          poetry config virtualenvs.in-project true
+          poetry install --no-interaction --no-root
+
+  lint:
+    needs: install-deps
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Restore Cache
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+      - name: Run Pylint
+        run: |
+          source .venv/bin/activate
+          pylint loomi
+
+  type-check:
+    needs: install-deps
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore Cache
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+      - name: Run Pyright
+        run: |
+          source .venv/bin/activate
+          pyright loomi
+
+  format:
+    needs: install-deps
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore Cache
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+      - name: Run Black
+        run: |
+          source .venv/bin/activate
+          black --check loomi
