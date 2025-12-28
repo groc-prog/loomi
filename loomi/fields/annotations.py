@@ -1,24 +1,7 @@
 from dataclasses import dataclass
-from enum import StrEnum
 from typing import Optional, Set
 
-
-class DataTypeConstraintType(StrEnum):
-    """Constraint data types supported by Memgraph."""
-
-    STRING = "STRING"
-    BOOLEAN = "BOOLEAN"
-    INTEGER = "INTEGER"
-    FLOAT = "FLOAT"
-    LIST = "LIST"
-    MAP = "MAP"
-    DURATION = "DURATION"
-    DATE = "DATE"
-    LOCAL_TIME = "LOCALTIME"
-    LOCAL_DATETIME = "LOCALDATETIME"
-    ZONED_DATETIME = "ZONEDDATETIME"
-    ENUM = "ENUM"
-    POINT = "POINT"
+from loomi.constants.constraint import DataTypeConstraintType
 
 
 @dataclass

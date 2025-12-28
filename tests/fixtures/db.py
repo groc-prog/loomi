@@ -1,0 +1,98 @@
+# pylint: disable=missing-class-docstring
+
+from dataclasses import dataclass
+from os import environ
+from typing import Optional, cast
+
+import pytest
+from neo4j import GraphDatabase
+
+from loomi.constants.constraint import MemgraphConstraintType, _MemgraphDataTypeMapping
+from loomi.constants.index import MemgraphIndexType
+
+
+@dataclass
+class DriverSpec:
+    name: str
+    uri: Optional[str]
+    user: Optional[str]
+    pwd: Optional[str]
+
+
+@pytest.fixture(
+    params=[
+        DriverSpec(
+            name="neo4j",
+            uri=environ.get("NEO4J_URI", None),
+            user=environ.get("NEO4J_USER", None),
+            pwd=environ.get("NEO4J_PWD", None),
+        ),
+        DriverSpec(
+            name="memgraph",
+            uri=environ.get("MEMGRAPH_URI", None),
+            user=environ.get("MEMGRAPH_USER", None),
+            pwd=environ.get("MEMGRAPH_PWD", None),
+        ),
+    ],
+)
+def sync_driver(request):
+    """
+    Parametrized fixture providing drivers for both Neo4j and Memgraph.
+    ![NOTE] Connection information like URI and auth details are taken from environment variables.
+    """
+    spec = cast(DriverSpec, request.param)
+    if not spec.uri or not spec.user or not spec.pwd:
+        pytest.skip("Missing environment variable for database connection.")
+
+    driver = GraphDatabase.driver(spec.uri, auth=(spec.user, spec.pwd))
+
+    # Clear all existing entities, indexes and constraints
+    with driver.session() as session:
+        result = session.run("MATCH (n) DETACH DELETE n")
+        result.consume()
+
+        match spec.name:
+            case "neo4j":
+                constraints = session.run("SHOW CONSTRAINTS")
+                for constraint in constraints.values():
+                    session.run(f"DROP CONSTRAINT {constraint[1]}")  # type: ignore
+
+                indexes = session.run("SHOW INDEXES")
+                for index in indexes.values():
+                    session.run(f"DROP INDEX {index[1]}")  # type: ignore
+            case "memgraph":
+                constraints = session.run("SHOW CONSTRAINT INFO")
+                for constraint in constraints.values():
+                    match constraint[0]:
+                        case MemgraphConstraintType.EXISTS.value:
+                            session.run(f"DROP CONSTRAINT ON (n:{constraint[1]}) ASSERT EXISTS (n.{constraint[2]})")  # type: ignore
+                        case MemgraphConstraintType.UNIQUE.value:
+                            session.run(f"DROP CONSTRAINT ON (n:{constraint[1]}) ASSERT {', '.join([f'n.{constraint_property}' for constraint_property in constraint[2]])} IS UNIQUE")  # type: ignore
+                        case MemgraphConstraintType.DATA_TYPE.value:
+                            session.run(
+                                f"DROP CONSTRAINT ON (n:{constraint[1]}) ASSERT n.{constraint[2]} IS TYPED {_MemgraphDataTypeMapping[constraint[3]]}"  # type: ignore
+                            )
+
+                indexes = session.run("SHOW INDEX INFO")
+                for index in indexes.values():
+                    match index[0]:
+                        case MemgraphIndexType.EDGE_TYPE.value:
+                            session.run(f"DROP EDGE INDEX ON :{index[1]}")  # type: ignore
+                        case MemgraphIndexType.EDGE_AND_PROPERTY.value:
+                            session.run(f"DROP GLOBAL EDGE INDEX ON :({index[2]})")  # type: ignore
+                        case MemgraphIndexType.EDGE_TYPE_AND_PROPERTY.value:
+                            session.run(f"DROP EDGE INDEX ON :{index[1]}({index[2]})")  # type: ignore
+                        case MemgraphIndexType.LABEL.value:
+                            session.run(f"DROP INDEX ON :{index[1]}")  # type: ignore
+                        case MemgraphIndexType.LABEL_AND_PROPERTY.value:
+                            session.run(
+                                f"DROP INDEX ON :{index[1]}({', '.join(index[2]) if isinstance(index[2], list) else index[2]})",  # type: ignore
+                            )
+                        case MemgraphIndexType.POINT.value:
+                            session.run(f"DROP POINT INDEX ON :{index[1]}({index[2]})")  # type: ignore
+            case _:
+                pytest.skip(f"Unknown spec {spec.name} found")
+
+    yield driver
+
+    driver.close()

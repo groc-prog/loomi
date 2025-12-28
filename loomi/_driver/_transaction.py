@@ -7,8 +7,8 @@ from neo4j import AsyncTransaction, Transaction
 from loomi._driver._result import LoomiAsyncResult, LoomiResult
 
 if TYPE_CHECKING:
-    from loomi.client.async_client import LoomiAsyncClient
-    from loomi.client.sync_client import LoomiClient
+    from loomi.clients.async_client import LoomiAsyncClient
+    from loomi.clients.sync_client import LoomiClient
 else:
     LoomiClient = object
     LoomiAsyncClient = object

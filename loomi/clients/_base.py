@@ -37,9 +37,8 @@ class _LoomiBaseClient(Generic[T], ABC):
     _server_version: Optional[Tuple[int, ...]]
     _models: Dict[str, Union[Type[LoomiNode], Type[LoomiRelationship]]]
 
-    def __init__(self, driver: T, config: Optional[LoomiBaseConfiguration] = None):
+    def __init__(self, driver: T):
         self._driver = driver
-        self._config = config
         self._server_type = None
         self._server_version = None
         self._models = {}

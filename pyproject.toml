@@ -23,6 +23,7 @@ dev = [
     "black (>=25.12.0,<26.0.0)",
     "pre-commit (>=4.5.1,<5.0.0)",
     "pytest-cov (>=7.0.0,<8.0.0)",
+    "pytest-dotenv (>=0.5.2,<0.6.0)",
 ]
 
 [tool.pytest.ini_options]
@@ -32,6 +33,7 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
 addopts = "--cov=loomi --cov-report=term-missing"
+env_files = [".env.test"]
 
 [tool.coverage.run]
 # Only measure coverage in your source code folder

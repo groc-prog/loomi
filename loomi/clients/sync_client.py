@@ -4,7 +4,7 @@ from neo4j import Driver, Session
 
 from loomi._driver._session import LoomiSession
 from loomi._logger import _LogContextKey, _scoped_log_ctx
-from loomi.client._base import _LoomiBaseClient
+from loomi.clients._base import _LoomiBaseClient
 
 
 class LoomiClient(_LoomiBaseClient[Driver]):
