@@ -40,14 +40,10 @@ jobs:
           poetry install --no-interaction --no-root
 
   lint:
-    needs: install-deps
+    needs: install-dependencies
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
       - name: Restore Cache
         uses: actions/cache@v3
         with:
@@ -59,7 +55,7 @@ jobs:
           pylint loomi
 
   type-check:
-    needs: install-deps
+    needs: install-dependencies
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -74,7 +70,7 @@ jobs:
           pyright loomi
 
   format:
-    needs: install-deps
+    needs: install-dependencies
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
