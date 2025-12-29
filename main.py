@@ -2,9 +2,10 @@ from typing import Optional
 
 from neo4j import GraphDatabase
 
-from loomi._query._state import _InternalQueryState, _MatchQueryState, _StartQueryState
 from loomi.clients.sync_client import LoomiClient
 from loomi.models.node import LoomiNode
+from loomi.query._state import _InternalQueryState, _StartQueryState
+from loomi.query.filters import and_, eq, gt, lt, or_
 
 
 class Human(LoomiNode):
@@ -21,7 +22,9 @@ client = LoomiClient(driver)
 state = _InternalQueryState(client)
 query = _StartQueryState(state)
 
-query.match(Human, "h").match(Animal).set("h", {Human.name: "a", "age": 24}).returning()
+query.match(Animal).match(Human, "h").where(
+    or_(eq(Human.name, "John", "h"), and_(gt("age", 24, "h"), lt("age", 40, "h")))
+).set("h", {Human.name: "a", "age": 24}).returning()
 
 pass
 

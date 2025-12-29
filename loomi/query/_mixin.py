@@ -3,17 +3,20 @@ from typing import TYPE_CHECKING, Any, Optional, Protocol, Union, overload
 from loomi.constants._graph import _ModelType
 from loomi.exceptions import QueryCompileError
 from loomi.models._base import _QueryAccessor
+from loomi.query.filters import _Predicate, _PredicateGroup
 
 if TYPE_CHECKING:
-    from loomi._query._state import (
+    from loomi.query._state import (
         _InternalQueryState,
         _MatchQueryState,
         _SetQueryState,
+        _WhereQueryState,
     )
 else:
     _InternalQueryState = object
     _MatchQueryState = object
     _SetQueryState = object
+    _WhereQueryState = object
 
 
 class _HasState(Protocol):
@@ -34,7 +37,7 @@ class _CanMatch(_HasState):
             alias (Optional[str]): A optional alias for the pattern to reference it later.
             Defaults to `None`.
         """
-        from loomi._query._state import _MatchQueryState
+        from loomi.query._state import _MatchQueryState
 
         self._state.add_match_pattern(model, alias)
         return _MatchQueryState(self._state)
@@ -82,13 +85,13 @@ class _CanSet(_HasState):
             ```
 
         Args:
-            alias_or_accessor_or_properties (Union[_QueryAccessor, str, dict[str, Any]]): Either
-            a accessor, a dictionary containing multiple properties or a alias.
-            accessor_or_properties_or_value (Optional[Union[Any, _QueryAccessor, dict[str, Any]]]):
-            Either a accessor, a dictionary containing multiple properties or the value to set.
-            value (Optional[Any]): The value to set.
+            arg1 (Union[_QueryAccessor, str, dict[str, Any]]): Either a accessor, a dictionary
+            containing multiple properties or a alias.
+            arg2 (Optional[Union[Any, _QueryAccessor, dict[str, Any]]]): Either a accessor, a
+            dictionary containing multiple properties or the value to set.
+            arg3 (Optional[Any]): The value to set.
         """
-        from loomi._query._state import _SetQueryState
+        from loomi.query._state import _SetQueryState
 
         # Set clause with alias
         if isinstance(arg1, str):
@@ -104,18 +107,18 @@ class _CanSet(_HasState):
             elif isinstance(arg2, dict):
                 for (
                     property_or_accessor,
-                    arg3,
+                    value,
                 ) in arg2.items():
-                    property_ = (
+                    property_name = (
                         property_or_accessor.name
                         if isinstance(property_or_accessor, _QueryAccessor)
                         else str(property_or_accessor)
                     )
-                    self._state.add_set_clause(property_, arg3, arg1)
+                    self._state.add_set_clause(property_name, value, arg1)
 
             return _SetQueryState(self._state)
         # Single accessor has been defined (e.g. `.set(Model.field, value)`)
-        elif isinstance(arg1, _QueryAccessor):
+        if isinstance(arg1, _QueryAccessor):
             self._state.add_set_clause(
                 arg1.name,
                 arg2,
@@ -125,14 +128,14 @@ class _CanSet(_HasState):
             return _SetQueryState(self._state)
         # Dictionary with multiple accessors/keys has been defined
         # (e.g. `.set({Model.field: value, "field": value})`)
-        elif isinstance(arg1, dict):
+        if isinstance(arg1, dict):
             for property_or_accessor, arg3 in arg1.items():
-                property_ = (
+                property_name = (
                     property_or_accessor.name
                     if isinstance(property_or_accessor, _QueryAccessor)
                     else str(property_or_accessor)
                 )
-                self._state.add_set_clause(property_, arg3, None)
+                self._state.add_set_clause(property_name, arg3, None)
 
             return _SetQueryState(self._state)
 
@@ -142,6 +145,43 @@ class _CanSet(_HasState):
                 f"provided, got {arg1}"
             )
         )
+
+
+class _CanWhere(_HasState):
+    def where(
+        self, predicate_or_group: Union[_Predicate, _PredicateGroup]
+    ) -> _WhereQueryState:
+        """
+        Adds a new `WHERE` clause to the query. If more than one `MATCH` pattern was already added,
+        a `alias must be used` to define which pattern the WHERE clause should affect.
+
+        Example:
+            With a query accessor:
+            ```python
+            class Human(LoomiNode):
+                name: str
+                age: int
+
+            query.where(and_(eq(Human.name, "John"), gt(Human.age, 24)))
+            ```
+
+            With a property name:
+            ```python
+            class Human(LoomiNode):
+                name: str
+                age: int
+
+            query.where(and_(eq("name", John"), gt("age", 24)))
+            ```
+
+        Args:
+            predicate_or_group (Union[_Predicate, _PredicateGroup]): The predicate or predicate
+            group.
+        """
+        from loomi.query._state import _WhereQueryState
+
+        self._state.add_where_clause(predicate_or_group)
+        return _WhereQueryState(self._state)
 
 
 class _CanReturn(_HasState):
