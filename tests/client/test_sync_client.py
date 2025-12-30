@@ -571,9 +571,7 @@ class TestLoomiResult:
         client.register(Human)
 
         with client.session(True) as session:
-            result = session.run(
-                "MATCH (n:Human) WHERE n.name = $name RETURN n", {"name": "James"}
-            )
+            result = session.run("MATCH (n:Human) WHERE n.name = $name RETURN n", {"name": "James"})
 
             data = result.peek()
             assert data is None
@@ -652,9 +650,7 @@ class TestLoomiResult:
         client.register(Human)
 
         with client.session(True) as session:
-            result = session.run(
-                "MATCH (n:Human) WHERE n.name = $name RETURN n", {"name": "James"}
-            )
+            result = session.run("MATCH (n:Human) WHERE n.name = $name RETURN n", {"name": "James"})
 
             data = result.single()
             assert data is None
@@ -737,9 +733,7 @@ class TestLoomiResult:
             assert isinstance(data[0], Human)
             assert data[0].name == "John"
 
-    def test_exposes_original_result_for_non_transformed_methods(
-        self, sync_driver: Driver
-    ):
+    def test_exposes_original_result_for_non_transformed_methods(self, sync_driver: Driver):
         """Verify that other methods which do not return graph entities are still available."""
 
         class Human(LoomiNode):
@@ -855,9 +849,7 @@ class TestLoomiPath:
         client.register(Human, Owns)
 
         with client.session(True) as session:
-            result = session.run(
-                "MATCH p=(:Human)-[:OWNS]->(:Animal)-[:FED_BY]->(:Human) RETURN p"
-            )
+            result = session.run("MATCH p=(:Human)-[:OWNS]->(:Animal)-[:FED_BY]->(:Human) RETURN p")
             data = result.value()
             path = data[0]
 
@@ -902,9 +894,7 @@ class TestLoomiPath:
         client.register(Human, Owns)
 
         with client.session(True) as session:
-            result = session.run(
-                "MATCH p=(:Human)-[:OWNS]->(:Animal)-[:FED_BY]->(:Human) RETURN p"
-            )
+            result = session.run("MATCH p=(:Human)-[:OWNS]->(:Animal)-[:FED_BY]->(:Human) RETURN p")
             data = result.value()
             path = data[0]
             assert isinstance(path, LoomiPath)
