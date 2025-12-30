@@ -11,9 +11,7 @@ class LoomiClient(_LoomiBaseClient[Driver]):
     """Database client for interacting with Loomi models."""
 
     @overload
-    def session(
-        self, to_models: Literal[True] = True, **session_config: Any
-    ) -> LoomiSession: ...
+    def session(self, to_models: Literal[True] = True, **session_config: Any) -> LoomiSession: ...
 
     @overload
     def session(self, to_models: Literal[False], **session_config: Any) -> Session: ...

@@ -19,4 +19,6 @@ disable=missing-module-docstring,
        too-few-public-methods,
        import-outside-toplevel,
        too-many-instance-attributes,
-       too-many-lines
+       too-many-lines,
+       too-many-ancestors,
+       too-many-locals

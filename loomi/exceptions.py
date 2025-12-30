@@ -8,3 +8,7 @@ class ModelInitializationError(LoomiError):
 
 class QueryCompileError(LoomiError):
     """Error related to compiling a query."""
+
+
+class PropertyAccessorError(LoomiError):
+    """Error related to property accessors on a model."""

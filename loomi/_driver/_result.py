@@ -39,8 +39,7 @@ class LoomiResult(Result):
 
         for record in original_iterator:
             transformed_record = [
-                (key, self._client._transform_entity(record))
-                for key, record in record.items()
+                (key, self._client._transform_entity(record)) for key, record in record.items()
             ]
             yield Record(transformed_record)
 
@@ -57,8 +56,7 @@ class LoomiResult(Result):
             return original_result
 
         transformed_result = [
-            (key, self._client._transform_entity(record))
-            for key, record in original_result.items()
+            (key, self._client._transform_entity(record)) for key, record in original_result.items()
         ]
 
         return Record(transformed_result)
@@ -73,8 +71,7 @@ class LoomiResult(Result):
         transformed_result: List[Record] = []
         for result in original_result:
             transformed_record = [
-                (key, self._client._transform_entity(record))
-                for key, record in result.items()
+                (key, self._client._transform_entity(record)) for key, record in result.items()
             ]
             transformed_result.append(Record(transformed_record))
 
@@ -95,9 +92,7 @@ class LoomiResult(Result):
             ]
             transformed_result.append(Record(transformed_record))
 
-        return EagerResult(
-            transformed_result, original_result.summary, original_result.keys
-        )
+        return EagerResult(transformed_result, original_result.summary, original_result.keys)
 
     @overload
     def single(self, strict: Literal[False] = False) -> Record | None: ...
@@ -116,8 +111,7 @@ class LoomiResult(Result):
             return original_result
 
         transformed_result = [
-            (key, self._client._transform_entity(record))
-            for key, record in original_result.items()
+            (key, self._client._transform_entity(record)) for key, record in original_result.items()
         ]
 
         return Record(transformed_result)
@@ -203,8 +197,7 @@ class LoomiAsyncResult(AsyncResult):
 
         async for record in original_iterator:
             transformed_record = [
-                (key, self._client._transform_entity(record))
-                for key, record in record.items()
+                (key, self._client._transform_entity(record)) for key, record in record.items()
             ]
             yield Record(transformed_record)
 
@@ -221,8 +214,7 @@ class LoomiAsyncResult(AsyncResult):
             return original_result
 
         transformed_result = [
-            (key, self._client._transform_entity(record))
-            for key, record in original_result.items()
+            (key, self._client._transform_entity(record)) for key, record in original_result.items()
         ]
 
         return Record(transformed_result)
@@ -237,8 +229,7 @@ class LoomiAsyncResult(AsyncResult):
         transformed_result: List[Record] = []
         for result in original_result:
             transformed_record = [
-                (key, self._client._transform_entity(record))
-                for key, record in result.items()
+                (key, self._client._transform_entity(record)) for key, record in result.items()
             ]
             transformed_result.append(Record(transformed_record))
 
@@ -259,9 +250,7 @@ class LoomiAsyncResult(AsyncResult):
             ]
             transformed_result.append(Record(transformed_record))
 
-        return EagerResult(
-            transformed_result, original_result.summary, original_result.keys
-        )
+        return EagerResult(transformed_result, original_result.summary, original_result.keys)
 
     @overload
     async def single(self, strict: Literal[False] = False) -> Record | None: ...
@@ -280,8 +269,7 @@ class LoomiAsyncResult(AsyncResult):
             return original_result
 
         transformed_result = [
-            (key, self._client._transform_entity(record))
-            for key, record in original_result.items()
+            (key, self._client._transform_entity(record)) for key, record in original_result.items()
         ]
 
         return Record(transformed_result)

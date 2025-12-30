@@ -35,9 +35,7 @@ class LoomiGraph:
         """See `neo4j.graph.Graph.relationships`."""
         return self._relationship_set_view
 
-    def relationship_type(
-        self, name: str
-    ) -> Type[Union[LoomiRelationship, Relationship]]:
+    def relationship_type(self, name: str) -> Type[Union[LoomiRelationship, Relationship]]:
         """See `neo4j.graph.Graph.relationship_type`."""
         try:
             cls = self._relationship_types[name]

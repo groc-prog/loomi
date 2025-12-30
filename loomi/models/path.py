@@ -36,17 +36,11 @@ class LoomiPath:
         self._graph = graph
 
     def __repr__(self) -> str:
-        return (
-            f"<LoomiPath start={self.start_node!r} end={self.end_node!r} "
-            f"size={len(self)}>"
-        )
+        return f"<LoomiPath start={self.start_node!r} end={self.end_node!r} " f"size={len(self)}>"
 
     def __eq__(self, other: Any) -> bool:
         try:
-            return (
-                self.start_node == other.start_node
-                and self.relationships == other.relationships
-            )
+            return self.start_node == other.start_node and self.relationships == other.relationships
         except AttributeError:
             return NotImplemented
 

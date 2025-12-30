@@ -1,14 +1,14 @@
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-from loomi.models._base import _QueryAccessor
+from loomi.models._base import _PropertyAccessor
 
 
 @dataclass
 class _Predicate:
     predicate_type: str
     """Corresponds to the name of the helper function which generated the predicate."""
-    property_name: str
+    path: str
     values: Tuple[Any, ...]
     alias: Optional[str]
     template_func: Callable[[Dict[str, Any]], str]
@@ -22,55 +22,34 @@ class _PredicateGroup:
     template_func: Callable[[Dict[str, Any]], str]
 
 
-def eq(
-    accessor_or_property: Union[str, Any], value: Any, alias: Optional[str] = None
-) -> _Predicate:
+def eq(accessor_or_path: Union[str, Any], value: Any, alias: Optional[str] = None) -> _Predicate:
     """
     Predicate helper function for filtering entities where a property is equal to `value`.
 
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            age: int
-
-        query.where(eq(Human.age, 24))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            age: int
-
-        query.where(eq("age", 24))
-        ```
-
     Args:
-        accessor_or_property (Union[str, Any]): A accessor or a property name.
+        accessor_or_path (Union[str, Any]): A accessor or a property path.
         value (Any): The value used in the predicate.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
 
     Returns:
         _Predicate: Predicate used when compiling a query.
     """
-    property_name = (
-        accessor_or_property.name
-        if isinstance(accessor_or_property, _QueryAccessor)
-        else accessor_or_property
+    path = (
+        accessor_or_path._full_path
+        if isinstance(accessor_or_path, _PropertyAccessor)
+        else accessor_or_path
     )
 
     return _Predicate(
         eq.__name__,
-        property_name,
+        path,
         (value,),
         alias,
-        lambda ctx: f"{ctx["variable"]}.{ctx["property"]} = {ctx["p0"]}",
+        lambda ctx: f"{ctx["path"]} = ${ctx["p0"]}",
     )
 
 
-def neq(
-    accessor_or_property: Union[str, Any], value: Any, alias: Optional[str] = None
-) -> _Predicate:
+def neq(accessor_or_path: Union[str, Any], value: Any, alias: Optional[str] = None) -> _Predicate:
     """
     Predicate helper for filtering entities where a property is not equal to `value`.
 
@@ -92,30 +71,30 @@ def neq(
         ```
 
     Args:
-        accessor_or_property (Union[str, Any]): A accessor or a property name.
+        accessor_or_path (Union[str, Any]): A accessor or a property path.
         value (Any): The value used in the predicate.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
 
     Returns:
         _Predicate: Predicate used when compiling a query.
     """
-    property_name = (
-        accessor_or_property.name
-        if isinstance(accessor_or_property, _QueryAccessor)
-        else accessor_or_property
+    path = (
+        accessor_or_path._full_path
+        if isinstance(accessor_or_path, _PropertyAccessor)
+        else accessor_or_path
     )
 
     return _Predicate(
         neq.__name__,
-        property_name,
+        path,
         (value,),
         alias,
-        lambda ctx: f"{ctx["variable"]}.{ctx["property"]} <> {ctx["p0"]}",
+        lambda ctx: f"{ctx["path"]} <> ${ctx["p0"]}",
     )
 
 
 def gt(
-    accessor_or_property: Union[str, Any],
+    accessor_or_path: Union[str, Any],
     number: Union[int, float],
     alias: Optional[str] = None,
 ) -> _Predicate:
@@ -140,30 +119,30 @@ def gt(
         ```
 
     Args:
-        accessor_or_property (Union[str, Any]): A accessor or a property name.
+        accessor_or_path (Union[str, Any]): A accessor or a property path.
         number (Union[int, float]): The number used in the predicate.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
 
     Returns:
         _Predicate: Predicate used when compiling a query.
     """
-    property_name = (
-        accessor_or_property.name
-        if isinstance(accessor_or_property, _QueryAccessor)
-        else accessor_or_property
+    path = (
+        accessor_or_path._full_path
+        if isinstance(accessor_or_path, _PropertyAccessor)
+        else accessor_or_path
     )
 
     return _Predicate(
         gt.__name__,
-        property_name,
+        path,
         (number,),
         alias,
-        lambda ctx: f"{ctx["variable"]}.{ctx["property"]} > {ctx["p0"]}",
+        lambda ctx: f"{ctx["path"]} > ${ctx["p0"]}",
     )
 
 
 def gte(
-    accessor_or_property: Union[str, Any],
+    accessor_or_path: Union[str, Any],
     number: Union[int, float],
     alias: Optional[str] = None,
 ) -> _Predicate:
@@ -188,30 +167,30 @@ def gte(
         ```
 
     Args:
-        accessor_or_property (Union[str, Any]): A accessor or a property name.
+        accessor_or_path (Union[str, Any]): A accessor or a property path.
         number (Union[int, float]): The number used in the predicate.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
 
     Returns:
         _Predicate: Predicate used when compiling a query.
     """
-    property_name = (
-        accessor_or_property.name
-        if isinstance(accessor_or_property, _QueryAccessor)
-        else accessor_or_property
+    path = (
+        accessor_or_path._full_path
+        if isinstance(accessor_or_path, _PropertyAccessor)
+        else accessor_or_path
     )
 
     return _Predicate(
         gte.__name__,
-        property_name,
+        path,
         (number,),
         alias,
-        lambda ctx: f"{ctx["variable"]}.{ctx["property"]} >= {ctx["p0"]}",
+        lambda ctx: f"{ctx["path"]} >= ${ctx["p0"]}",
     )
 
 
 def lt(
-    accessor_or_property: Union[str, Any],
+    accessor_or_path: Union[str, Any],
     number: Union[int, float],
     alias: Optional[str] = None,
 ) -> _Predicate:
@@ -236,30 +215,30 @@ def lt(
         ```
 
     Args:
-        accessor_or_property (Union[str, Any]): A accessor or a property name.
+        accessor_or_path (Union[str, Any]): A accessor or a property path.
         number (Union[int, float]): The number used in the predicate.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
 
     Returns:
         _Predicate: Predicate used when compiling a query.
     """
-    property_name = (
-        accessor_or_property.name
-        if isinstance(accessor_or_property, _QueryAccessor)
-        else accessor_or_property
+    path = (
+        accessor_or_path._full_path
+        if isinstance(accessor_or_path, _PropertyAccessor)
+        else accessor_or_path
     )
 
     return _Predicate(
         lt.__name__,
-        property_name,
+        path,
         (number,),
         alias,
-        lambda ctx: f"{ctx["variable"]}.{ctx["property"]} < {ctx["p0"]}",
+        lambda ctx: f"{ctx["path"]} < ${ctx["p0"]}",
     )
 
 
 def lte(
-    accessor_or_property: Union[str, Any],
+    accessor_or_path: Union[str, Any],
     number: Union[int, float],
     alias: Optional[str] = None,
 ) -> _Predicate:
@@ -284,30 +263,30 @@ def lte(
         ```
 
     Args:
-        accessor_or_property (Union[str, Any]): A accessor or a property name.
+        accessor_or_path (Union[str, Any]): A accessor or a property path.
         number (Union[int, float]): The number used in the predicate.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
 
     Returns:
         _Predicate: Predicate used when compiling a query.
     """
-    property_name = (
-        accessor_or_property.name
-        if isinstance(accessor_or_property, _QueryAccessor)
-        else accessor_or_property
+    path = (
+        accessor_or_path._full_path
+        if isinstance(accessor_or_path, _PropertyAccessor)
+        else accessor_or_path
     )
 
     return _Predicate(
         lte.__name__,
-        property_name,
+        path,
         (number,),
         alias,
-        lambda ctx: f"{ctx["variable"]}.{ctx["property"]} <= {ctx["p0"]}",
+        lambda ctx: f"{ctx["path"]} <= ${ctx["p0"]}",
     )
 
 
 def between(
-    accessor_or_property: Union[str, Any],
+    accessor_or_path: Union[str, Any],
     min_number: Union[int, float],
     max_number: Union[int, float],
     alias: Optional[str] = None,
@@ -334,7 +313,7 @@ def between(
         ```
 
     Args:
-        accessor_or_property (Union[str, Any]): A accessor or a property name.
+        accessor_or_path (Union[str, Any]): A accessor or a property path.
         min_number (Union[int, float]): The min number used in the predicate.
         max_number (Union[int, float]): The max number used in the predicate.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
@@ -342,26 +321,23 @@ def between(
     Returns:
         _Predicate: Predicate used when compiling a query.
     """
-    property_name = (
-        accessor_or_property.name
-        if isinstance(accessor_or_property, _QueryAccessor)
-        else accessor_or_property
+    path = (
+        accessor_or_path._full_path
+        if isinstance(accessor_or_path, _PropertyAccessor)
+        else accessor_or_path
     )
 
     return _Predicate(
         between.__name__,
-        property_name,
+        path,
         (min_number, max_number),
         alias,
-        lambda ctx: (
-            f"({ctx["variable"]}.{ctx["property"]} > {ctx["p0"]} AND "
-            f"{ctx["variable"]}.{ctx["property"]} < {ctx["p0"]})"
-        ),
+        lambda ctx: (f"({ctx["path"]} > ${ctx["p0"]} AND {ctx["path"]} < ${ctx["p1"]})"),
     )
 
 
 def not_between(
-    accessor_or_property: Union[str, Any],
+    accessor_or_path: Union[str, Any],
     min_number: Union[int, float],
     max_number: Union[int, float],
     alias: Optional[str] = None,
@@ -388,7 +364,7 @@ def not_between(
         ```
 
     Args:
-        accessor_or_property (Union[str, Any]): A accessor or a property name.
+        accessor_or_path (Union[str, Any]): A accessor or a property path.
         min_number (Union[int, float]): The min number used in the predicate.
         max_number (Union[int, float]): The max number used in the predicate.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
@@ -396,27 +372,22 @@ def not_between(
     Returns:
         _Predicate: Predicate used when compiling a query.
     """
-    property_name = (
-        accessor_or_property.name
-        if isinstance(accessor_or_property, _QueryAccessor)
-        else accessor_or_property
+    path = (
+        accessor_or_path._full_path
+        if isinstance(accessor_or_path, _PropertyAccessor)
+        else accessor_or_path
     )
 
     return _Predicate(
         not_between.__name__,
-        property_name,
+        path,
         (min_number, max_number),
         alias,
-        lambda ctx: (
-            f"NOT({ctx["variable"]}.{ctx["property"]} > {ctx["p0"]} AND "
-            f"{ctx["variable"]}.{ctx["property"]} < {ctx["p0"]})"
-        ),
+        lambda ctx: (f"NOT({ctx["path"]} > ${ctx["p0"]} AND " f"{ctx["path"]} < ${ctx["p1"]})"),
     )
 
 
-def is_null(
-    accessor_or_property: Union[str, Any], alias: Optional[str] = None
-) -> _Predicate:
+def is_null(accessor_or_path: Union[str, Any], alias: Optional[str] = None) -> _Predicate:
     """
     Predicate helper for filtering entities where a property is null.
 
@@ -438,30 +409,28 @@ def is_null(
         ```
 
     Args:
-        accessor_or_property (Union[str, Any]): A accessor or a property name.
+        accessor_or_path (Union[str, Any]): A accessor or a property path.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
 
     Returns:
         _Predicate: Predicate used when compiling a query.
     """
-    property_name = (
-        accessor_or_property.name
-        if isinstance(accessor_or_property, _QueryAccessor)
-        else accessor_or_property
+    path = (
+        accessor_or_path._full_path
+        if isinstance(accessor_or_path, _PropertyAccessor)
+        else accessor_or_path
     )
 
     return _Predicate(
         is_null.__name__,
-        property_name,
+        path,
         tuple(),
         alias,
-        lambda ctx: f"{ctx["variable"]}.{ctx["property"]} IS NULL",
+        lambda ctx: f"{ctx["path"]} IS NULL",
     )
 
 
-def is_not_null(
-    accessor_or_property: Union[str, Any], alias: Optional[str] = None
-) -> _Predicate:
+def is_not_null(accessor_or_path: Union[str, Any], alias: Optional[str] = None) -> _Predicate:
     """
     Predicate helper for filtering entities where a property is not null.
 
@@ -483,29 +452,29 @@ def is_not_null(
         ```
 
     Args:
-        accessor_or_property (Union[str, Any]): A accessor or a property name.
+        accessor_or_path (Union[str, Any]): A accessor or a property path.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
 
     Returns:
         _Predicate: Predicate used when compiling a query.
     """
-    property_name = (
-        accessor_or_property.name
-        if isinstance(accessor_or_property, _QueryAccessor)
-        else accessor_or_property
+    path = (
+        accessor_or_path._full_path
+        if isinstance(accessor_or_path, _PropertyAccessor)
+        else accessor_or_path
     )
 
     return _Predicate(
         is_not_null.__name__,
-        property_name,
+        path,
         tuple(),
         alias,
-        lambda ctx: f"NOT({ctx["variable"]}.{ctx["property"]} IS NULL)",
+        lambda ctx: f"{ctx["path"]} IS NOT NULL",
     )
 
 
 def in_list(
-    accessor_or_property: Union[str, Any],
+    accessor_or_path: Union[str, Any],
     values_list: List[Any],
     alias: Optional[str] = None,
 ) -> _Predicate:
@@ -531,30 +500,30 @@ def in_list(
         ```
 
     Args:
-        accessor_or_property (Union[str, Any]): A accessor or a property name.
+        accessor_or_path (Union[str, Any]): A accessor or a property path.
         values_list (List[Any]): The list used in the predicate.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
 
     Returns:
         _Predicate: Predicate used when compiling a query.
     """
-    property_name = (
-        accessor_or_property.name
-        if isinstance(accessor_or_property, _QueryAccessor)
-        else accessor_or_property
+    path = (
+        accessor_or_path._full_path
+        if isinstance(accessor_or_path, _PropertyAccessor)
+        else accessor_or_path
     )
 
     return _Predicate(
         in_list.__name__,
-        property_name,
+        path,
         (values_list,),
         alias,
-        lambda ctx: f"ANY(i IN {ctx["p0"]} WHERE {ctx["variable"]}.{ctx["property"]} = i)",
+        lambda ctx: f"ANY(i IN ${ctx["p0"]} WHERE {ctx["path"]} = i)",
     )
 
 
 def not_in_list(
-    accessor_or_property: Union[str, Any],
+    accessor_or_path: Union[str, Any],
     values_list: List[Any],
     alias: Optional[str] = None,
 ) -> _Predicate:
@@ -580,30 +549,30 @@ def not_in_list(
         ```
 
     Args:
-        accessor_or_property (Union[str, Any]): A accessor or a property name.
+        accessor_or_path (Union[str, Any]): A accessor or a property path.
         values_list (List[Any]): The list used in the predicate.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
 
     Returns:
         _Predicate: Predicate used when compiling a query.
     """
-    property_name = (
-        accessor_or_property.name
-        if isinstance(accessor_or_property, _QueryAccessor)
-        else accessor_or_property
+    path = (
+        accessor_or_path._full_path
+        if isinstance(accessor_or_path, _PropertyAccessor)
+        else accessor_or_path
     )
 
     return _Predicate(
         not_in_list.__name__,
-        property_name,
+        path,
         (values_list,),
         alias,
-        lambda ctx: f"ALL(i IN {ctx["p0"]} WHERE {ctx["variable"]}.{ctx["property"]} <> i)",
+        lambda ctx: f"ALL(i IN ${ctx["p0"]} WHERE {ctx["path"]} <> i)",
     )
 
 
 def all_(
-    accessor_or_property: Union[str, Any],
+    accessor_or_path: Union[str, Any],
     values_list: List[Any],
     alias: Optional[str] = None,
 ) -> _Predicate:
@@ -629,30 +598,30 @@ def all_(
         ```
 
     Args:
-        accessor_or_property (Union[str, Any]): A accessor or a property name.
+        accessor_or_path (Union[str, Any]): A accessor or a property path.
         values_list (List[Any]): The list used in the predicate.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
 
     Returns:
         _Predicate: Predicate used when compiling a query.
     """
-    property_name = (
-        accessor_or_property.name
-        if isinstance(accessor_or_property, _QueryAccessor)
-        else accessor_or_property
+    path = (
+        accessor_or_path._full_path
+        if isinstance(accessor_or_path, _PropertyAccessor)
+        else accessor_or_path
     )
 
     return _Predicate(
         all_.__name__,
-        property_name,
+        path,
         (values_list,),
         alias,
-        lambda ctx: f"ALL(i IN {ctx["variable"]}.{ctx["property"]} WHERE i IN {ctx["p0"]})",
+        lambda ctx: f"ALL(i IN {ctx["path"]} WHERE i IN ${ctx["p0"]})",
     )
 
 
 def some(
-    accessor_or_property: Union[str, Any],
+    accessor_or_path: Union[str, Any],
     values_list: List[Any],
     alias: Optional[str] = None,
 ) -> _Predicate:
@@ -678,30 +647,30 @@ def some(
         ```
 
     Args:
-        accessor_or_property (Union[str, Any]): A accessor or a property name.
+        accessor_or_path (Union[str, Any]): A accessor or a property path.
         values_list (List[Any]): The list used in the predicate.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
 
     Returns:
         _Predicate: Predicate used when compiling a query.
     """
-    property_name = (
-        accessor_or_property.name
-        if isinstance(accessor_or_property, _QueryAccessor)
-        else accessor_or_property
+    path = (
+        accessor_or_path._full_path
+        if isinstance(accessor_or_path, _PropertyAccessor)
+        else accessor_or_path
     )
 
     return _Predicate(
         some.__name__,
-        property_name,
+        path,
         (values_list,),
         alias,
-        lambda ctx: f"ANY(i IN {ctx["variable"]}.{ctx["property"]} WHERE i IN {ctx["p0"]})",
+        lambda ctx: f"ANY(i IN {ctx["path"]} WHERE i IN ${ctx["p0"]})",
     )
 
 
 def none(
-    accessor_or_property: Union[str, Any],
+    accessor_or_path: Union[str, Any],
     values_list: List[Any],
     alias: Optional[str] = None,
 ) -> _Predicate:
@@ -727,30 +696,30 @@ def none(
         ```
 
     Args:
-        accessor_or_property (Union[str, Any]): A accessor or a property name.
+        accessor_or_path (Union[str, Any]): A accessor or a property path.
         values_list (List[Any]): The list used in the predicate.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
 
     Returns:
         _Predicate: Predicate used when compiling a query.
     """
-    property_name = (
-        accessor_or_property.name
-        if isinstance(accessor_or_property, _QueryAccessor)
-        else accessor_or_property
+    path = (
+        accessor_or_path._full_path
+        if isinstance(accessor_or_path, _PropertyAccessor)
+        else accessor_or_path
     )
 
     return _Predicate(
         none.__name__,
-        property_name,
+        path,
         (values_list,),
         alias,
-        lambda ctx: f"NOT(ANY(i IN {ctx["variable"]}.{ctx["property"]} WHERE i IN {ctx["p0"]}))",
+        lambda ctx: f"NOT(ANY(i IN {ctx["path"]} WHERE i IN ${ctx["p0"]}))",
     )
 
 
 def contains(
-    accessor_or_property: Union[str, Any],
+    accessor_or_path: Union[str, Any],
     value: str,
     alias: Optional[str] = None,
 ) -> _Predicate:
@@ -775,30 +744,30 @@ def contains(
         ```
 
     Args:
-        accessor_or_property (Union[str, Any]): A accessor or a property name.
+        accessor_or_path (Union[str, Any]): A accessor or a property path.
         value (str): The string used in the predicate.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
 
     Returns:
         _Predicate: Predicate used when compiling a query.
     """
-    property_name = (
-        accessor_or_property.name
-        if isinstance(accessor_or_property, _QueryAccessor)
-        else accessor_or_property
+    path = (
+        accessor_or_path._full_path
+        if isinstance(accessor_or_path, _PropertyAccessor)
+        else accessor_or_path
     )
 
     return _Predicate(
         contains.__name__,
-        property_name,
+        path,
         (value,),
         alias,
-        lambda ctx: f"{ctx["variable"]}.{ctx["property"]} CONTAINS {ctx["p0"]}",
+        lambda ctx: f"{ctx["path"]} CONTAINS ${ctx["p0"]}",
     )
 
 
 def not_contains(
-    accessor_or_property: Union[str, Any],
+    accessor_or_path: Union[str, Any],
     value: str,
     alias: Optional[str] = None,
 ) -> _Predicate:
@@ -823,30 +792,30 @@ def not_contains(
         ```
 
     Args:
-        accessor_or_property (Union[str, Any]): A accessor or a property name.
+        accessor_or_path (Union[str, Any]): A accessor or a property path.
         value (str): The string used in the predicate.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
 
     Returns:
         _Predicate: Predicate used when compiling a query.
     """
-    property_name = (
-        accessor_or_property.name
-        if isinstance(accessor_or_property, _QueryAccessor)
-        else accessor_or_property
+    path = (
+        accessor_or_path._full_path
+        if isinstance(accessor_or_path, _PropertyAccessor)
+        else accessor_or_path
     )
 
     return _Predicate(
         not_contains.__name__,
-        property_name,
+        path,
         (value,),
         alias,
-        lambda ctx: f"NOT({ctx["variable"]}.{ctx["property"]} CONTAINS {ctx["p0"]})",
+        lambda ctx: f"NOT({ctx["path"]} CONTAINS ${ctx["p0"]})",
     )
 
 
 def icontains(
-    accessor_or_property: Union[str, Any],
+    accessor_or_path: Union[str, Any],
     value: str,
     alias: Optional[str] = None,
 ) -> _Predicate:
@@ -872,30 +841,30 @@ def icontains(
         ```
 
     Args:
-        accessor_or_property (Union[str, Any]): A accessor or a property name.
+        accessor_or_path (Union[str, Any]): A accessor or a property path.
         value (str): The string used in the predicate.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
 
     Returns:
         _Predicate: Predicate used when compiling a query.
     """
-    property_name = (
-        accessor_or_property.name
-        if isinstance(accessor_or_property, _QueryAccessor)
-        else accessor_or_property
+    path = (
+        accessor_or_path._full_path
+        if isinstance(accessor_or_path, _PropertyAccessor)
+        else accessor_or_path
     )
 
     return _Predicate(
         icontains.__name__,
-        property_name,
+        path,
         (value,),
         alias,
-        lambda ctx: f"toLower({ctx["variable"]}.{ctx["property"]}) CONTAINS toLower({ctx["p0"]})",
+        lambda ctx: f"toLower({ctx["path"]}) CONTAINS toLower(${ctx["p0"]})",
     )
 
 
 def starts_with(
-    accessor_or_property: Union[str, Any],
+    accessor_or_path: Union[str, Any],
     value: str,
     alias: Optional[str] = None,
 ) -> _Predicate:
@@ -920,30 +889,30 @@ def starts_with(
         ```
 
     Args:
-        accessor_or_property (Union[str, Any]): A accessor or a property name.
+        accessor_or_path (Union[str, Any]): A accessor or a property path.
         value (str): The string used in the predicate.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
 
     Returns:
         _Predicate: Predicate used when compiling a query.
     """
-    property_name = (
-        accessor_or_property.name
-        if isinstance(accessor_or_property, _QueryAccessor)
-        else accessor_or_property
+    path = (
+        accessor_or_path._full_path
+        if isinstance(accessor_or_path, _PropertyAccessor)
+        else accessor_or_path
     )
 
     return _Predicate(
         starts_with.__name__,
-        property_name,
+        path,
         (value,),
         alias,
-        lambda ctx: f"{ctx["variable"]}.{ctx["property"]} STARTS WITH {ctx["p0"]}",
+        lambda ctx: f"{ctx["path"]} STARTS WITH ${ctx["p0"]}",
     )
 
 
 def not_starts_with(
-    accessor_or_property: Union[str, Any],
+    accessor_or_path: Union[str, Any],
     value: str,
     alias: Optional[str] = None,
 ) -> _Predicate:
@@ -968,30 +937,30 @@ def not_starts_with(
         ```
 
     Args:
-        accessor_or_property (Union[str, Any]): A accessor or a property name.
+        accessor_or_path (Union[str, Any]): A accessor or a property path.
         value (str): The string used in the predicate.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
 
     Returns:
         _Predicate: Predicate used when compiling a query.
     """
-    property_name = (
-        accessor_or_property.name
-        if isinstance(accessor_or_property, _QueryAccessor)
-        else accessor_or_property
+    path = (
+        accessor_or_path._full_path
+        if isinstance(accessor_or_path, _PropertyAccessor)
+        else accessor_or_path
     )
 
     return _Predicate(
         not_starts_with.__name__,
-        property_name,
+        path,
         (value,),
         alias,
-        lambda ctx: f"NOT({ctx["variable"]}.{ctx["property"]} STARTS WITH {ctx["p0"]})",
+        lambda ctx: f"NOT({ctx["path"]} STARTS WITH ${ctx["p0"]})",
     )
 
 
 def istarts_with(
-    accessor_or_property: Union[str, Any],
+    accessor_or_path: Union[str, Any],
     value: str,
     alias: Optional[str] = None,
 ) -> _Predicate:
@@ -1016,30 +985,30 @@ def istarts_with(
         ```
 
     Args:
-        accessor_or_property (Union[str, Any]): A accessor or a property name.
+        accessor_or_path (Union[str, Any]): A accessor or a property path.
         value (str): The string used in the predicate.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
 
     Returns:
         _Predicate: Predicate used when compiling a query.
     """
-    property_name = (
-        accessor_or_property.name
-        if isinstance(accessor_or_property, _QueryAccessor)
-        else accessor_or_property
+    path = (
+        accessor_or_path._full_path
+        if isinstance(accessor_or_path, _PropertyAccessor)
+        else accessor_or_path
     )
 
     return _Predicate(
         istarts_with.__name__,
-        property_name,
+        path,
         (value,),
         alias,
-        lambda ctx: f"toLower({ctx["variable"]}.{ctx["property"]}) STARTS WITH toLower({ctx["p0"]})",
+        lambda ctx: f"toLower({ctx["path"]}) STARTS WITH toLower(${ctx["p0"]})",
     )
 
 
 def ends_with(
-    accessor_or_property: Union[str, Any],
+    accessor_or_path: Union[str, Any],
     value: str,
     alias: Optional[str] = None,
 ) -> _Predicate:
@@ -1064,30 +1033,30 @@ def ends_with(
         ```
 
     Args:
-        accessor_or_property (Union[str, Any]): A accessor or a property name.
+        accessor_or_path (Union[str, Any]): A accessor or a property path.
         value (str): The string used in the predicate.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
 
     Returns:
         _Predicate: Predicate used when compiling a query.
     """
-    property_name = (
-        accessor_or_property.name
-        if isinstance(accessor_or_property, _QueryAccessor)
-        else accessor_or_property
+    path = (
+        accessor_or_path._full_path
+        if isinstance(accessor_or_path, _PropertyAccessor)
+        else accessor_or_path
     )
 
     return _Predicate(
         ends_with.__name__,
-        property_name,
+        path,
         (value,),
         alias,
-        lambda ctx: f"{ctx["variable"]}.{ctx["property"]} ENDS WITH {ctx["p0"]}",
+        lambda ctx: f"{ctx["path"]} ENDS WITH ${ctx["p0"]}",
     )
 
 
 def not_ends_with(
-    accessor_or_property: Union[str, Any],
+    accessor_or_path: Union[str, Any],
     value: str,
     alias: Optional[str] = None,
 ) -> _Predicate:
@@ -1112,30 +1081,30 @@ def not_ends_with(
         ```
 
     Args:
-        accessor_or_property (Union[str, Any]): A accessor or a property name.
+        accessor_or_path (Union[str, Any]): A accessor or a property path.
         value (str): The string used in the predicate.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
 
     Returns:
         _Predicate: Predicate used when compiling a query.
     """
-    property_name = (
-        accessor_or_property.name
-        if isinstance(accessor_or_property, _QueryAccessor)
-        else accessor_or_property
+    path = (
+        accessor_or_path._full_path
+        if isinstance(accessor_or_path, _PropertyAccessor)
+        else accessor_or_path
     )
 
     return _Predicate(
         not_ends_with.__name__,
-        property_name,
+        path,
         (value,),
         alias,
-        lambda ctx: f"NOT({ctx["variable"]}.{ctx["property"]} ENDS WITH {ctx["p0"]})",
+        lambda ctx: f"NOT({ctx["path"]} ENDS WITH ${ctx["p0"]})",
     )
 
 
 def iends_with(
-    accessor_or_property: Union[str, Any],
+    accessor_or_path: Union[str, Any],
     value: str,
     alias: Optional[str] = None,
 ) -> _Predicate:
@@ -1160,30 +1129,30 @@ def iends_with(
         ```
 
     Args:
-        accessor_or_property (Union[str, Any]): A accessor or a property name.
+        accessor_or_path (Union[str, Any]): A accessor or a property path.
         value (str): The string used in the predicate.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
 
     Returns:
         _Predicate: Predicate used when compiling a query.
     """
-    property_name = (
-        accessor_or_property.name
-        if isinstance(accessor_or_property, _QueryAccessor)
-        else accessor_or_property
+    path = (
+        accessor_or_path._full_path
+        if isinstance(accessor_or_path, _PropertyAccessor)
+        else accessor_or_path
     )
 
     return _Predicate(
         iends_with.__name__,
-        property_name,
+        path,
         (value,),
         alias,
-        lambda ctx: f"toLower({ctx["variable"]}.{ctx["property"]}) ENDS WITH toLower({ctx["p0"]})",
+        lambda ctx: f"toLower({ctx["path"]}) ENDS WITH toLower(${ctx["p0"]})",
     )
 
 
 def regex(
-    accessor_or_property: Union[str, Any],
+    accessor_or_path: Union[str, Any],
     regex_pattern: str,
     alias: Optional[str] = None,
 ) -> _Predicate:
@@ -1208,25 +1177,25 @@ def regex(
         ```
 
     Args:
-        accessor_or_property (Union[str, Any]): A accessor or a property name.
+        accessor_or_path (Union[str, Any]): A accessor or a property path.
         regex_pattern (str): The regex pattern used in the predicate.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
 
     Returns:
         _Predicate: Predicate used when compiling a query.
     """
-    property_name = (
-        accessor_or_property.name
-        if isinstance(accessor_or_property, _QueryAccessor)
-        else accessor_or_property
+    path = (
+        accessor_or_path._full_path
+        if isinstance(accessor_or_path, _PropertyAccessor)
+        else accessor_or_path
     )
 
     return _Predicate(
         regex.__name__,
-        property_name,
+        path,
         (regex_pattern,),
         alias,
-        lambda ctx: f"{ctx["variable"]}.{ctx["property"]} =~ {ctx["p0"]}",
+        lambda ctx: f"{ctx["path"]} =~ ${ctx["p0"]}",
     )
 
 

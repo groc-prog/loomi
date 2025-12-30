@@ -26,6 +26,9 @@ dev = [
     "pytest-dotenv (>=0.5.2,<0.6.0)",
 ]
 
+[tool.black]
+line-length = 100
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]

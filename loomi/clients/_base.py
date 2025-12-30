@@ -1,17 +1,6 @@
 from abc import ABC
 from enum import StrEnum
-from typing import (
-    Any,
-    Dict,
-    Generic,
-    Optional,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-    cast,
-    overload,
-)
+from typing import Any, Dict, Generic, Optional, Tuple, Type, TypeVar, Union, cast, overload
 
 from neo4j import AsyncDriver, Driver
 from neo4j.graph import Node, Path, Relationship
@@ -90,10 +79,7 @@ class _LoomiBaseClient(Generic[T], ABC):
             return LoomiPath(
                 self,
                 tuple(self._entity_to_model(node) for node in entity.nodes),
-                tuple(
-                    self._entity_to_model(relationship)
-                    for relationship in entity.relationships
-                ),
+                tuple(self._entity_to_model(relationship) for relationship in entity.relationships),
                 entity.graph,
             )
 
@@ -104,9 +90,7 @@ class _LoomiBaseClient(Generic[T], ABC):
     def _entity_to_model(self, entity: Node) -> Union[LoomiNode, Node]: ...
 
     @overload
-    def _entity_to_model(
-        self, entity: Relationship
-    ) -> Union[LoomiRelationship, Relationship]: ...
+    def _entity_to_model(self, entity: Relationship) -> Union[LoomiRelationship, Relationship]: ...
 
     def _entity_to_model(
         self, entity: Union[Node, Relationship]
@@ -134,9 +118,7 @@ class _LoomiBaseClient(Generic[T], ABC):
 
         return instance
 
-    def _relationship_type_to_model(
-        self, type_: str
-    ) -> Optional[Type[LoomiRelationship]]:
+    def _relationship_type_to_model(self, type_: str) -> Optional[Type[LoomiRelationship]]:
         model_hash = LoomiRelationship._generate_loomi_hash(type_)
 
         if model_hash not in self._models:

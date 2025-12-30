@@ -23,6 +23,7 @@ class UniquenessConstraint:
 class ExistenceConstraint:
     """
     Annotation for creating a existence constraint for a field.
+
     [!NOTE] This constraint is only available for Memgraph.
     """
 
@@ -39,6 +40,7 @@ class ExistenceConstraint:
 class DataTypeConstraint:
     """
     Annotation for creating a data type constraint for a field.
+
     [!NOTE] This constraint is only available for Memgraph.
     """
 
@@ -57,6 +59,7 @@ class DataTypeConstraint:
 class PropertyIndex:
     """
     Annotation for creating a property index for a field.
+
     [!NOTE] This index is only available for Memgraph.
     """
 
@@ -75,6 +78,7 @@ class PropertyIndex:
 class RangeIndex:
     """
     Annotation for creating a range index for a field.
+
     [!NOTE] This index is only available for Neo4j.
     """
 
@@ -93,6 +97,7 @@ class RangeIndex:
 class TextIndex:
     """
     Annotation for creating a text index for a field.
+
     [!NOTE] This index is only available for Neo4j.
     """
 
@@ -124,6 +129,7 @@ class PointIndex:
 class FullTextIndex:
     """
     Annotation for creating a full-text index for a field.
+
     [!NOTE] This index is only available for Neo4j.
     """
 
@@ -142,6 +148,7 @@ class FullTextIndex:
 class VectorIndex:
     """
     Annotation for creating a vector index for a field.
+
     [!NOTE] This index is only available for Neo4j.
     """
 

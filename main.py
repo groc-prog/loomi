@@ -1,43 +1,59 @@
-from typing import Optional
+import re
+from typing import List, Optional
 
 from neo4j import GraphDatabase
+from pydantic import BaseModel
 
 from loomi.clients.sync_client import LoomiClient
 from loomi.models.node import LoomiNode
-from loomi.query._state import _InternalQueryState, _StartQueryState
-from loomi.query.filters import and_, eq, gt, lt, or_
+from loomi.query._state import LoomiQuery
+from loomi.query.helpers import is_not_null
+
+
+class Metadata(BaseModel):
+    createdAt: str
+
+
+class Tag(BaseModel):
+    name: str
+
+
+class Job(BaseModel):
+    name: str
+    level: int
+    tags: List[Tag] = []
 
 
 class Human(LoomiNode):
-    name: Optional[str]
+    name: str
     age: int
+    metadata: Metadata
+    jobs: List[Job]
+    traits: List[str]
 
 
-class Animal(LoomiNode): ...
-
-
-driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "password"))
+driver = GraphDatabase.driver("bolt://localhost:7688", auth=("memgraph", "password"))
 client = LoomiClient(driver)
 
-state = _InternalQueryState(client)
-query = _StartQueryState(state)
+client.register(Human)
 
-query.match(Animal).match(Human, "h").where(
-    or_(eq(Human.name, "John", "h"), and_(gt("age", 24, "h"), lt("age", 40, "h")))
-).set("h", {Human.name: "a", "age": 24}).returning()
+
+with client.session() as session:
+    query = (
+        LoomiQuery().match(Human, "h").where(is_not_null(Human.jobs.tags.all_().name)).returning()
+    )
+    # query = LoomiQuery().match(Human, "h").where(is_not_null(Human.jobs.all_().name)).returning()
+    # query = LoomiQuery().match(Human, "h").where(is_not_null(Human.traits.any_())).returning()
+    # query = LoomiQuery().match(Human, "h").where(is_not_null(Human.metadata.createdAt)).returning()
+    # query = LoomiQuery().match(Human, "h").where(is_not_null(Human.name)).returning()
+
+    result = session.run(*query)
+    data = result.values()
 
 pass
 
-# MATCH (n.Human) RETURN n
-# client.query(Human).returning()
-
-# MATCH (n.Human) WHERE n.age > 24 RETURN n
-# client.query(Human).where(gt(Human.age, 24)).returning()
-
-# MATCH (n.Human) SET n.age = 24 RETURN n
-# client.query(Human).set(Human.age, 24).returning()
-# client.query(Human).set({"age": 24}).returning()
-# client.query(Human).set({Human.age: 24}).returning()
-
-# MATCH (n.Human) DETACH DELETE n RETURN n
-# client.query(Human).detach_delete().returning()
+# a.b -> n0.a.b {{expr}}
+# a.any_ -> ANY(i0 IN n0.a.b WHERE i0 {{expr}})
+# a.any_.b -> ANY(i0 IN n0.a.b WHERE i0.b {{expr}})
+# a.any_.b.all_ ANY(i0 IN n0.a.b WHERE ALL(i1 IN i0.b WHERE i1 {{expr}}))
+# a.any_.b.all_.c ANY(i0 IN n0.a.b WHERE ALL(i1 IN i0.b WHERE i1.c {{expr}}))

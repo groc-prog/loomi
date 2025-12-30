@@ -1,9 +1,10 @@
-from typing import TYPE_CHECKING, Any, Optional, Protocol, Union, overload
+from typing import TYPE_CHECKING, Any, Dict, Optional, Protocol, Union, overload
 
 from loomi.constants._graph import _ModelType
 from loomi.exceptions import QueryCompileError
-from loomi.models._base import _QueryAccessor
-from loomi.query.filters import _Predicate, _PredicateGroup
+from loomi.models._base import _PropertyAccessor
+from loomi.query._builder import CompiledLoomiQuery
+from loomi.query.helpers import _Predicate, _PredicateGroup
 
 if TYPE_CHECKING:
     from loomi.query._state import (
@@ -24,9 +25,7 @@ class _HasState(Protocol):
 
 
 class _CanMatch(_HasState):
-    def match(
-        self, model: _ModelType, alias: Optional[str] = None
-    ) -> "_MatchQueryState":
+    def match(self, model: _ModelType, alias: Optional[str] = None) -> "_MatchQueryState":
         """
         Adds a new `MATCH` pattern to the query. If more than one `MATCH` pattern is added, a
         `alias should be used` to control separate patterns.
@@ -45,44 +44,19 @@ class _CanMatch(_HasState):
 
 class _CanSet(_HasState):
     @overload
-    def set(self, alias: str, accessor: Any, value: Any) -> _SetQueryState: ...
+    def set(self, properties: Dict[str, Any], alias: Optional[str] = None) -> _SetQueryState: ...
 
     @overload
-    def set(self, alias: str, properties: dict[Any, Any]) -> _SetQueryState: ...
-
-    @overload
-    def set(self, accessor: Any, value: Any) -> _SetQueryState: ...
-
-    @overload
-    def set(self, properties: dict[Any, Any]) -> _SetQueryState: ...
+    def set(self, accessor: Any, value: Any, alias: Optional[str] = None) -> _SetQueryState: ...
 
     def set(  # type: ignore
-        self,
-        arg1: Union[Any, str, dict[Any, Any]],
-        arg2: Optional[Union[Any, dict[Any, Any]]] = None,
-        arg3: Optional[Any] = None,
+        self, arg1: Any, arg2: Any, arg3: Optional[str] = None
     ) -> _SetQueryState:
         """
-        Adds a new `SET` clause to the query. If more than one `MATCH` pattern was already added,
-        a `alias must be used` to define which pattern the SET clause should affect.
+        Adds a new `SET` clause to the query.
 
-        Example:
-            With a query accessor:
-            ```python
-            class Human(LoomiNode):
-                age: int
-
-            query.set(Human.age, 24)
-            ```
-
-            With a dictionary containing either a accessor or a field name as the key:
-            ```python
-            class Human(LoomiNode):
-                age: int
-                name: str
-
-            query.set({Human.age, 24, "name": "John"})
-            ```
+        [!NOTE] If more than one `MATCH` pattern was already added, a `alias must be used` to
+        define which pattern the WHERE clause should affect.
 
         Args:
             arg1 (Union[_QueryAccessor, str, dict[str, Any]]): Either a accessor, a dictionary
@@ -91,88 +65,40 @@ class _CanSet(_HasState):
             dictionary containing multiple properties or the value to set.
             arg3 (Optional[Any]): The value to set.
         """
-        from loomi.query._state import _SetQueryState
-
-        # Set clause with alias
-        if isinstance(arg1, str):
-            # Single accessor has been defined (e.g. `.set(Model.field, value)`)
-            if isinstance(arg2, _QueryAccessor):
-                self._state.add_set_clause(
-                    arg2.name,
-                    arg3,
-                    arg1,
-                )
-            # Dictionary with multiple accessors/keys has been defined
-            # (e.g. `.set({Model.field: value, "field": value})`)
-            elif isinstance(arg2, dict):
-                for (
-                    property_or_accessor,
-                    value,
-                ) in arg2.items():
-                    property_name = (
-                        property_or_accessor.name
-                        if isinstance(property_or_accessor, _QueryAccessor)
-                        else str(property_or_accessor)
-                    )
-                    self._state.add_set_clause(property_name, value, arg1)
-
-            return _SetQueryState(self._state)
-        # Single accessor has been defined (e.g. `.set(Model.field, value)`)
-        if isinstance(arg1, _QueryAccessor):
-            self._state.add_set_clause(
-                arg1.name,
-                arg2,
-                None,
-            )
-
-            return _SetQueryState(self._state)
         # Dictionary with multiple accessors/keys has been defined
-        # (e.g. `.set({Model.field: value, "field": value})`)
         if isinstance(arg1, dict):
-            for property_or_accessor, arg3 in arg1.items():
+            alias = arg2 if isinstance(arg2, str) else None
+
+            for (
+                property_or_accessor,
+                value,
+            ) in arg1.items():
                 property_name = (
-                    property_or_accessor.name
-                    if isinstance(property_or_accessor, _QueryAccessor)
+                    property_or_accessor._full_path
+                    if isinstance(property_or_accessor, _PropertyAccessor)
                     else str(property_or_accessor)
                 )
-                self._state.add_set_clause(property_name, arg3, None)
-
-            return _SetQueryState(self._state)
+                self._state.add_set_clause(property_name, value, alias)
+        # Single accessor has been defined (e.g. `.set(Model.field, value)`)
+        elif isinstance(arg1, _PropertyAccessor):
+            self._state.add_set_clause(
+                arg1._full_path,
+                arg2,
+                arg3,
+            )
 
         raise QueryCompileError(
-            (
-                "Invalid argument provided. Expected query accessor, alias or properties "
-                f"provided, got {arg1}"
-            )
+            (f"Invalid argument provided. Expected query accessor or properties got {arg1}")
         )
 
 
 class _CanWhere(_HasState):
-    def where(
-        self, predicate_or_group: Union[_Predicate, _PredicateGroup]
-    ) -> _WhereQueryState:
+    def where(self, predicate_or_group: Union[_Predicate, _PredicateGroup]) -> _WhereQueryState:
         """
-        Adds a new `WHERE` clause to the query. If more than one `MATCH` pattern was already added,
-        a `alias must be used` to define which pattern the WHERE clause should affect.
+        Adds a new `WHERE` clause to the query.
 
-        Example:
-            With a query accessor:
-            ```python
-            class Human(LoomiNode):
-                name: str
-                age: int
-
-            query.where(and_(eq(Human.name, "John"), gt(Human.age, 24)))
-            ```
-
-            With a property name:
-            ```python
-            class Human(LoomiNode):
-                name: str
-                age: int
-
-            query.where(and_(eq("name", John"), gt("age", 24)))
-            ```
+        [!NOTE] If more than one `MATCH` pattern was already added, a `alias must be used` to
+        define which pattern the WHERE clause should affect.
 
         Args:
             predicate_or_group (Union[_Predicate, _PredicateGroup]): The predicate or predicate
@@ -185,5 +111,21 @@ class _CanWhere(_HasState):
 
 
 class _CanReturn(_HasState):
-    def returning(self) -> None:
-        self._state.compile_and_run()
+    def returning(self, projection: Optional[Dict[str, Any]] = None) -> CompiledLoomiQuery:
+        """
+        Adds a final `RETURN` clause to the query. Will return all matched entities by default.
+
+        [!NOTE] If more than one `MATCH` pattern was already added, a `alias must be used` to
+        define which variables/properties should be included in the RETURN clause.
+
+        Args:
+            projection (Optional[Dict[str, Any]]): A projection defining which variables/properties
+            are returned.
+
+        Returns:
+            CompiledLoomiQuery: The compiled query and it's parameters.
+        """
+        if projection is None:
+            self._state.add_default_return_clauses()
+
+        return self._state.compile()

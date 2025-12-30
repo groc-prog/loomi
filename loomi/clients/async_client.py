@@ -16,9 +16,7 @@ class LoomiAsyncClient(_LoomiBaseClient[AsyncDriver]):
     ) -> LoomiAsyncSession: ...
 
     @overload
-    def session(
-        self, to_models: Literal[False], **session_config: Any
-    ) -> AsyncSession: ...
+    def session(self, to_models: Literal[False], **session_config: Any) -> AsyncSession: ...
 
     def session(
         self,

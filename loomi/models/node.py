@@ -49,9 +49,7 @@ class LoomiNode(_LoomiBase):
                 cls.loomi_config[key] = value
             # If the key is a set (we are dealing with labels), merge them
             elif isinstance(value, set):
-                cls.loomi_config[key] = cast(Set[str], cls.loomi_config[key]).union(
-                    value
-                )
+                cls.loomi_config[key] = cast(Set[str], cls.loomi_config[key]).union(value)
 
     @classmethod
     def _generate_loomi_hash(cls, labels: List[str]) -> str:
