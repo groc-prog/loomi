@@ -1,15 +1,15 @@
 name: Lint, type-check and format
 
 on:
-  push:
-    branches:
-      - feature/**
-      - hotfix/**
+  # push:
+  #   branches:
+  # - feature/**
+  # - hotfix/**
   pull_request:
     branches:
       - main
-      - feature/**
-      - hotfix/**
+      # - feature/**
+      # - hotfix/**
 
 env:
   PYTHON_VERSION: "3.13"

@@ -75,7 +75,7 @@ class _InternalQueryState:
 
     def add_set_clause(self, property_name: str, value: Any, alias: Optional[str]) -> None:
         # TODO: add support for assigning values based on current db values
-        compiled_match_pattern = self._resolve_compiled_match_pattern(property_name, alias)
+        compiled_match_pattern = self._resolve_compiled_match_pattern(alias)
 
         # The new value must pass validation for the field we try to set
         # Otherwise MATCH queries later on would fail validation
@@ -158,13 +158,8 @@ class _InternalQueryState:
 
         return cast(LiteralString, query), self._parameters
 
-    def _resolve_compiled_match_pattern(
-        self, property_name: str, alias: Optional[str]
-    ) -> _CompiledMatchPattern:
-        logger.debug(
-            "Resolving match pattern and validating existence of property %s",
-            property_name,
-        )
+    def _resolve_compiled_match_pattern(self, alias: Optional[str]) -> _CompiledMatchPattern:
+        logger.debug("Resolving match pattern and")
 
         # Break here if no alias has been defined since we do not know which MATCH pattern the
         # property_name should belong to
@@ -218,9 +213,7 @@ class _InternalQueryState:
 
     def _compile_predicate(self, predicate: _Predicate) -> str:
         logger.debug("Compiling predicate %s", predicate.predicate_type)
-        compiled_match_pattern = self._resolve_compiled_match_pattern(
-            predicate.path, predicate.alias
-        )
+        compiled_match_pattern = self._resolve_compiled_match_pattern(predicate.alias)
 
         logger.debug("Building parameters for template function")
         template_func_ctx: Dict[str, Any] = {}

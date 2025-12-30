@@ -53,23 +53,6 @@ def neq(accessor_or_path: Union[str, Any], value: Any, alias: Optional[str] = No
     """
     Predicate helper for filtering entities where a property is not equal to `value`.
 
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            age: int
-
-        query.where(neq(Human.age, 24))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            age: int
-
-        query.where(neq("age", 24))
-        ```
-
     Args:
         accessor_or_path (Union[str, Any]): A accessor or a property path.
         value (Any): The value used in the predicate.
@@ -100,23 +83,6 @@ def gt(
 ) -> _Predicate:
     """
     Predicate helper for filtering entities where a property is greater than `number`.
-
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            age: int
-
-        query.where(gt(Human.age, 24))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            age: int
-
-        query.where(gt("age", 24))
-        ```
 
     Args:
         accessor_or_path (Union[str, Any]): A accessor or a property path.
@@ -149,23 +115,6 @@ def gte(
     """
     Predicate helper for filtering entities where a property is greater than or equal to `number`.
 
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            age: int
-
-        query.where(gte(Human.age, 24))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            age: int
-
-        query.where(gte("age", 24))
-        ```
-
     Args:
         accessor_or_path (Union[str, Any]): A accessor or a property path.
         number (Union[int, float]): The number used in the predicate.
@@ -197,23 +146,6 @@ def lt(
     """
     Predicate helper for filtering entities where a property is less than `number`.
 
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            age: int
-
-        query.where(lt(Human.age, 24))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            age: int
-
-        query.where(lt("age", 24))
-        ```
-
     Args:
         accessor_or_path (Union[str, Any]): A accessor or a property path.
         number (Union[int, float]): The number used in the predicate.
@@ -244,23 +176,6 @@ def lte(
 ) -> _Predicate:
     """
     Predicate helper for filtering entities where a property is less than or equal to `number`.
-
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            age: int
-
-        query.where(lte(Human.age, 24))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            age: int
-
-        query.where(lte("age", 24))
-        ```
 
     Args:
         accessor_or_path (Union[str, Any]): A accessor or a property path.
@@ -294,23 +209,6 @@ def between(
     """
     Predicate helper for filtering entities where a property is between `min_number` and
     `max_number`.
-
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            age: int
-
-        query.where(between(Human.age, 24, 35))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            age: int
-
-        query.where(between("age", 24, 35))
-        ```
 
     Args:
         accessor_or_path (Union[str, Any]): A accessor or a property path.
@@ -346,23 +244,6 @@ def not_between(
     Predicate helper for filtering entities where a property is not between `min_number` and
     `max_number`.
 
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            age: int
-
-        query.where(not_between(Human.age, 24, 35))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            age: int
-
-        query.where(not_between("age", 24, 35))
-        ```
-
     Args:
         accessor_or_path (Union[str, Any]): A accessor or a property path.
         min_number (Union[int, float]): The min number used in the predicate.
@@ -391,23 +272,6 @@ def is_null(accessor_or_path: Union[str, Any], alias: Optional[str] = None) -> _
     """
     Predicate helper for filtering entities where a property is null.
 
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            age: Optional[int]
-
-        query.where(is_null(Human.age))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            age: Optional[int]
-
-        query.where(is_null("age"))
-        ```
-
     Args:
         accessor_or_path (Union[str, Any]): A accessor or a property path.
         alias (Optional[str]): A optional alias for the referenced pattern. Defaults to `None`.
@@ -433,23 +297,6 @@ def is_null(accessor_or_path: Union[str, Any], alias: Optional[str] = None) -> _
 def is_not_null(accessor_or_path: Union[str, Any], alias: Optional[str] = None) -> _Predicate:
     """
     Predicate helper for filtering entities where a property is not null.
-
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            age: Optional[int]
-
-        query.where(is_not_null(Human.age))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            age: Optional[int]
-
-        query.where(is_not_null("age"))
-        ```
 
     Args:
         accessor_or_path (Union[str, Any]): A accessor or a property path.
@@ -481,23 +328,6 @@ def in_list(
     """
     Predicate helper for filtering entities where a property matches one or more values from
     `values_list`.
-
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            age: int
-
-        query.where(in_list(Human.age, [1, 2, 3]))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            age: int
-
-        query.where(in_list("age", [1, 2, 3]))
-        ```
 
     Args:
         accessor_or_path (Union[str, Any]): A accessor or a property path.
@@ -531,23 +361,6 @@ def not_in_list(
     Predicate helper for filtering entities where a property does not match any value from
     `values_list`.
 
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            age: int
-
-        query.where(not_in_list(Human.age, [1, 2, 3]))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            age: int
-
-        query.where(not_in_list("age", [1, 2, 3]))
-        ```
-
     Args:
         accessor_or_path (Union[str, Any]): A accessor or a property path.
         values_list (List[Any]): The list used in the predicate.
@@ -579,23 +392,6 @@ def all_(
     """
     Predicate helper for filtering entities where all list items from property are also present in
     `values_list`.
-
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            favorite_numbers: List[int]
-
-        query.where(all_(Human.favorite_numbers, [1, 2, 3]))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            favorite_numbers: List[int]
-
-        query.where(all_("favorite_numbers", [1, 2, 3]))
-        ```
 
     Args:
         accessor_or_path (Union[str, Any]): A accessor or a property path.
@@ -629,23 +425,6 @@ def some(
     Predicate helper for filtering entities where some list items from property are also present in
     `values_list`.
 
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            favorite_numbers: List[int]
-
-        query.where(some(Human.favorite_numbers, [1, 2, 3]))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            favorite_numbers: List[int]
-
-        query.where(some("favorite_numbers", [1, 2, 3]))
-        ```
-
     Args:
         accessor_or_path (Union[str, Any]): A accessor or a property path.
         values_list (List[Any]): The list used in the predicate.
@@ -678,23 +457,6 @@ def none(
     Predicate helper for filtering entities where no list items from property are present in
     `values_list`.
 
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            favorite_numbers: List[int]
-
-        query.where(none(Human.favorite_numbers, [1, 2, 3]))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            favorite_numbers: List[int]
-
-        query.where(none("favorite_numbers", [1, 2, 3]))
-        ```
-
     Args:
         accessor_or_path (Union[str, Any]): A accessor or a property path.
         values_list (List[Any]): The list used in the predicate.
@@ -726,23 +488,6 @@ def contains(
     """
     Predicate helper for filtering entities where a property is a substring of `value`.
 
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            name: str
-
-        query.where(contains(Human.name, "substr"))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            name: str
-
-        query.where(contains("name", "substr"))
-        ```
-
     Args:
         accessor_or_path (Union[str, Any]): A accessor or a property path.
         value (str): The string used in the predicate.
@@ -773,23 +518,6 @@ def not_contains(
 ) -> _Predicate:
     """
     Predicate helper for filtering entities where a property is not a substring of `value`.
-
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            name: str
-
-        query.where(not_contains(Human.name, "substr"))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            name: str
-
-        query.where(not_contains("name", "substr"))
-        ```
 
     Args:
         accessor_or_path (Union[str, Any]): A accessor or a property path.
@@ -823,23 +551,6 @@ def icontains(
     Predicate helper for filtering entities where a property is a (case-insensitive) substring of
     `value`.
 
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            name: str
-
-        query.where(icontains(Human.name, "substr"))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            name: str
-
-        query.where(icontains("name", "substr"))
-        ```
-
     Args:
         accessor_or_path (Union[str, Any]): A accessor or a property path.
         value (str): The string used in the predicate.
@@ -870,23 +581,6 @@ def starts_with(
 ) -> _Predicate:
     """
     Predicate helper for filtering entities where a property starts with `value`.
-
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            name: str
-
-        query.where(starts_with(Human.name, "substr"))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            name: str
-
-        query.where(starts_with("name", "substr"))
-        ```
 
     Args:
         accessor_or_path (Union[str, Any]): A accessor or a property path.
@@ -919,23 +613,6 @@ def not_starts_with(
     """
     Predicate helper for filtering entities where a property does not start with `value`.
 
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            name: str
-
-        query.where(not_starts_with(Human.name, "substr"))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            name: str
-
-        query.where(not_starts_with("name", "substr"))
-        ```
-
     Args:
         accessor_or_path (Union[str, Any]): A accessor or a property path.
         value (str): The string used in the predicate.
@@ -966,23 +643,6 @@ def istarts_with(
 ) -> _Predicate:
     """
     Predicate helper for filtering entities where a property starts with `value` (case-insensitive).
-
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            name: str
-
-        query.where(istarts_with(Human.name, "substr"))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            name: str
-
-        query.where(istarts_with("name", "substr"))
-        ```
 
     Args:
         accessor_or_path (Union[str, Any]): A accessor or a property path.
@@ -1015,23 +675,6 @@ def ends_with(
     """
     Predicate helper for filtering entities where a property ends with `value`.
 
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            name: str
-
-        query.where(ends_with(Human.name, "substr"))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            name: str
-
-        query.where(ends_with("name", "substr"))
-        ```
-
     Args:
         accessor_or_path (Union[str, Any]): A accessor or a property path.
         value (str): The string used in the predicate.
@@ -1062,23 +705,6 @@ def not_ends_with(
 ) -> _Predicate:
     """
     Predicate helper for filtering entities where a property does not end with `value`.
-
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            name: str
-
-        query.where(not_ends_with(Human.name, "substr"))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            name: str
-
-        query.where(not_ends_with("name", "substr"))
-        ```
 
     Args:
         accessor_or_path (Union[str, Any]): A accessor or a property path.
@@ -1111,23 +737,6 @@ def iends_with(
     """
     Predicate helper for filtering entities where a property ends with `value` (case-insensitive).
 
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            name: str
-
-        query.where(iends_with(Human.name, "substr"))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            name: str
-
-        query.where(iends_with("name", "substr"))
-        ```
-
     Args:
         accessor_or_path (Union[str, Any]): A accessor or a property path.
         value (str): The string used in the predicate.
@@ -1159,23 +768,6 @@ def regex(
     """
     Predicate helper for filtering entities where a property matches `regex_pattern`.
 
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            name: str
-
-        query.where(regex(Human.name, ".*\\.se"))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            name: str
-
-        query.where(regex("name", ".*\\.se"))
-        ```
-
     Args:
         accessor_or_path (Union[str, Any]): A accessor or a property path.
         regex_pattern (str): The regex pattern used in the predicate.
@@ -1205,23 +797,6 @@ def not_(
     """
     Predicate helper for negating another predicate.
 
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            name: str
-
-        query.where(not_(eq(Human.name, "John")))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            name: str
-
-        query.where(not_(eq("name", John")))
-        ```
-
     Args:
         predicate (Union[_Predicate, _PredicateGroup]): The predicate to negate.
 
@@ -1236,25 +811,6 @@ def and_(
 ) -> _PredicateGroup:
     """
     Predicate helper for combining multiple predicates with a `AND`.
-
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            name: str
-            age: int
-
-        query.where(and_(eq(Human.name, "John"), gt(Human.age, 24)))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            name: str
-            age: int
-
-        query.where(and_(eq("name", John"), gt("age", 24)))
-        ```
 
     Args:
         *predicates (Union[_Predicate, _PredicateGroup]): The predicates to combine.
@@ -1273,25 +829,6 @@ def or_(
     """
     Predicate helper for combining multiple predicates with a `OR`.
 
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            name: str
-            age: int
-
-        query.where(or_(eq(Human.name, "John"), gt(Human.age, 24)))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            name: str
-            age: int
-
-        query.where(or_(eq("name", John"), gt("age", 24)))
-        ```
-
     Args:
         *predicates (Union[_Predicate, _PredicateGroup]): The predicates to combine.
 
@@ -1308,25 +845,6 @@ def xor_(
 ) -> _PredicateGroup:
     """
     Predicate helper for combining multiple predicates with a `XOR`.
-
-    Example:
-        With a query accessor:
-        ```python
-        class Human(LoomiNode):
-            name: str
-            age: int
-
-        query.where(xor_(eq(Human.name, "John"), gt(Human.age, 24)))
-        ```
-
-        With a property name:
-        ```python
-        class Human(LoomiNode):
-            name: str
-            age: int
-
-        query.where(xor_(eq("name", John"), gt("age", 24)))
-        ```
 
     Args:
         *predicates (Union[_Predicate, _PredicateGroup]): The predicates to combine.
