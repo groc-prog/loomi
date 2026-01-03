@@ -4,11 +4,11 @@ from typing import TYPE_CHECKING, Any, Dict, LiteralString, Optional
 
 from neo4j import AsyncTransaction, Transaction
 
-from loomi._driver._result import LoomiAsyncResult, LoomiResult
+from loomi.client._internal.result import LoomiAsyncResult, LoomiResult
 
 if TYPE_CHECKING:
-    from loomi.clients.async_client import LoomiAsyncClient
-    from loomi.clients.sync_client import LoomiClient
+    from loomi.client.async_client import LoomiAsyncClient
+    from loomi.client.sync_client import LoomiClient
 else:
     LoomiClient = object
     LoomiAsyncClient = object

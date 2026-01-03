@@ -22,18 +22,10 @@ class TestConfiguration:
         """Verify that all configuration options can be defined via the class variable."""
 
         class Human(LoomiNode):
-            loomi_config = {
-                "labels": {"Humanoid"},
-                "skip_constraints": True,
-                "skip_indexes": False,
-            }
+            loomi_config = {"labels": {"Humanoid"}}
 
         assert "labels" in Human.loomi_config
         assert Human.loomi_config["labels"] == {"Humanoid"}
-        assert "skip_constraints" in Human.loomi_config
-        assert Human.loomi_config["skip_constraints"]
-        assert "skip_indexes" in Human.loomi_config
-        assert not Human.loomi_config["skip_indexes"]
 
     def test_sets_labels_if_not_defined(self):
         """Verify that labels get set to the class name if not explicitly defined."""
@@ -51,8 +43,6 @@ class TestInheritance:
         class Human(LoomiNode):
             loomi_config = {
                 "labels": {"Human"},
-                "skip_constraints": True,
-                "skip_indexes": False,
             }
 
         class Worker(Human):
@@ -63,10 +53,6 @@ class TestInheritance:
 
         assert "labels" in Worker.loomi_config
         assert Worker.loomi_config["labels"] == {"Human", "Worker"}
-        assert "skip_constraints" in Worker.loomi_config
-        assert not Worker.loomi_config["skip_constraints"]
-        assert "skip_indexes" in Worker.loomi_config
-        assert not Worker.loomi_config["skip_indexes"]
 
     def test_inherits_multiple_configs(self):
         """Verify that the configuration is inherited from multiple other Loomi models."""
@@ -74,14 +60,11 @@ class TestInheritance:
         class Human(LoomiNode):
             loomi_config = {
                 "labels": {"Human"},
-                "skip_constraints": True,
-                "skip_indexes": False,
             }
 
         class Worker(LoomiNode):
             loomi_config = {
                 "labels": {"Worker"},
-                "skip_constraints": False,
             }
 
         class Person(Human, Worker):
@@ -91,10 +74,6 @@ class TestInheritance:
 
         assert "labels" in Person.loomi_config
         assert Person.loomi_config["labels"] == {"Human", "Worker", "Person"}
-        assert "skip_constraints" in Person.loomi_config
-        assert Person.loomi_config["skip_constraints"]
-        assert "skip_indexes" in Person.loomi_config
-        assert not Person.loomi_config["skip_indexes"]
 
     def test_inheritance_ignores_non_model_parents(self):
         """
@@ -105,8 +84,6 @@ class TestInheritance:
         class Human(LoomiNode):
             loomi_config = {
                 "labels": {"Human"},
-                "skip_constraints": True,
-                "skip_indexes": False,
             }
 
         class HumanUtils: ...
@@ -118,10 +95,6 @@ class TestInheritance:
 
         assert "labels" in Person.loomi_config
         assert Person.loomi_config["labels"] == {"Human", "Person"}
-        assert "skip_constraints" in Person.loomi_config
-        assert Person.loomi_config["skip_constraints"]
-        assert "skip_indexes" in Person.loomi_config
-        assert not Person.loomi_config["skip_indexes"]
 
     def test_raises_if_parent_does_not_expose_config(self):
         """Verify that a exception is raised if a parent class does not expose a configuration."""
@@ -134,5 +107,4 @@ class TestInheritance:
             class Worker(Human):
                 loomi_config = {
                     "labels": {"Worker"},
-                    "skip_constraints": False,
                 }

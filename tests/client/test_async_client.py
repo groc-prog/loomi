@@ -5,11 +5,11 @@ import pickle
 from neo4j import AsyncDriver, AsyncResult, AsyncSession, AsyncTransaction, EagerResult
 from neo4j.graph import Graph, Node, Relationship
 
-from loomi._driver._graph import LoomiGraph
-from loomi._driver._result import LoomiAsyncResult
-from loomi._driver._session import LoomiAsyncSession
-from loomi._driver._transaction import LoomiAsyncTransaction
-from loomi.clients.async_client import LoomiAsyncClient
+from loomi.client._internal.result import LoomiAsyncResult
+from loomi.client._internal.session import LoomiAsyncSession
+from loomi.client._internal.transaction import LoomiAsyncTransaction
+from loomi.client.async_client import LoomiAsyncClient
+from loomi.models.graph import LoomiGraph
 from loomi.models.node import LoomiNode
 from loomi.models.path import LoomiPath
 from loomi.models.relationship import LoomiRelationship

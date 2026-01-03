@@ -2,12 +2,12 @@ from typing import TYPE_CHECKING, Any, Iterator, Tuple, Union
 
 from neo4j.graph import EntitySetView, Graph, Node, Relationship
 
-from loomi._driver._graph import LoomiGraph
+from loomi.models.graph import LoomiGraph
 from loomi.models.node import LoomiNode
 from loomi.models.relationship import LoomiRelationship
 
 if TYPE_CHECKING:
-    from loomi.clients._base import _LoomiBaseClient
+    from loomi.client._internal._base import _LoomiBaseClient
 else:
     _LoomiBaseClient = object
 

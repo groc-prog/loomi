@@ -4,13 +4,15 @@ from typing import Any, Dict, List, Optional, Union, get_args, get_origin
 
 from pydantic import BaseModel, ConfigDict, PrivateAttr, computed_field
 
+from loomi._logger import _logger
 from loomi.exceptions import ModelInitializationError, PropertyAccessorError
 
 
 @dataclass(frozen=True)
-class _PropertyAccessor:
+class _PropertyDescriptor:
     _full_path: str
     _annotation: Any
+    _alias: Optional[str]
 
     def __getattribute__(self, name: str):
         if name.startswith("_") or name in ["all_", "any_"]:
@@ -37,7 +39,7 @@ class _PropertyAccessor:
         # Since a dict might contain any key, we allow all properties
         if origin is dict or origin is Dict:
             value_type = args[1] if len(args) > 1 else Any
-            return _PropertyAccessor(f"{base_path}.{name}", value_type)
+            return _PropertyDescriptor(f"{base_path}.{name}", value_type, self._alias)
 
         # For other Pydantic models, we can validate that the property path is valid
         if (
@@ -45,20 +47,31 @@ class _PropertyAccessor:
             and issubclass(current_type, BaseModel)
             and name in current_type.model_fields
         ):
-            return _PropertyAccessor(
-                f"{base_path}.{name}",
-                current_type.model_fields[name].annotation,
+            return _PropertyDescriptor(
+                f"{base_path}.{name}", current_type.model_fields[name].annotation, self._alias
             )
 
         raise PropertyAccessorError(
             f"{name} is not a valid property name for path {self._full_path}"
         )
 
-    def all_(self) -> "_PropertyAccessor":
-        return _PropertyAccessor(f"{self._full_path}.all_", self._annotation)
+    def all_(self) -> "_PropertyDescriptor":
+        """
+        Explicitly define that the list predicate should use `ALL`.
 
-    def any_(self) -> "_PropertyAccessor":
-        return _PropertyAccessor(f"{self._full_path}.any_", self._annotation)
+        Returns:
+            _PropertyAccessor: The modified property accessor.
+        """
+        return _PropertyDescriptor(f"{self._full_path}.all_", self._annotation, self._alias)
+
+    def any_(self) -> "_PropertyDescriptor":
+        """
+        Explicitly define that the list predicate should use `ANY`.
+
+        Returns:
+            _PropertyAccessor: The modified property accessor.
+        """
+        return _PropertyDescriptor(f"{self._full_path}.any_", self._annotation, self._alias)
 
 
 class _LoomiModelMetaclass(type(BaseModel)):
@@ -71,10 +84,9 @@ class _LoomiModelMetaclass(type(BaseModel)):
 
         # If we do not wait for the model building to complete, we will run into recursion issues
         if cls.__pydantic_complete__:
-
             model_fields = cls.model_fields
             if name in model_fields:
-                return _PropertyAccessor(name, model_fields[name].annotation)
+                return _PropertyDescriptor(name, model_fields[name].annotation, None)
 
         return super().__getattribute__(name)
 
@@ -89,8 +101,12 @@ class _LoomiBase(BaseModel, ABC, metaclass=_LoomiModelMetaclass):
 
     def __setattr__(self, name, value):
         if name in self._dirty_fields and value == self._dirty_fields[name]:
+            _logger.debug(
+                "Dirty field %s has initial value again, removing from dirty fields", name
+            )
             self._dirty_fields.pop(name)
         else:
+            _logger.debug("Marking field %s as dirty", name)
             self._dirty_fields[name] = getattr(self, name)
 
         return super().__setattr__(name, value)

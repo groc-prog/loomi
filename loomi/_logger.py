@@ -28,5 +28,5 @@ def _scoped_log_ctx(ctx: Mapping[Union[StrEnum, str], Any]):
         log_ctx.reset(token)
 
 
-logger = logging.getLogger("loomi")
-logger.addFilter(_LogContextFilter())
+_logger = logging.getLogger("loomi")
+_logger.addFilter(_LogContextFilter())

@@ -3,7 +3,7 @@ import re
 from typing import ClassVar, TypedDict
 
 from loomi.exceptions import ModelInitializationError
-from loomi.models._base import _LoomiBase
+from loomi.models._internal._base import _LoomiBase
 
 
 class LoomiRelationshipConfiguration(TypedDict, total=False):
@@ -37,20 +37,7 @@ class LoomiRelationship(_LoomiBase):
                     f"Parent class {parent.__name__} has no `loomi_config` attribute"
                 )
 
-            cls._merge_loomi_config(inherited_config)
-
         cls._hash = cls._generate_loomi_hash(cls.loomi_config["type"])
-
-    @classmethod
-    def _merge_loomi_config(cls, config: LoomiRelationshipConfiguration) -> None:
-        for key, value in config.items():
-            # We can not merge the type here and we do not want duplicate types, so
-            # we skip
-            if key == "type":
-                continue
-            # If the key has not been set before, always set it
-            if key not in cls.loomi_config:
-                cls.loomi_config[key] = value
 
     @classmethod
     def _get_normalized_type(cls) -> str:

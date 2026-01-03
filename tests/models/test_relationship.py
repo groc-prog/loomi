@@ -25,16 +25,10 @@ class TestConfiguration:
         class Likes(LoomiRelationship):
             loomi_config = {
                 "type": "LIKES_VERY_MUCH",
-                "skip_constraints": True,
-                "skip_indexes": False,
             }
 
         assert "type" in Likes.loomi_config
         assert Likes.loomi_config["type"] == "LIKES_VERY_MUCH"
-        assert "skip_constraints" in Likes.loomi_config
-        assert Likes.loomi_config["skip_constraints"]
-        assert "skip_indexes" in Likes.loomi_config
-        assert not Likes.loomi_config["skip_indexes"]
 
     def test_sets_type_if_not_defined(self):
         """Verify that type get set to the class name if not explicitly defined."""
@@ -60,8 +54,6 @@ class TestInheritance:
         class Likes(LoomiRelationship):
             loomi_config = {
                 "type": "LIKES",
-                "skip_constraints": True,
-                "skip_indexes": False,
             }
 
         class Loves(Likes):
@@ -72,62 +64,6 @@ class TestInheritance:
 
         assert "type" in Loves.loomi_config
         assert Loves.loomi_config["type"] == "LOVES"
-        assert "skip_constraints" in Loves.loomi_config
-        assert not Loves.loomi_config["skip_constraints"]
-        assert "skip_indexes" in Loves.loomi_config
-        assert not Loves.loomi_config["skip_indexes"]
-
-    def test_inherits_multiple_configs(self):
-        """Verify that the configuration is inherited from multiple other Loomi models."""
-
-        class Likes(LoomiRelationship):
-            loomi_config = {
-                "type": "LIKES",
-                "skip_constraints": True,
-                "skip_indexes": False,
-            }
-
-        class Loves(LoomiRelationship):
-            loomi_config = {
-                "skip_constraints": False,
-            }
-
-        class CanNotLiveWithout(Likes, Loves):
-            loomi_config = {"skip_indexes": True}
-
-        assert "type" in CanNotLiveWithout.loomi_config
-        assert CanNotLiveWithout.loomi_config["type"] == "CAN_NOT_LIVE_WITHOUT"
-        assert "skip_constraints" in CanNotLiveWithout.loomi_config
-        assert CanNotLiveWithout.loomi_config["skip_constraints"]
-        assert "skip_indexes" in CanNotLiveWithout.loomi_config
-        assert CanNotLiveWithout.loomi_config["skip_indexes"]
-
-    def test_inheritance_ignores_non_model_parents(self):
-        """
-        Verify that inheriting from classes which are not Loomi models does not affect the final
-        config.
-        """
-
-        class Likes(LoomiRelationship):
-            loomi_config = {
-                "type": "LIKES",
-                "skip_constraints": True,
-                "skip_indexes": False,
-            }
-
-        class LikesUtils: ...
-
-        class Loves(Likes, LikesUtils):
-            loomi_config = {
-                "type": "LOVES",
-            }
-
-        assert "type" in Loves.loomi_config
-        assert Loves.loomi_config["type"] == "LOVES"
-        assert "skip_constraints" in Loves.loomi_config
-        assert Loves.loomi_config["skip_constraints"]
-        assert "skip_indexes" in Loves.loomi_config
-        assert not Loves.loomi_config["skip_indexes"]
 
     def test_raises_if_parent_does_not_expose_config(self):
         """Verify that a exception is raised if a parent class does not expose a configuration."""
@@ -140,5 +76,4 @@ class TestInheritance:
             class Loves(Likes):
                 loomi_config = {
                     "type": "LOVES",
-                    "skip_constraints": False,
                 }

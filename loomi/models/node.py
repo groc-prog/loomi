@@ -2,7 +2,7 @@ import hashlib
 from typing import ClassVar, List, Set, TypedDict, cast
 
 from loomi.exceptions import ModelInitializationError
-from loomi.models._base import _LoomiBase
+from loomi.models._internal._base import _LoomiBase
 
 
 class LoomiNodeConfiguration(TypedDict, total=False):

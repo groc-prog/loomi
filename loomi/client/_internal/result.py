@@ -5,11 +5,11 @@ from typing import TYPE_CHECKING, Any, List, Literal, Optional, overload
 from neo4j import AsyncResult, EagerResult, Record, Result
 from neo4j.graph import EntitySetView
 
-from loomi._driver._graph import LoomiGraph
+from loomi.models.graph import LoomiGraph
 
 if TYPE_CHECKING:
-    from loomi.clients.async_client import LoomiAsyncClient
-    from loomi.clients.sync_client import LoomiClient
+    from loomi.client.async_client import LoomiAsyncClient
+    from loomi.client.sync_client import LoomiClient
 else:
     LoomiClient = object
     LoomiAsyncClient = object

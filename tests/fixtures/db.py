@@ -7,8 +7,8 @@ from typing import Optional, cast
 import pytest
 from neo4j import AsyncGraphDatabase, GraphDatabase
 
-from loomi.constants.constraint import MemgraphConstraintType, _MemgraphDataTypeMapping
-from loomi.constants.index import MemgraphIndexType
+from loomi.models.constraint import MemgraphConstraintType, _MemgraphDataTypeMapping
+from loomi.models.index import MemgraphIndexType
 
 
 @dataclass
@@ -34,6 +34,7 @@ class DriverSpec:
             pwd=environ.get("MEMGRAPH_PWD", None),
         ),
     ],
+    ids=["neo4j", "memgraph"],
 )
 def sync_driver(request):
     """

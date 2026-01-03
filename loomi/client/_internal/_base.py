@@ -5,8 +5,9 @@ from typing import Any, Dict, Generic, Optional, Tuple, Type, TypeVar, Union, ca
 from neo4j import AsyncDriver, Driver
 from neo4j.graph import Node, Path, Relationship
 
-from loomi._logger import _LogContextKey, _scoped_log_ctx, logger
-from loomi.constants._graph import _ModelType
+from loomi._logger import _LogContextKey, _logger, _scoped_log_ctx
+from loomi.exceptions import ModelInitializationError
+from loomi.models._internal._types import _ModelType
 from loomi.models.node import LoomiNode
 from loomi.models.path import LoomiPath
 from loomi.models.relationship import LoomiRelationship
@@ -47,25 +48,23 @@ class _LoomiBaseClient(Generic[T], ABC):
         ):
             for model in models:
                 if not issubclass(model, (LoomiNode, LoomiRelationship)):
-                    logger.warning(
+                    _logger.warning(
                         (
                             "Invalid model %s provided during model registration. Class ",
                             "will be ignored",
                         ),
-                        model.__name__,
+                        model,
                     )
                     return
 
                 # Normally, the hash should always be initialized, but if there is some edge case
                 # we want to make it clear
                 if model._hash is None:
-                    logger.warning(
-                        "Hash on model %s is not initialized yet. Model will be skipped",
-                        model.__name__,
+                    raise ModelInitializationError(
+                        f"Hash on model {model.__name__} is not initialized"
                     )
-                    return
 
-                logger.debug("Registering model %s with client %s", model, self)
+                _logger.debug("Registering model %s with client %s", model, self)
                 self._models[model._hash] = model
 
     def _extract_version(self, version: str) -> None:
@@ -75,7 +74,7 @@ class _LoomiBaseClient(Generic[T], ABC):
         if isinstance(entity, (Node, Relationship)):
             return self._entity_to_model(entity)
         if isinstance(entity, Path):
-            logger.debug("Transforming nodes and relationships from path %s", entity)
+            _logger.debug("Transforming nodes and relationships from path %s", entity)
             return LoomiPath(
                 self,
                 tuple(self._entity_to_model(node) for node in entity.nodes),
@@ -83,7 +82,7 @@ class _LoomiBaseClient(Generic[T], ABC):
                 entity.graph,
             )
 
-        logger.debug("Entity %s is a primitive value, skipping transformation", entity)
+        _logger.debug("Entity %s is a primitive value, skipping transformation", entity)
         return entity
 
     @overload
@@ -102,7 +101,7 @@ class _LoomiBaseClient(Generic[T], ABC):
         )
 
         if model_hash not in self._models:
-            logger.warning(
+            _logger.warning(
                 "No model with hash %s registered with client. Record will not be resolved "
                 "to model",
                 model_hash,
@@ -110,7 +109,7 @@ class _LoomiBaseClient(Generic[T], ABC):
             return entity
 
         model = self._models[model_hash]
-        logger.debug("Transforming %s to model %s", entity, model.__name__)
+        _logger.debug("Transforming %s to model %s", entity, model.__name__)
 
         instance = model.model_validate(dict(entity))
         instance._id = entity.id
@@ -122,7 +121,7 @@ class _LoomiBaseClient(Generic[T], ABC):
         model_hash = LoomiRelationship._generate_loomi_hash(type_)
 
         if model_hash not in self._models:
-            logger.warning(
+            _logger.warning(
                 "No model with hash %s registered with client. Record will not be resolved "
                 "to model",
                 model_hash,
