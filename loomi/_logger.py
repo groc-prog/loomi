@@ -10,6 +10,8 @@ log_ctx = ContextVar("loomi_log_ctx", default={})
 class _LogContextKey(StrEnum):
     DRIVER = "loomi.driver"
     SERVER_TYPE = "loomi.server_type"
+    MODEL = "loomi.model"
+    CHANGE_TRACKER_OPERATION = "loomi.change_tracker.operation"
 
 
 class _LogContextFilter(logging.Filter):

@@ -10,15 +10,21 @@ from loomi.models.graph import LoomiGraph
 if TYPE_CHECKING:
     from loomi.client.async_client import LoomiAsyncClient
     from loomi.client.sync_client import LoomiClient
+
+    _Base = Result
+    _AsyncBase = AsyncResult
 else:
     LoomiClient = object
     LoomiAsyncClient = object
+
+    _Base = object
+    _AsyncBase = object
 
 
 TResultKey = int | str
 
 
-class LoomiResult(Result):
+class LoomiResult(_Base):
     """
     Wrapper for `neo4j.Result` objects containing nodes and relationships transformed into the
     corresponding Loomi models.
@@ -44,7 +50,7 @@ class LoomiResult(Result):
             yield Record(transformed_record)
 
     def __next__(self):
-        return next(iter(self))
+        return self._result.__next__()
 
     def peek(self):
         """
@@ -176,7 +182,7 @@ class LoomiResult(Result):
         return graph
 
 
-class LoomiAsyncResult(AsyncResult):
+class LoomiAsyncResult(_AsyncBase):
     """
     Wrapper for `neo4j.AsyncResult` objects containing nodes and relationships transformed into the
     corresponding Loomi models.
@@ -202,7 +208,7 @@ class LoomiAsyncResult(AsyncResult):
             yield Record(transformed_record)
 
     async def __anext__(self):
-        return await anext(aiter(self))
+        return await self._result.__anext__()
 
     async def peek(self):
         """

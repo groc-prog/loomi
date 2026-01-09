@@ -10,12 +10,18 @@ from loomi.client._internal.transaction import LoomiAsyncTransaction, LoomiTrans
 if TYPE_CHECKING:
     from loomi.client.async_client import LoomiAsyncClient
     from loomi.client.sync_client import LoomiClient
+
+    _Base = Session
+    _AsyncBase = AsyncSession
 else:
     LoomiClient = object
     LoomiAsyncClient = object
 
+    _Base = object
+    _AsyncBase = object
 
-class LoomiSession(Session):
+
+class LoomiSession(_Base):
     """
     Wrapper for `neo4j.Session` allowing for automatic transformation of entities returned by
     queries.
@@ -62,7 +68,7 @@ class LoomiSession(Session):
         return LoomiTransaction(original_transaction, self._client)
 
 
-class LoomiAsyncSession(AsyncSession):
+class LoomiAsyncSession(_AsyncBase):
     """
     Wrapper for `neo4j.AsyncSession` allowing for automatic transformation of entities returned by
     queries.

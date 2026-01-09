@@ -1,125 +1,15 @@
 from abc import ABC
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Union, get_args, get_origin
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, PrivateAttr, computed_field
 
-from loomi._logger import _logger
-from loomi.exceptions import ModelInitializationError, PropertyAccessorError
 
-
-@dataclass(frozen=True)
-class _PropertyDescriptor:
-    _full_path: str
-    _annotation: Any
-    _alias: Optional[str]
-
-    def __getattribute__(self, name: str):
-        if name.startswith("_") or name in ["all_", "any_"]:
-            return super().__getattribute__(name)
-
-        current_type = self._annotation
-        origin = get_origin(current_type)
-        args = get_args(current_type)
-
-        base_path = self._full_path
-        # If we encounter a list we need to get the first valid item type we find
-        if origin is list or origin is List or origin is Union:
-            inner_type = next((a for a in args if a is not type(None)), None)
-            if inner_type:
-                current_type = inner_type
-                origin = get_origin(current_type)
-                args = get_args(current_type)
-
-                # To be able to handle this correctly later on in the query builder, we
-                # define a special any_ property
-                if not base_path.endswith(("all_", "any_")):
-                    base_path = f"{base_path}.any_"
-
-        # Since a dict might contain any key, we allow all properties
-        if origin is dict or origin is Dict:
-            value_type = args[1] if len(args) > 1 else Any
-            return _PropertyDescriptor(f"{base_path}.{name}", value_type, self._alias)
-
-        # For other Pydantic models, we can validate that the property path is valid
-        if (
-            isinstance(current_type, type)
-            and issubclass(current_type, BaseModel)
-            and name in current_type.model_fields
-        ):
-            return _PropertyDescriptor(
-                f"{base_path}.{name}", current_type.model_fields[name].annotation, self._alias
-            )
-
-        raise PropertyAccessorError(
-            f"{name} is not a valid property name for path {self._full_path}"
-        )
-
-    def all_(self) -> "_PropertyDescriptor":
-        """
-        Explicitly define that the list predicate should use `ALL`.
-
-        Returns:
-            _PropertyAccessor: The modified property accessor.
-        """
-        return _PropertyDescriptor(f"{self._full_path}.all_", self._annotation, self._alias)
-
-    def any_(self) -> "_PropertyDescriptor":
-        """
-        Explicitly define that the list predicate should use `ANY`.
-
-        Returns:
-            _PropertyAccessor: The modified property accessor.
-        """
-        return _PropertyDescriptor(f"{self._full_path}.any_", self._annotation, self._alias)
-
-
-class _LoomiModelMetaclass(type(BaseModel)):
-    def __getattribute__(cls, name):
-        # To prevent any recursive __getattribute__ calls we need to skip this handler if any
-        # of the following are accessed
-        # Note that accessing model_fields also accesses __pydantic_fields__
-        if name in ["model_fields", "__pydantic_fields__", "__pydantic_complete__"]:
-            return super().__getattribute__(name)
-
-        # If we do not wait for the model building to complete, we will run into recursion issues
-        if cls.__pydantic_complete__:
-            model_fields = cls.model_fields
-            if name in model_fields:
-                return _PropertyDescriptor(name, model_fields[name].annotation, None)
-
-        return super().__getattribute__(name)
-
-
-class _LoomiBase(BaseModel, ABC, metaclass=_LoomiModelMetaclass):
-    _dirty_fields: Dict[str, Any] = PrivateAttr(default_factory=dict)
+class _LoomiBase(BaseModel, ABC):
     _id: Optional[int] = PrivateAttr(None)
     _element_id: Optional[str] = PrivateAttr(None)
     _hash: Optional[str] = PrivateAttr(None)
 
-    model_config = ConfigDict(validate_assignment=True)
-
-    def __setattr__(self, name, value):
-        if name in self._dirty_fields and value == self._dirty_fields[name]:
-            _logger.debug(
-                "Dirty field %s has initial value again, removing from dirty fields", name
-            )
-            self._dirty_fields.pop(name)
-        else:
-            _logger.debug("Marking field %s as dirty", name)
-            self._dirty_fields[name] = getattr(self, name)
-
-        return super().__setattr__(name, value)
-
-    @classmethod
-    def __pydantic_init_subclass__(cls, **kwargs):
-        reserved_fields = ["all_", "any_"]
-
-        for reserved in reserved_fields:
-            if reserved in cls.model_fields:
-                raise ModelInitializationError(
-                    f"{reserved} is a reserved field. Rename or remove it"
-                )
+    model_config = ConfigDict(validate_assignment=True, populate_by_name=True)
 
     @computed_field
     @property
