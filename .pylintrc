@@ -22,3 +22,6 @@ disable=missing-module-docstring,
        too-many-lines,
        too-many-ancestors,
        too-many-locals
+
+[TYPE_CHECKING]
+generated-member=__wrapped__

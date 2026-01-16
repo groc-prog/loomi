@@ -11,6 +11,7 @@ class _LogContextKey(StrEnum):
     DRIVER = "loomi.driver"
     SERVER_TYPE = "loomi.server_type"
     MODEL = "loomi.model"
+    MODEL_IDENTIFIER = "loomi.model_identifier"
     CHANGE_TRACKER_OPERATION = "loomi.change_tracker.operation"
 
 

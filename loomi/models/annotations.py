@@ -1,6 +1,5 @@
 from dataclasses import dataclass
-from enum import StrEnum
-from typing import Dict, Optional, Set
+from typing import Optional, Set
 
 from loomi.models.constraint import DataTypeConstraintType
 
