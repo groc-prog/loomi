@@ -1,18 +1,18 @@
 import hashlib
 import re
-from typing import ClassVar, TypedDict
+from typing import ClassVar
 
-from loomi.exceptions import ModelInitializationError
-from loomi.models._internal._base import _LoomiBase
+from loomi.exceptions import ModelError
+from loomi.models._internal._base import _EntityBase, _EntityConfiguration
 
 
-class LoomiRelationshipConfiguration(TypedDict, total=False):
+class LoomiRelationshipConfiguration(_EntityConfiguration, total=False):
     """TypedDict for configuring Loomi relationship behavior."""
 
     type: str
 
 
-class LoomiRelationship(_LoomiBase):
+class LoomiRelationship(_EntityBase):
     """A base class for creating Loomi relationship models."""
 
     loomi_config: ClassVar[LoomiRelationshipConfiguration]
@@ -33,11 +33,21 @@ class LoomiRelationship(_LoomiBase):
 
             inherited_config = getattr(parent, "loomi_config", None)
             if not inherited_config:
-                raise ModelInitializationError(
-                    f"Parent class {parent.__name__} has no `loomi_config` attribute"
-                )
+                raise ModelError(f"Parent class {parent.__name__} has no `loomi_config` attribute")
+
+            cls._merge_loomi_config(inherited_config)
 
         cls._hash = cls._generate_loomi_hash(cls.loomi_config["type"])
+
+    def __repr__(self) -> str:
+        type_ = self.loomi_config.get("type", set())
+
+        return f"<{self.__class__.__name__} element_id={self._element_id!r} type={type_!r}>"
+
+    @classmethod
+    def _merge_loomi_config(cls, config: LoomiRelationshipConfiguration) -> None:
+        for key, value in config.items():
+            cls.loomi_config[key] = value
 
     @classmethod
     def _get_normalized_type(cls) -> str:

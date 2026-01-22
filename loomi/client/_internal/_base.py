@@ -6,7 +6,7 @@ from neo4j import AsyncDriver, Driver
 from neo4j.graph import Node, Path, Relationship
 
 from loomi._logger import _LogContextKey, _logger, _scoped_log_ctx
-from loomi.exceptions import ModelInitializationError
+from loomi.exceptions import ModelError
 from loomi.models._internal._types import _ModelType
 from loomi.models.node import LoomiNode
 from loomi.models.path import LoomiPath
@@ -20,7 +20,7 @@ class _ServerType(StrEnum):
     MEMGRAPH = "Memgraph"
 
 
-class _LoomiBaseClient(Generic[T], ABC):
+class _BaseClient(Generic[T], ABC):
     _driver: T
     _server_type: Optional[_ServerType]
     _server_version: Optional[Tuple[int, ...]]
@@ -60,9 +60,7 @@ class _LoomiBaseClient(Generic[T], ABC):
                 # Normally, the hash should always be initialized, but if there is some edge case
                 # we want to make it clear
                 if model._hash is None:
-                    raise ModelInitializationError(
-                        f"Hash on model {model.__name__} is not initialized"
-                    )
+                    raise ModelError(f"Hash on model {model.__name__} is not initialized")
 
                 _logger.debug("Registering model %s with client %s", model, self)
                 self._models[model._hash] = model
@@ -111,7 +109,7 @@ class _LoomiBaseClient(Generic[T], ABC):
         model = self._models[model_hash]
         _logger.debug("Transforming %s to model %s", entity, model.__name__)
 
-        instance = model.model_validate(dict(entity))
+        instance = model._deserialize(dict(entity), self._server_type or _ServerType.NEO4J)
         instance._id = entity.id
         instance._element_id = entity.element_id
 

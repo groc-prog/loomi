@@ -2,8 +2,12 @@ class LoomiError(Exception):
     """Base Loomi error."""
 
 
-class ModelInitializationError(LoomiError):
-    """Error related to model initialization."""
+class ModelError(LoomiError):
+    """Error related to models."""
+
+
+class SerializationError(LoomiError):
+    """Error related to model serialization."""
 
 
 class ModelTrackingError(LoomiError):

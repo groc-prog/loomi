@@ -7,9 +7,9 @@ from loomi.models.node import LoomiNode
 from loomi.models.relationship import LoomiRelationship
 
 if TYPE_CHECKING:
-    from loomi.client._internal._base import _LoomiBaseClient
+    from loomi.client._internal._base import _BaseClient
 else:
-    _LoomiBaseClient = object
+    _BaseClient = object
 
 LoomiPathNode = Union[LoomiNode, Node]
 LoomiPathRelationship = Union[LoomiRelationship, Relationship]
@@ -18,14 +18,14 @@ LoomiPathRelationship = Union[LoomiRelationship, Relationship]
 class LoomiPath:
     """Graph path containing resolved Loomi nodes."""
 
-    __client: _LoomiBaseClient
+    __client: _BaseClient
     _nodes: Tuple[LoomiPathNode, ...]
     _relationships: Tuple[LoomiPathRelationship, ...]
     _graph: Graph
 
     def __init__(
         self,
-        client: _LoomiBaseClient,
+        client: _BaseClient,
         nodes: Tuple[LoomiPathNode, ...],
         relationships: Tuple[LoomiPathRelationship, ...],
         graph: Graph,

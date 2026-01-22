@@ -3,11 +3,11 @@ from typing import Any, Literal, Union, overload
 from neo4j import AsyncDriver, AsyncSession
 
 from loomi._logger import _LogContextKey, _scoped_log_ctx
-from loomi.client._internal._base import _LoomiBaseClient
+from loomi.client._internal._base import _BaseClient
 from loomi.client._internal.session import LoomiAsyncSession
 
 
-class LoomiAsyncClient(_LoomiBaseClient[AsyncDriver]):
+class LoomiAsyncClient(_BaseClient[AsyncDriver]):
     """Database client for interacting with Loomi models."""
 
     @overload
