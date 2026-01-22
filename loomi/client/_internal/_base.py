@@ -1,7 +1,10 @@
+import asyncio
+import functools
 from abc import ABC
 from enum import StrEnum
 from typing import (
     Any,
+    Callable,
     Dict,
     Generic,
     Optional,
@@ -18,13 +21,14 @@ from neo4j import AsyncDriver, Driver
 from neo4j.graph import Node, Path, Relationship
 
 from loomi._logger import _LogContextKey, _logger, _scoped_log_ctx
-from loomi.exceptions import ModelError
+from loomi.exceptions import ClientError, ModelError
 from loomi.models._internal._types import _ModelType
 from loomi.models.node import LoomiNode
 from loomi.models.path import LoomiPath
 from loomi.models.relationship import LoomiRelationship
 
 T = TypeVar("T", bound=Union[Driver, AsyncDriver])
+F = TypeVar("F", bound=Callable[..., Any])
 
 
 class _ServerType(StrEnum):
@@ -36,6 +40,25 @@ class LoomiClientConfiguration(TypedDict, total=False):
     """TypedDict for configuring Loomi client behavior."""
 
     serialize_nested: bool
+
+
+def _require_server_metadata(func: F) -> F:
+
+    @functools.wraps(func)
+    async def async_wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
+        if self._server_type is None:
+            raise ClientError(f"Method '{func.__name__}' requires a connected server. ")
+        return await func(self, *args, **kwargs)
+
+    @functools.wraps(func)
+    def sync_wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
+        if self._server_type is None:
+            raise ClientError(f"Method '{func.__name__}' requires a connected server. ")
+        return func(self, *args, **kwargs)
+
+    if asyncio.iscoroutinefunction(func):
+        return cast(F, async_wrapper)
+    return cast(F, sync_wrapper)
 
 
 class _BaseClient(Generic[T], ABC):

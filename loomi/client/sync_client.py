@@ -3,7 +3,7 @@ from typing import Any, Literal, Union, overload
 from neo4j import Driver, Session
 
 from loomi._logger import _LogContextKey, _logger, _scoped_log_ctx
-from loomi.client._internal._base import _BaseClient, _ServerType
+from loomi.client._internal._base import _BaseClient, _require_server_metadata, _ServerType
 from loomi.client._internal.session import LoomiSession
 from loomi.exceptions import ClientError
 
@@ -59,6 +59,7 @@ class LoomiClient(_BaseClient[Driver]):
     @overload
     def session(self, to_models: Literal[False], **session_config: Any) -> Session: ...
 
+    @_require_server_metadata
     def session(
         self,
         to_models: bool = True,
