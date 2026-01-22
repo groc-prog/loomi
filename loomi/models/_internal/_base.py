@@ -3,7 +3,7 @@
 import datetime
 import json
 from abc import ABC
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, Optional, Self, TypedDict, cast
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, Optional, Self, TypedDict, cast
 
 import xxhash
 from neo4j import spatial, time
@@ -13,9 +13,10 @@ from loomi._logger import _logger
 from loomi.exceptions import ModelError, SerializationError
 
 if TYPE_CHECKING:
-    from loomi.client._internal._base import _ServerType
+    from loomi.client._internal._base import LoomiClientConfiguration, _ServerType
 else:
     _ServerType = object
+    LoomiClientConfiguration = object
 
 _SUPPORTED_DATA_TYPES = (
     bool,
@@ -38,9 +39,43 @@ _SUPPORTED_DATA_TYPES = (
     datetime.timedelta,
 )
 
+_SUPPORTED_LIST_DATA_TYPES = (
+    bool,
+    int,
+    float,
+    str,
+    bytes,
+    bytearray,
+    time.Date,
+    time.Time,
+    time.DateTime,
+    time.Duration,
+    spatial.Point,
+    datetime.date,
+    datetime.time,
+    datetime.datetime,
+    datetime.timedelta,
+)
+
 
 class _EntityConfiguration(TypedDict, total=False):
-    serialize_nested: bool
+    serializer_fn: Callable[[Any], Any]
+    """
+    A custom function used when serializing nested objects before storing the model to the
+    database. Defaults to `json.dumps` if not defined.
+
+    [!NOTE] This function will be called for all properties which are not of a supported data type
+    after `model.model_dump()` has been called.
+    """
+
+    deserializer_fn: Callable[[Any], Any]
+    """
+    A custom function used when de-serializing nested objects before passing the data to the
+    Pydantic model. Defaults to `json.loads` if not defined.
+
+    [!NOTE] This function will be called for all properties which do not match their annotation as
+    defined on the model. For lists, this will be called for all list items.
+    """
 
 
 class _EntityBase(BaseModel, ABC):
@@ -104,15 +139,21 @@ class _EntityBase(BaseModel, ABC):
 
         return checksums
 
-    def _serialize(self, mode: _ServerType) -> Dict[str, Any]:
+    def _serialize(
+        self, mode: _ServerType, client_config: LoomiClientConfiguration
+    ) -> Dict[str, Any]:
         from loomi.client._internal._base import _ServerType
 
         model_dump = self.model_dump(by_alias=True, exclude={"element_id", "id"})
         serialized: Dict[str, Any] = {}
 
         _logger.debug("Serializing model %s to a storable format", self)
-        config = cast(_EntityConfiguration, getattr(self, "loomi_config", {}))
-        serialize_nested = config.get("serialize_nested", False)
+        model_config = cast(_EntityConfiguration, getattr(self, "loomi_config", {}))
+
+        serialize_nested = client_config.get("serialize_nested", False)
+        serializer_fn = model_config.get("serializer_fn")
+        if serializer_fn is None:
+            raise SerializationError("No `serializer_fn` available")
 
         for field_name, value in model_dump.items():
             if not isinstance(value, _SUPPORTED_DATA_TYPES):
@@ -134,7 +175,7 @@ class _EntityBase(BaseModel, ABC):
 
                     try:
                         _logger.debug("Serializing nested property %s", field_name)
-                        serialized[field_name] = json.dumps(value)
+                        serialized[field_name] = serializer_fn(value)
                         continue
                     except Exception as exc:
                         raise SerializationError(
@@ -146,7 +187,7 @@ class _EntityBase(BaseModel, ABC):
 
                     _logger.debug("Serializing list items for property %s", field_name)
                     for index, item in enumerate(value):
-                        if isinstance(item, dict):
+                        if not isinstance(item, _SUPPORTED_LIST_DATA_TYPES):
                             if not serialize_nested:
                                 raise SerializationError(
                                     "Nested data types are only supported if `serialize_nested` "
@@ -158,7 +199,7 @@ class _EntityBase(BaseModel, ABC):
                                 _logger.debug(
                                     "Serializing nested property %s", f"{field_name}[{index}]"
                                 )
-                                serialized_list.append(json.dumps(item))
+                                serialized_list.append(serializer_fn(item))
                                 continue
                             except Exception as exc:
                                 raise SerializationError(
@@ -175,14 +216,20 @@ class _EntityBase(BaseModel, ABC):
         return serialized
 
     @classmethod
-    def _deserialize(cls, obj: Dict[str, Any], mode: _ServerType) -> Self:
+    def _deserialize(
+        cls, obj: Dict[str, Any], mode: _ServerType, client_config: LoomiClientConfiguration
+    ) -> Self:
         from loomi.client._internal._base import _ServerType
 
         deserialized: Dict[str, Any] = {}
 
         _logger.debug("Deserializing object to model instance")
-        config = cast(_EntityConfiguration, getattr(cls, "loomi_config", {}))
-        serialize_nested = config.get("serialize_nested", False)
+        model_config = cast(_EntityConfiguration, getattr(cls, "loomi_config", {}))
+
+        serialize_nested = client_config.get("serialize_nested", False)
+        deserializer_fn = model_config.get("deserializer_fn")
+        if deserializer_fn is None:
+            raise SerializationError("No `deserializer_fn` available")
 
         for field_name, value in obj.items():
             resolved_field_name = cls._alias_cache.get(field_name) or field_name
@@ -199,7 +246,7 @@ class _EntityBase(BaseModel, ABC):
                 if isinstance(value, str) and field_info.annotation is not str:
                     try:
                         _logger.debug("Deserializing stringified property %s", field_name)
-                        deserialized[field_name] = json.loads(value)
+                        deserialized[field_name] = deserializer_fn(value)
                         continue
                     except Exception as exc:
                         raise SerializationError(
@@ -213,7 +260,7 @@ class _EntityBase(BaseModel, ABC):
                             field_name,
                         )
                         deserialized[field_name] = [
-                            json.loads(item) for item in value if isinstance(item, str)
+                            deserializer_fn(item) for item in value if isinstance(item, str)
                         ]
                         continue
                     except Exception as exc:
@@ -223,4 +270,12 @@ class _EntityBase(BaseModel, ABC):
 
             deserialized[field_name] = value
 
-        return cls.model_validate(deserialized, by_alias=True)
+        return cls.model_validate(deserialized)
+
+    @classmethod
+    def _init_config_defaults(cls) -> None:
+        if "serializer_fn" not in cls.loomi_config:  # type: ignore
+            cls.loomi_config["serializer_fn"] = json.dumps  # type: ignore
+
+        if "deserializer_fn" not in cls.loomi_config:  # type: ignore
+            cls.loomi_config["deserializer_fn"] = json.loads  # type: ignore

@@ -2,13 +2,56 @@ from typing import Any, Literal, Union, overload
 
 from neo4j import AsyncDriver, AsyncSession
 
-from loomi._logger import _LogContextKey, _scoped_log_ctx
-from loomi.client._internal._base import _BaseClient
+from loomi._logger import _LogContextKey, _logger, _scoped_log_ctx
+from loomi.client._internal._base import _BaseClient, _ServerType
 from loomi.client._internal.session import LoomiAsyncSession
+from loomi.exceptions import ClientError
 
 
 class LoomiAsyncClient(_BaseClient[AsyncDriver]):
-    """Database client for interacting with Loomi models."""
+    """Async database client for interacting with Loomi models."""
+
+    async def initialize(self) -> None:
+        """
+        Checks if the remote server is reachable and fetches additional required metadata.
+
+        Raises:
+            ClientError: If the remote server can not be reached or does not return required
+            metadata.
+        """
+        try:
+            _logger.info("Verifying connectivity to remote")
+            await self._driver.verify_connectivity()
+
+            _logger.info("Getting remote server information")
+            server_info = await self._driver.get_server_info()
+
+            self._server_type = (
+                _ServerType.MEMGRAPH
+                if "memgraph" in server_info.agent.lower()
+                else _ServerType.NEO4J
+            )
+
+            _logger.debug("Checking server version")
+            async with self._driver.session() as session:
+                query = (
+                    "SHOW VERSION"
+                    if self._server_type == _ServerType.MEMGRAPH
+                    else (
+                        "CALL dbms.components() YIELD name, versions "
+                        'WHERE name = "Neo4j Kernel" '
+                        "RETURN versions[0] AS version"
+                    )
+                )
+
+                result = await session.run(query)
+                version = await result.value()
+                if len(version) == 0:
+                    raise ClientError("Server did not respond with a valid version")
+
+                self._extract_version(version[0])
+        except Exception as exc:
+            raise ClientError("Could not get required metadata from remote") from exc
 
     @overload
     def session(

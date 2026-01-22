@@ -1,4 +1,3 @@
-import hashlib
 import re
 from typing import ClassVar
 
@@ -23,6 +22,7 @@ class LoomiRelationship(_EntityBase):
 
         if not hasattr(cls, "loomi_config"):
             setattr(cls, "loomi_config", LoomiRelationshipConfiguration())
+            cls._init_config_defaults()
 
         if "type" not in cls.loomi_config:
             cls.loomi_config["type"] = cls._get_normalized_type()
@@ -56,5 +56,4 @@ class LoomiRelationship(_EntityBase):
 
     @classmethod
     def _generate_loomi_hash(cls, type_: str) -> str:
-        normalized = f"r_{type_}"
-        return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+        return f"r_{type_}"

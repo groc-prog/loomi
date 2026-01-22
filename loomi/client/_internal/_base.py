@@ -1,6 +1,18 @@
 from abc import ABC
 from enum import StrEnum
-from typing import Any, Dict, Generic, Optional, Tuple, Type, TypeVar, Union, cast, overload
+from typing import (
+    Any,
+    Dict,
+    Generic,
+    Optional,
+    Tuple,
+    Type,
+    TypedDict,
+    TypeVar,
+    Union,
+    cast,
+    overload,
+)
 
 from neo4j import AsyncDriver, Driver
 from neo4j.graph import Node, Path, Relationship
@@ -20,17 +32,25 @@ class _ServerType(StrEnum):
     MEMGRAPH = "Memgraph"
 
 
+class LoomiClientConfiguration(TypedDict, total=False):
+    """TypedDict for configuring Loomi client behavior."""
+
+    serialize_nested: bool
+
+
 class _BaseClient(Generic[T], ABC):
     _driver: T
     _server_type: Optional[_ServerType]
     _server_version: Optional[Tuple[int, ...]]
     _models: Dict[str, _ModelType]
+    _configuration: LoomiClientConfiguration
 
-    def __init__(self, driver: T):
+    def __init__(self, driver: T, **config):
         self._driver = driver
         self._server_type = None
         self._server_version = None
         self._models = {}
+        self._configuration = LoomiClientConfiguration(**config)
 
     def register(self, *models: _ModelType) -> None:
         """
@@ -109,7 +129,9 @@ class _BaseClient(Generic[T], ABC):
         model = self._models[model_hash]
         _logger.debug("Transforming %s to model %s", entity, model.__name__)
 
-        instance = model._deserialize(dict(entity), self._server_type or _ServerType.NEO4J)
+        instance = model._deserialize(
+            dict(entity), self._server_type or _ServerType.NEO4J, self._configuration
+        )
         instance._id = entity.id
         instance._element_id = entity.element_id
 

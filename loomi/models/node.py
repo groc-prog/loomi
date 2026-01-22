@@ -1,4 +1,3 @@
-import hashlib
 from typing import ClassVar, List, Set, cast
 
 from loomi.exceptions import ModelError
@@ -22,6 +21,7 @@ class LoomiNode(_EntityBase):
 
         if not hasattr(cls, "loomi_config"):
             setattr(cls, "loomi_config", LoomiNodeConfiguration())
+            cls._init_config_defaults()
 
         # If not labels have been defined, fall back to the class name
         if "labels" not in cls.loomi_config:
@@ -59,5 +59,4 @@ class LoomiNode(_EntityBase):
 
     @classmethod
     def _generate_loomi_hash(cls, labels: List[str]) -> str:
-        normalized = f"n_{"_".join(sorted(labels))}"
-        return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+        return f"n_{"_".join(sorted(labels))}"
