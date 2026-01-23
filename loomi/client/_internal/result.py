@@ -50,7 +50,12 @@ class LoomiResult(_Base):
             yield Record(transformed_record)
 
     def __next__(self):
-        return self._result.__next__()
+        original_result = self._result.__next__()
+        transformed_result = [
+            (key, self._client._transform_entity(record)) for key, record in original_result.items()
+        ]
+
+        return Record(transformed_result)
 
     def peek(self):
         """
@@ -208,7 +213,12 @@ class LoomiAsyncResult(_AsyncBase):
             yield Record(transformed_record)
 
     async def __anext__(self):
-        return await self._result.__anext__()
+        original_result = await self._result.__anext__()
+        transformed_result = [
+            (key, self._client._transform_entity(record)) for key, record in original_result.items()
+        ]
+
+        return Record(transformed_result)
 
     async def peek(self):
         """

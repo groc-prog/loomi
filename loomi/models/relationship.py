@@ -47,7 +47,14 @@ class LoomiRelationship(_EntityBase):
     @classmethod
     def _merge_loomi_config(cls, config: LoomiRelationshipConfiguration) -> None:
         for key, value in config.items():
-            cls.loomi_config[key] = value
+            # We can not merge the type here and we do not want duplicate types, so
+            # we skip
+            if key == "type":
+                continue
+
+            # If the key has not been set before, always set it
+            if key not in cls.loomi_config:
+                cls.loomi_config[key] = value
 
     @classmethod
     def _get_normalized_type(cls) -> str:

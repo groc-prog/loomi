@@ -54,8 +54,6 @@ class LoomiNode(_EntityBase):
             # If the key is a set (we are dealing with labels), merge them
             if isinstance(value, set):
                 cls.loomi_config[key] = cast(Set[str], cls.loomi_config[key]).union(value)
-            else:
-                cls.loomi_config[key] = value
 
     @classmethod
     def _generate_loomi_hash(cls, labels: List[str]) -> str:

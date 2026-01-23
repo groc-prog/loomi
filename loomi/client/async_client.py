@@ -55,26 +55,27 @@ class LoomiAsyncClient(_BaseClient[AsyncDriver]):
 
     @overload
     def session(
-        self, to_models: Literal[True] = True, **session_config: Any
+        self, mode: Literal["loomi"] = "loomi", **session_config: Any
     ) -> LoomiAsyncSession: ...
 
     @overload
-    def session(self, to_models: Literal[False], **session_config: Any) -> AsyncSession: ...
+    def session(
+        self, mode: Literal["native"] = "native", **session_config: Any
+    ) -> AsyncSession: ...
 
     @_require_server_metadata
     def session(
         self,
-        to_models: bool = True,
+        mode: Union[Literal["native"], Literal["loomi"]] = "loomi",
         **session_config: Any,
     ) -> Union[AsyncSession, LoomiAsyncSession]:
         """
         Start a new session. This behaves the same as the `.session()` from the driver except it
-        will transform any entities contained in the result of any queries into their corresponding
-        models (if possible).
+        exposes additional functionality if `mode` is set to `loomi`.
 
         Args:
-            to_models (bool): Whether to transform results into registered models (if possible).
-            Defaults to `True`.
+            mode (Union[Literal["native"], Literal["loomi"]]): Whether to use a native session or a
+            Loomi session. Defaults to `loomi`.
             session_config: Key-word arguments passed to the session directly.
         """
         with _scoped_log_ctx(
@@ -85,7 +86,7 @@ class LoomiAsyncClient(_BaseClient[AsyncDriver]):
         ):
             session = self._driver.session(**session_config)
 
-            if to_models:
+            if mode == "loomi":
                 return LoomiAsyncSession(session, self)
 
             return session
