@@ -1,4 +1,4 @@
-# pylint: disable=missing-class-docstring, unused-import, redefined-outer-name
+# pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, line-too-long
 
 import pickle
 
@@ -31,8 +31,9 @@ class TestNativeAsyncSession:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        async with client.session(False) as session:
+        async with client.session("native") as session:
             assert isinstance(session, AsyncSession)
 
             result = await session.run("MATCH (n:Human) RETURN n")
@@ -63,8 +64,9 @@ class TestNativeAsyncSession:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        session = client.session(False)
+        session = client.session("native")
         assert isinstance(session, AsyncSession)
 
         result = await session.run("MATCH (n:Human) RETURN n")
@@ -94,8 +96,9 @@ class TestNativeAsyncSession:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        async with client.session(False) as session:
+        async with client.session("native") as session:
             assert isinstance(session, AsyncSession)
 
             async with await session.begin_transaction() as tx:
@@ -128,8 +131,9 @@ class TestNativeAsyncSession:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        session = client.session(False)
+        session = client.session("native")
         assert isinstance(session, AsyncSession)
 
         tx = await session.begin_transaction()
@@ -171,8 +175,9 @@ class TestLoomiAsyncSession:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        async with client.session(True) as session:
+        async with client.session("loomi") as session:
             assert isinstance(session, LoomiAsyncSession)
 
             result = await session.run("MATCH (n:Human) RETURN n")
@@ -199,8 +204,9 @@ class TestLoomiAsyncSession:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        session = client.session(True)
+        session = client.session("loomi")
         assert isinstance(session, LoomiAsyncSession)
 
         result = await session.run("MATCH (n:Human) RETURN n")
@@ -231,8 +237,9 @@ class TestLoomiAsyncSession:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human, Owns)
+        await client.initialize()
 
-        async with client.session(True) as session:
+        async with client.session("loomi") as session:
             assert isinstance(session, LoomiAsyncSession)
 
             result = await session.run(
@@ -275,8 +282,9 @@ class TestLoomiAsyncTransaction:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        async with client.session(True) as session:
+        async with client.session("loomi") as session:
             assert isinstance(session, LoomiAsyncSession)
 
             async with await session.begin_transaction() as tx:
@@ -305,8 +313,9 @@ class TestLoomiAsyncTransaction:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        session = client.session(True)
+        session = client.session("loomi")
         assert isinstance(session, LoomiAsyncSession)
 
         tx = await session.begin_transaction()
@@ -344,8 +353,9 @@ class TestLoomiAsyncTransaction:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human, Owns)
+        await client.initialize()
 
-        async with client.session(True) as session:
+        async with client.session("loomi") as session:
             async with await session.begin_transaction() as tx:
                 assert isinstance(tx, LoomiAsyncTransaction)
 
@@ -389,8 +399,9 @@ class TestNativeAsyncResult:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        async with client.session(False) as session:
+        async with client.session("native") as session:
             result = await session.run("MATCH (n:Human) RETURN n")
 
             data = await result.peek()
@@ -412,8 +423,9 @@ class TestNativeAsyncResult:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        async with client.session(False) as session:
+        async with client.session("native") as session:
             result = await session.run("MATCH (n:Human) RETURN n")
 
             data = await result.fetch(1)
@@ -435,8 +447,9 @@ class TestNativeAsyncResult:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        async with client.session(False) as session:
+        async with client.session("native") as session:
             result = await session.run("MATCH (n:Human) RETURN n")
 
             data = await result.to_eager_result()
@@ -459,8 +472,9 @@ class TestNativeAsyncResult:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        async with client.session(False) as session:
+        async with client.session("native") as session:
             result = await session.run("MATCH (n:Human) RETURN n")
 
             data = await result.single()
@@ -482,8 +496,9 @@ class TestNativeAsyncResult:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        async with client.session(False) as session:
+        async with client.session("native") as session:
             result = await session.run("MATCH (n:Human) RETURN n")
 
             data = await result.values()
@@ -506,8 +521,9 @@ class TestNativeAsyncResult:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        async with client.session(False) as session:
+        async with client.session("native") as session:
             result = await session.run("MATCH (n:Human) RETURN n")
 
             data = await result.value()
@@ -529,8 +545,9 @@ class TestNativeAsyncResult:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        async with client.session(False) as session:
+        async with client.session("native") as session:
             result = await session.run("MATCH (n:Human) RETURN n")
 
             data = await result.graph()
@@ -549,8 +566,9 @@ class TestLoomiAsyncResult:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        async with client.session(True) as session:
+        async with client.session("loomi") as session:
             result = await session.run("MATCH (n:Human) RETURN n")
 
             data = await result.peek()
@@ -569,8 +587,9 @@ class TestLoomiAsyncResult:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        async with client.session(True) as session:
+        async with client.session("loomi") as session:
             result = await session.run(
                 "MATCH (n:Human) WHERE n.name = $name RETURN n", {"name": "James"}
             )
@@ -589,8 +608,9 @@ class TestLoomiAsyncResult:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        async with client.session(True) as session:
+        async with client.session("loomi") as session:
             result = await session.run("MATCH (n:Human) RETURN n")
 
             data = await result.fetch(1)
@@ -609,8 +629,9 @@ class TestLoomiAsyncResult:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        async with client.session(True) as session:
+        async with client.session("loomi") as session:
             result = await session.run("MATCH (n:Human) RETURN n")
 
             data = await result.to_eager_result()
@@ -630,8 +651,9 @@ class TestLoomiAsyncResult:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        async with client.session(True) as session:
+        async with client.session("loomi") as session:
             result = await session.run("MATCH (n:Human) RETURN n")
 
             data = await result.single()
@@ -650,8 +672,9 @@ class TestLoomiAsyncResult:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        async with client.session(True) as session:
+        async with client.session("loomi") as session:
             result = await session.run(
                 "MATCH (n:Human) WHERE n.name = $name RETURN n", {"name": "James"}
             )
@@ -670,8 +693,9 @@ class TestLoomiAsyncResult:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        async with client.session(True) as session:
+        async with client.session("loomi") as session:
             result = await session.run("MATCH (n:Human) RETURN n")
 
             data = await result.values()
@@ -691,8 +715,9 @@ class TestLoomiAsyncResult:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        async with client.session(True) as session:
+        async with client.session("loomi") as session:
             result = await session.run("MATCH (n:Human) RETURN n")
 
             data = await result.value()
@@ -711,8 +736,9 @@ class TestLoomiAsyncResult:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        async with client.session(True) as session:
+        async with client.session("loomi") as session:
             result = await session.run("MATCH (n:Human) RETURN n")
 
             data = await result.graph()
@@ -729,8 +755,9 @@ class TestLoomiAsyncResult:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        async with client.session(True) as session:
+        async with client.session("loomi") as session:
             result = await session.run("MATCH (n:Human) RETURN n")
 
             data = await anext(result)
@@ -750,8 +777,9 @@ class TestLoomiAsyncResult:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human)
+        await client.initialize()
 
-        async with client.session(True) as session:
+        async with client.session("loomi") as session:
             result = await session.run("MATCH (n:Human) RETURN n")
 
             data = result.keys()
@@ -783,8 +811,9 @@ class TestLoomiGraph:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human, Owns)
+        await client.initialize()
 
-        async with client.session(True) as session:
+        async with client.session("loomi") as session:
             result = await session.run(
                 "MATCH (n:Human), (m:Animal), (n)-[o:OWNS]->(m), (n)-[l:LOVES]->(m) RETURN n, m, o, l"
             )
@@ -822,8 +851,9 @@ class TestLoomiGraph:
 
         client = LoomiAsyncClient(async_driver)
         client.register(PickledHuman, PickledOwns)
+        await client.initialize()
 
-        async with client.session(True) as session:
+        async with client.session("loomi") as session:
             result = await session.run(
                 "MATCH (n:Human), (m:Animal), (n)-[o:OWNS]->(m), (n)-[l:LOVES]->(m) RETURN n, m, o, l"
             )
@@ -853,8 +883,9 @@ class TestLoomiPath:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human, Owns)
+        await client.initialize()
 
-        async with client.session(True) as session:
+        async with client.session("loomi") as session:
             result = await session.run(
                 "MATCH p=(:Human)-[:OWNS]->(:Animal)-[:FED_BY]->(:Human) RETURN p"
             )
@@ -900,8 +931,9 @@ class TestLoomiPath:
 
         client = LoomiAsyncClient(async_driver)
         client.register(Human, Owns)
+        await client.initialize()
 
-        async with client.session(True) as session:
+        async with client.session("loomi") as session:
             result = await session.run(
                 "MATCH p=(:Human)-[:OWNS]->(:Animal)-[:FED_BY]->(:Human) RETURN p"
             )

@@ -1,4 +1,4 @@
-# pylint: disable=missing-class-docstring
+# pylint: disable=missing-class-docstring, line-too-long
 
 from dataclasses import dataclass
 from os import environ
@@ -7,7 +7,7 @@ from typing import Optional, cast
 import pytest
 from neo4j import AsyncGraphDatabase, GraphDatabase
 
-from loomi.models.constraint import MemgraphConstraintType, _MemgraphDataTypeMapping
+from loomi.models.constraint import _MEMGRAPH_DATA_TYPE_MAPPING, MemgraphConstraintType
 from loomi.models.index import MemgraphIndexType
 
 
@@ -71,7 +71,7 @@ def sync_driver(request):
                             session.run(f"DROP CONSTRAINT ON (n:{constraint[1]}) ASSERT {', '.join([f'n.{constraint_property}' for constraint_property in constraint[2]])} IS UNIQUE")  # type: ignore
                         case MemgraphConstraintType.DATA_TYPE.value:
                             session.run(
-                                f"DROP CONSTRAINT ON (n:{constraint[1]}) ASSERT n.{constraint[2]} IS TYPED {_MemgraphDataTypeMapping[constraint[3]]}"  # type: ignore
+                                f"DROP CONSTRAINT ON (n:{constraint[1]}) ASSERT n.{constraint[2]} IS TYPED {_MEMGRAPH_DATA_TYPE_MAPPING[constraint[3]]}"  # type: ignore
                             )
 
                 indexes = session.run("SHOW INDEX INFO")
@@ -151,7 +151,7 @@ async def async_driver(request):
                             await session.run(f"DROP CONSTRAINT ON (n:{constraint[1]}) ASSERT {', '.join([f'n.{constraint_property}' for constraint_property in constraint[2]])} IS UNIQUE")  # type: ignore
                         case MemgraphConstraintType.DATA_TYPE.value:
                             await session.run(
-                                f"DROP CONSTRAINT ON (n:{constraint[1]}) ASSERT n.{constraint[2]} IS TYPED {_MemgraphDataTypeMapping[constraint[3]]}"  # type: ignore
+                                f"DROP CONSTRAINT ON (n:{constraint[1]}) ASSERT n.{constraint[2]} IS TYPED {_MEMGRAPH_DATA_TYPE_MAPPING[constraint[3]]}"  # type: ignore
                             )
 
                 indexes = await session.run("SHOW INDEX INFO")

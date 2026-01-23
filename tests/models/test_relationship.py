@@ -1,8 +1,8 @@
-# pylint: disable=missing-class-docstring, unused-variable
+# pylint: disable=missing-class-docstring, unused-variable, unused-argument
 
 import pytest
 
-from loomi.exceptions import ModelInitializationError
+from loomi.exceptions import ModelError
 from loomi.models.relationship import LoomiRelationship
 
 
@@ -51,29 +51,54 @@ class TestInheritance:
     def test_inherits_config(self):
         """Verify that the configuration is inherited from other Loomi models."""
 
+        def serialize_1(*args, **kwargs): ...
+        def serialize_2(*args, **kwargs): ...
+
+        def deserialize_1(*args, **kwargs): ...
+        def deserialize_2(*args, **kwargs): ...
+
         class Likes(LoomiRelationship):
             loomi_config = {
                 "type": "LIKES",
+                "deserializer_fn": deserialize_1,
+                "serializer_fn": serialize_1,
             }
 
         class Loves(Likes):
+            loomi_config = {"type": "LOVES"}
+
+        class Hates(Likes):
             loomi_config = {
-                "type": "LOVES",
-                "skip_constraints": False,
+                "type": "HATES",
+                "deserializer_fn": deserialize_2,
+                "serializer_fn": serialize_2,
             }
 
         assert "type" in Loves.loomi_config
         assert Loves.loomi_config["type"] == "LOVES"
+
+        assert "serializer_fn" in Loves.loomi_config
+        assert Loves.loomi_config["serializer_fn"] is serialize_1
+
+        assert "deserializer_fn" in Loves.loomi_config
+        assert Loves.loomi_config["deserializer_fn"] is deserialize_1
+
+        assert "type" in Hates.loomi_config
+        assert Hates.loomi_config["type"] == "HATES"
+
+        assert "serializer_fn" in Hates.loomi_config
+        assert Hates.loomi_config["serializer_fn"] is serialize_2
+
+        assert "deserializer_fn" in Hates.loomi_config
+        assert Hates.loomi_config["deserializer_fn"] is deserialize_2
 
     def test_raises_if_parent_does_not_expose_config(self):
         """Verify that a exception is raised if a parent class does not expose a configuration."""
 
         class Likes(LoomiRelationship): ...
 
-        with pytest.raises(ModelInitializationError):
+        with pytest.raises(ModelError):
             Likes.loomi_config = None  # type: ignore
 
             class Loves(Likes):
-                loomi_config = {
-                    "type": "LOVES",
-                }
+                loomi_config = {"type": "LOVES"}

@@ -1,8 +1,8 @@
-# pylint: disable=missing-class-docstring, unused-variable
+# pylint: disable=missing-class-docstring, unused-variable, unused-argument
 
 import pytest
 
-from loomi.exceptions import ModelInitializationError
+from loomi.exceptions import ModelError
 from loomi.models.node import LoomiNode
 
 
@@ -40,19 +40,48 @@ class TestInheritance:
     def test_inherits_config(self):
         """Verify that the configuration is inherited from other Loomi models."""
 
+        def serialize_1(*args, **kwargs): ...
+        def serialize_2(*args, **kwargs): ...
+
+        def deserialize_1(*args, **kwargs): ...
+        def deserialize_2(*args, **kwargs): ...
+
         class Human(LoomiNode):
             loomi_config = {
                 "labels": {"Human"},
+                "deserializer_fn": deserialize_1,
+                "serializer_fn": serialize_1,
             }
 
         class Worker(Human):
             loomi_config = {
                 "labels": {"Worker"},
-                "skip_constraints": False,
+            }
+
+        class Farmer(Human):
+            loomi_config = {
+                "labels": {"Farmer"},
+                "deserializer_fn": deserialize_2,
+                "serializer_fn": serialize_2,
             }
 
         assert "labels" in Worker.loomi_config
         assert Worker.loomi_config["labels"] == {"Human", "Worker"}
+
+        assert "serializer_fn" in Worker.loomi_config
+        assert Worker.loomi_config["serializer_fn"] is serialize_1
+
+        assert "deserializer_fn" in Worker.loomi_config
+        assert Worker.loomi_config["deserializer_fn"] is deserialize_1
+
+        assert "labels" in Farmer.loomi_config
+        assert Farmer.loomi_config["labels"] == {"Human", "Farmer"}
+
+        assert "serializer_fn" in Farmer.loomi_config
+        assert Farmer.loomi_config["serializer_fn"] is serialize_2
+
+        assert "deserializer_fn" in Farmer.loomi_config
+        assert Farmer.loomi_config["deserializer_fn"] is deserialize_2
 
     def test_inherits_multiple_configs(self):
         """Verify that the configuration is inherited from multiple other Loomi models."""
@@ -101,7 +130,7 @@ class TestInheritance:
 
         class Human(LoomiNode): ...
 
-        with pytest.raises(ModelInitializationError):
+        with pytest.raises(ModelError):
             Human.loomi_config = None  # type: ignore
 
             class Worker(Human):

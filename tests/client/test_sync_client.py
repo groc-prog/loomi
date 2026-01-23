@@ -1,4 +1,4 @@
-# pylint: disable=missing-class-docstring, unused-import, redefined-outer-name
+# pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, line-too-long
 
 import pickle
 
@@ -31,8 +31,9 @@ class TestNativeSession:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        with client.session(False) as session:
+        with client.session("native") as session:
             assert isinstance(session, Session)
 
             result = session.run("MATCH (n:Human) RETURN n")
@@ -63,8 +64,9 @@ class TestNativeSession:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        session = client.session(False)
+        session = client.session("native")
         assert isinstance(session, Session)
 
         result = session.run("MATCH (n:Human) RETURN n")
@@ -94,8 +96,9 @@ class TestNativeSession:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        with client.session(False) as session:
+        with client.session("native") as session:
             assert isinstance(session, Session)
 
             with session.begin_transaction() as tx:
@@ -128,8 +131,9 @@ class TestNativeSession:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        session = client.session(False)
+        session = client.session("native")
         assert isinstance(session, Session)
 
         tx = session.begin_transaction()
@@ -171,8 +175,9 @@ class TestLoomiSession:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        with client.session(True) as session:
+        with client.session("loomi") as session:
             assert isinstance(session, LoomiSession)
 
             result = session.run("MATCH (n:Human) RETURN n")
@@ -199,8 +204,9 @@ class TestLoomiSession:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        session = client.session(True)
+        session = client.session("loomi")
         assert isinstance(session, LoomiSession)
 
         result = session.run("MATCH (n:Human) RETURN n")
@@ -231,8 +237,9 @@ class TestLoomiSession:
 
         client = LoomiClient(sync_driver)
         client.register(Human, Owns)
+        client.initialize()
 
-        with client.session(True) as session:
+        with client.session("loomi") as session:
             assert isinstance(session, LoomiSession)
 
             result = session.run(
@@ -275,8 +282,9 @@ class TestLoomiTransaction:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        with client.session(True) as session:
+        with client.session("loomi") as session:
             assert isinstance(session, LoomiSession)
 
             with session.begin_transaction() as tx:
@@ -305,8 +313,9 @@ class TestLoomiTransaction:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        session = client.session(True)
+        session = client.session("loomi")
         assert isinstance(session, LoomiSession)
 
         tx = session.begin_transaction()
@@ -344,8 +353,9 @@ class TestLoomiTransaction:
 
         client = LoomiClient(sync_driver)
         client.register(Human, Owns)
+        client.initialize()
 
-        with client.session(True) as session:
+        with client.session("loomi") as session:
             with session.begin_transaction() as tx:
                 assert isinstance(tx, LoomiTransaction)
 
@@ -389,8 +399,9 @@ class TestNativeResult:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        with client.session(False) as session:
+        with client.session("native") as session:
             result = session.run("MATCH (n:Human) RETURN n")
 
             data = result.peek()
@@ -412,8 +423,9 @@ class TestNativeResult:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        with client.session(False) as session:
+        with client.session("native") as session:
             result = session.run("MATCH (n:Human) RETURN n")
 
             data = result.fetch(1)
@@ -435,8 +447,9 @@ class TestNativeResult:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        with client.session(False) as session:
+        with client.session("native") as session:
             result = session.run("MATCH (n:Human) RETURN n")
 
             data = result.to_eager_result()
@@ -459,8 +472,9 @@ class TestNativeResult:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        with client.session(False) as session:
+        with client.session("native") as session:
             result = session.run("MATCH (n:Human) RETURN n")
 
             data = result.single()
@@ -482,8 +496,9 @@ class TestNativeResult:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        with client.session(False) as session:
+        with client.session("native") as session:
             result = session.run("MATCH (n:Human) RETURN n")
 
             data = result.values()
@@ -506,8 +521,9 @@ class TestNativeResult:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        with client.session(False) as session:
+        with client.session("native") as session:
             result = session.run("MATCH (n:Human) RETURN n")
 
             data = result.value()
@@ -529,8 +545,9 @@ class TestNativeResult:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        with client.session(False) as session:
+        with client.session("native") as session:
             result = session.run("MATCH (n:Human) RETURN n")
 
             data = result.graph()
@@ -549,8 +566,9 @@ class TestLoomiResult:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        with client.session(True) as session:
+        with client.session("loomi") as session:
             result = session.run("MATCH (n:Human) RETURN n")
 
             data = result.peek()
@@ -569,8 +587,9 @@ class TestLoomiResult:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        with client.session(True) as session:
+        with client.session("loomi") as session:
             result = session.run("MATCH (n:Human) WHERE n.name = $name RETURN n", {"name": "James"})
 
             data = result.peek()
@@ -587,8 +606,9 @@ class TestLoomiResult:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        with client.session(True) as session:
+        with client.session("loomi") as session:
             result = session.run("MATCH (n:Human) RETURN n")
 
             data = result.fetch(1)
@@ -607,8 +627,9 @@ class TestLoomiResult:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        with client.session(True) as session:
+        with client.session("loomi") as session:
             result = session.run("MATCH (n:Human) RETURN n")
 
             data = result.to_eager_result()
@@ -628,8 +649,9 @@ class TestLoomiResult:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        with client.session(True) as session:
+        with client.session("loomi") as session:
             result = session.run("MATCH (n:Human) RETURN n")
 
             data = result.single()
@@ -648,8 +670,9 @@ class TestLoomiResult:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        with client.session(True) as session:
+        with client.session("loomi") as session:
             result = session.run("MATCH (n:Human) WHERE n.name = $name RETURN n", {"name": "James"})
 
             data = result.single()
@@ -666,8 +689,9 @@ class TestLoomiResult:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        with client.session(True) as session:
+        with client.session("loomi") as session:
             result = session.run("MATCH (n:Human) RETURN n")
 
             data = result.values()
@@ -687,8 +711,9 @@ class TestLoomiResult:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        with client.session(True) as session:
+        with client.session("loomi") as session:
             result = session.run("MATCH (n:Human) RETURN n")
 
             data = result.value()
@@ -707,8 +732,9 @@ class TestLoomiResult:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        with client.session(True) as session:
+        with client.session("loomi") as session:
             result = session.run("MATCH (n:Human) RETURN n")
 
             data = result.graph()
@@ -725,8 +751,9 @@ class TestLoomiResult:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        with client.session(True) as session:
+        with client.session("loomi") as session:
             result = session.run("MATCH (n:Human) RETURN n")
 
             data = next(result)
@@ -744,8 +771,9 @@ class TestLoomiResult:
 
         client = LoomiClient(sync_driver)
         client.register(Human)
+        client.initialize()
 
-        with client.session(True) as session:
+        with client.session("loomi") as session:
             result = session.run("MATCH (n:Human) RETURN n")
 
             data = result.keys()
@@ -777,8 +805,9 @@ class TestLoomiGraph:
 
         client = LoomiClient(sync_driver)
         client.register(Human, Owns)
+        client.initialize()
 
-        with client.session(True) as session:
+        with client.session("loomi") as session:
             result = session.run(
                 "MATCH (n:Human), (m:Animal), (n)-[o:OWNS]->(m), (n)-[l:LOVES]->(m) RETURN n, m, o, l"
             )
@@ -816,8 +845,9 @@ class TestLoomiGraph:
 
         client = LoomiClient(sync_driver)
         client.register(PickledHuman, PickledOwns)
+        client.initialize()
 
-        with client.session(True) as session:
+        with client.session("loomi") as session:
             result = session.run(
                 "MATCH (n:Human), (m:Animal), (n)-[o:OWNS]->(m), (n)-[l:LOVES]->(m) RETURN n, m, o, l"
             )
@@ -847,8 +877,9 @@ class TestLoomiPath:
 
         client = LoomiClient(sync_driver)
         client.register(Human, Owns)
+        client.initialize()
 
-        with client.session(True) as session:
+        with client.session("loomi") as session:
             result = session.run("MATCH p=(:Human)-[:OWNS]->(:Animal)-[:FED_BY]->(:Human) RETURN p")
             data = result.value()
             path = data[0]
@@ -892,8 +923,9 @@ class TestLoomiPath:
 
         client = LoomiClient(sync_driver)
         client.register(Human, Owns)
+        client.initialize()
 
-        with client.session(True) as session:
+        with client.session("loomi") as session:
             result = session.run("MATCH p=(:Human)-[:OWNS]->(:Animal)-[:FED_BY]->(:Human) RETURN p")
             data = result.value()
             path = data[0]
