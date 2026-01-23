@@ -1,6 +1,5 @@
 from .annotations import (
     DataTypeConstraint,
-    DataTypeConstraintType,
     ExistenceConstraint,
     FullTextIndex,
     PointIndex,

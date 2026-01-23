@@ -35,7 +35,7 @@ class DataTypeConstraintType(StrEnum):
     POINT = "POINT"
 
 
-_MemgraphDataTypeMapping: Dict[str, str] = {
+_MEMGRAPH_DATA_TYPE_MAPPING: Dict[str, str] = {
     "LIST": DataTypeConstraintType.LIST.value,
     "MAP": DataTypeConstraintType.MAP.value,
     "DURATION": DataTypeConstraintType.DURATION.value,

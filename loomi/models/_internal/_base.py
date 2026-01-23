@@ -140,11 +140,11 @@ class _EntityBase(BaseModel, ABC):
         return checksums
 
     def _serialize(
-        self, mode: _ServerType, client_config: LoomiClientConfiguration
+        self, mode: _ServerType, client_config: LoomiClientConfiguration, **kwargs
     ) -> Dict[str, Any]:
         from loomi.client._internal._base import _ServerType
 
-        model_dump = self.model_dump(by_alias=True, exclude={"element_id", "id"})
+        model_dump = self.model_dump(by_alias=True, exclude={"element_id", "id"}, **kwargs)
         serialized: Dict[str, Any] = {}
 
         _logger.debug("Serializing model %s to a storable format", self)
