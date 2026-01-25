@@ -24,11 +24,9 @@ from loomi.models.node import LoomiNode
 from loomi.models.relationship import LoomiRelationship
 
 if TYPE_CHECKING:
-    from loomi.client._internal._base import _ServerType
     from loomi.client.async_client import LoomiAsyncClient
     from loomi.client.sync_client import LoomiClient
 else:
-    _ServerType = object
     LoomiAsyncClient = object
     LoomiClient = object
 
@@ -67,13 +65,13 @@ class _TrackingOperation(Enum):
     UPDATE = 2
 
 
-class _TrackingOperationStateState(TypedDict):
+class _TrackingOperationState(TypedDict):
     nodes: Dict[int, LoomiNode]
     relationships: Dict[int, LoomiRelationship]
 
 
 class _BaseChangeTracker(Generic[T]):
-    _state: Dict[_TrackingOperation, _TrackingOperationStateState]
+    _state: Dict[_TrackingOperation, _TrackingOperationState]
     _grouping_map: Dict[int, Tuple[int, int]]
     _session_or_tx: T
     _client: Union[LoomiClient, LoomiAsyncClient]
@@ -119,7 +117,9 @@ class _BaseChangeTracker(Generic[T]):
         obj_id = id(model)
         is_relationship = isinstance(model, LoomiRelationship)
         operation = (
-            _TrackingOperation.UPDATE if model.element_id is not None else _TrackingOperation.INSERT
+            _TrackingOperation.UPDATE
+            if model._element_id is not None
+            else _TrackingOperation.INSERT
         )
 
         with _scoped_log_ctx(
@@ -129,7 +129,48 @@ class _BaseChangeTracker(Generic[T]):
                 _LogContextKey.CHANGE_TRACKER_OPERATION: operation.name,
             }
         ):
-            if is_relationship and model.element_id is None:
+            # If the entity is already being tracked with `_TrackingOperation.DELETE`, this
+            # acts as a reversal, by either removing it from the tracker if it has not been
+            # saved to the DB or by reversing it back to `_TrackingOperation.UPDATE`
+            tracked_as_delete = self._state[_TrackingOperation.DELETE]["nodes"].get(
+                obj_id
+            ) or self._state[_TrackingOperation.DELETE]["relationships"].get(obj_id)
+            if tracked_as_delete is not None:
+                if model._element_id is not None:
+                    _logger.debug(
+                        "Persisted entity has previously been tracked as %s, updating to tracking "
+                        "operation %s",
+                        _TrackingOperation.DELETE.name,
+                        _TrackingOperation.UPDATE.name,
+                    )
+                    if is_relationship:
+                        reference = self._state[_TrackingOperation.DELETE]["relationships"].pop(
+                            obj_id
+                        )
+                        self._state[_TrackingOperation.UPDATE]["relationships"][obj_id] = reference
+                    else:
+                        reference = self._state[_TrackingOperation.DELETE]["nodes"].pop(obj_id)
+                        self._state[_TrackingOperation.UPDATE]["nodes"][obj_id] = reference
+
+                    return
+
+                if model._element_id is None:
+                    _logger.debug(
+                        "Non-persisted entity has previously been tracked as %s, removing entity "
+                        "from tracker",
+                        _TrackingOperation.DELETE.name,
+                    )
+
+                    if is_relationship:
+                        reference = self._state[_TrackingOperation.DELETE]["relationships"].pop(
+                            obj_id
+                        )
+                    else:
+                        reference = self._state[_TrackingOperation.DELETE]["nodes"].pop(obj_id)
+
+                    return
+
+            if is_relationship and model._element_id is None:
                 if start_node is None or end_node is None:
                     raise ChangeTrackerError(
                         "Both start and end nodes have to be defined when tracking a unsaved "
@@ -139,7 +180,7 @@ class _BaseChangeTracker(Generic[T]):
                 start_node_id = id(start_node)
                 start_node_operation = (
                     _TrackingOperation.UPDATE
-                    if start_node.element_id is not None
+                    if start_node._element_id is not None
                     else _TrackingOperation.INSERT
                 )
                 if start_node_id not in self._state[start_node_operation]["nodes"]:
@@ -148,7 +189,7 @@ class _BaseChangeTracker(Generic[T]):
                 end_node_id = id(end_node)
                 end_node_operation = (
                     _TrackingOperation.UPDATE
-                    if end_node.element_id is not None
+                    if end_node._element_id is not None
                     else _TrackingOperation.INSERT
                 )
                 if end_node_id not in self._state[end_node_operation]["nodes"]:
@@ -174,47 +215,6 @@ class _BaseChangeTracker(Generic[T]):
                     )
                     return
 
-                # If the entity has been persisted to the DB and tracked_state is not None at this
-                # point, it has previously been added with a `_TrackingOperation.REMOVE`
-                # This acts like a reversal, so we reset the operation type to
-                # `_TrackingOperation.UPDATE`
-                if model.element_id is not None:
-                    _logger.debug(
-                        "Persisted entity has previously been tracked as %s, updating to tracking "
-                        "operation %s",
-                        _TrackingOperation.DELETE.name,
-                        _TrackingOperation.UPDATE.name,
-                    )
-
-                    if is_relationship:
-                        reference = self._state[operation]["relationships"].pop(obj_id)
-                        self._state[_TrackingOperation.UPDATE]["relationships"][obj_id] = reference
-                    else:
-                        reference = self._state[operation]["nodes"].pop(obj_id)
-                        self._state[_TrackingOperation.UPDATE]["nodes"][obj_id] = reference
-
-                    return
-
-                # At this point we have a non persisted model which has been marked for deletion
-                # This again acts as a reversal, so we can set the operation back to
-                # `_TrackingOperation.ADD`
-                if model.element_id is None:
-                    _logger.debug(
-                        "Non-persisted entity has previously been tracked as %s, updating to "
-                        "tracking operation %s",
-                        _TrackingOperation.DELETE.name,
-                        _TrackingOperation.INSERT.name,
-                    )
-
-                    if is_relationship:
-                        reference = self._state[operation]["relationships"].pop(obj_id)
-                        self._state[_TrackingOperation.INSERT]["relationships"][obj_id] = reference
-                    else:
-                        reference = self._state[operation]["nodes"].pop(obj_id)
-                        self._state[_TrackingOperation.INSERT]["nodes"][obj_id] = reference
-
-                    return
-
             _logger.debug("Tracking new entity")
             if is_relationship:
                 self._state[operation]["relationships"][obj_id] = model
@@ -235,7 +235,9 @@ class _BaseChangeTracker(Generic[T]):
         obj_id = id(model)
         is_relationship = isinstance(model, LoomiRelationship)
         operation = (
-            _TrackingOperation.UPDATE if model.element_id is not None else _TrackingOperation.INSERT
+            _TrackingOperation.UPDATE
+            if model._element_id is not None
+            else _TrackingOperation.INSERT
         )
 
         with _scoped_log_ctx(
@@ -250,7 +252,7 @@ class _BaseChangeTracker(Generic[T]):
             else:
                 tracked_state = self._state[operation]["nodes"].get(obj_id)
 
-            if model.element_id is None:
+            if model._element_id is None:
                 if tracked_state is None:
                     raise ChangeTrackerError(
                         "Can not track a entity to be deleted if it has not been persisted "
@@ -432,7 +434,7 @@ class _BaseChangeTracker(Generic[T]):
                     )
 
                 start_node_entity_id = (
-                    start_node.element_id
+                    start_node._element_id
                     if cast(_ServerType, self._client._server_type) == _ServerType.NEO4J
                     else start_node.id
                 )
@@ -453,7 +455,7 @@ class _BaseChangeTracker(Generic[T]):
                     )
 
                 end_node_entity_id = (
-                    end_node.element_id
+                    end_node._element_id
                     if cast(_ServerType, self._client._server_type) == _ServerType.NEO4J
                     else end_node.id
                 )
@@ -728,8 +730,8 @@ class ChangeTracker(_BaseChangeTracker[Union[Session, Transaction]]):
                 # If this is called on a transaction already, we pass the responsibility of calling
                 # `.commit()` to the caller
                 _logger.debug(
-                    "Flush called on transaction, run pending changes directly on transaction without "
-                    "committing changes"
+                    "Flush called on transaction, run pending changes directly on transaction "
+                    "without committing changes"
                 )
                 for query, parameters in self._compile_node_add_operations():
                     result = self._session_or_tx.run(cast(LiteralString, query), parameters)

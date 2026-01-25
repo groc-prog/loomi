@@ -10,7 +10,7 @@ from neo4j import spatial, time
 from pydantic import BaseModel, ConfigDict, PrivateAttr, computed_field
 
 from loomi._logger import _logger
-from loomi.exceptions import ModelError, SerializationError
+from loomi.exceptions import SerializationError
 
 if TYPE_CHECKING:
     from loomi.client._internal._base import LoomiClientConfiguration, _ServerType
@@ -89,15 +89,18 @@ class _EntityBase(BaseModel, ABC):
 
     @classmethod
     def __pydantic_init_subclass__(cls, **kwargs):
-        reserved_fields = ["all_", "any_"]
-
-        for reserved in reserved_fields:
-            if reserved in cls.model_fields:
-                raise ModelError(f"{reserved} is a reserved field. Rename or remove it")
-
         for field_name, field_info in cls.model_fields.items():
             if field_info.alias is not None:
                 cls._alias_cache[field_info.alias] = field_name
+
+    def __eq__(self, value: Any) -> bool:
+        if type(self) is not type(value):
+            return False
+
+        if self._element_id is None and value._element_id is None:
+            return super().__eq__(value)
+
+        return self._element_id == value._element_id
 
     @computed_field
     @property

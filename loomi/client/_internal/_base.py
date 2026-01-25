@@ -98,7 +98,7 @@ class _BaseClient(Generic[T], ABC):
                         ),
                         model,
                     )
-                    return
+                    continue
 
                 # Normally, the hash should always be initialized, but if there is some edge case
                 # we want to make it clear

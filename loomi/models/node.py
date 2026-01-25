@@ -41,7 +41,6 @@ class LoomiNode(_EntityBase):
 
     def __repr__(self) -> str:
         labels = self.loomi_config.get("labels", set())
-
         return f"<{self.__class__.__name__} element_id={self._element_id!r} labels={labels!r}>"
 
     @classmethod
