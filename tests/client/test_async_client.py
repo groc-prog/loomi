@@ -744,7 +744,7 @@ class TestLoomiAsyncResult:
             data = await result.graph()
             assert isinstance(data, LoomiGraph)
 
-    async def test_transforms_records_from_iter(self, async_driver: AsyncDriver):
+    async def test_transforms_records_from_next(self, async_driver: AsyncDriver):
         """Verify that the method transforms results to models."""
 
         class Human(LoomiNode):
@@ -763,6 +763,26 @@ class TestLoomiAsyncResult:
             data = await anext(result)
             assert isinstance(data[0], Human)
             assert data[0].name == "John"
+
+    async def test_transforms_records_from_iter(self, async_driver: AsyncDriver):
+        """Verify that the method transforms results to models."""
+
+        class Human(LoomiNode):
+            name: str
+
+        async with async_driver.session() as session:
+            await session.run("CREATE (:Human {name: $name})", {"name": "John"})
+
+        client = LoomiAsyncClient(async_driver)
+        client.register(Human)
+        await client.initialize()
+
+        async with client.session("loomi") as session:
+            result = await session.run("MATCH (n:Human) RETURN n")
+
+            async for data in result:
+                assert isinstance(data[0], Human)
+                assert data[0].name == "John"
 
     async def test_exposes_original_result_for_non_transformed_methods(
         self, async_driver: AsyncDriver

@@ -17,6 +17,23 @@ class TestModelHash:
         assert hash_1 == hash_2
 
 
+class TestRepr:
+    def test_repr_contains_model_info(self):
+        """Verify that the repr contains similar info about the model to the neo4j package"""
+
+        class Worker(LoomiNode):
+            loomi_config = {"labels": {"Human", "Worker"}}
+
+        repr_ = repr(Worker())
+        assert repr_ == "<Worker element_id=None labels={'Worker', 'Human'}>"
+
+        worker = Worker()
+        worker._element_id = "element_id"
+
+        repr_ = repr(worker)
+        assert repr_ == "<Worker element_id='element_id' labels={'Worker', 'Human'}>"
+
+
 class TestConfiguration:
     def test_config_can_be_defined(self):
         """Verify that all configuration options can be defined via the class variable."""

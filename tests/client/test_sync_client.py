@@ -243,7 +243,7 @@ class TestLoomiSession:
             assert isinstance(session, LoomiSession)
 
             result = session.run(
-                "MATCH (n:Human), (m:Animal), (n)-[o:OWNS]->(m), (n)-[l:LOVES]->(m) RETURN n, m, o, l"
+                "MATCH (n:Human), (m:Animal), (n)-[o:OWNS]->(m), (n)-[l:LOVES]->(m) RETURN n, m, o, l, 'value'"
             )
             assert isinstance(result, LoomiResult)
 
@@ -268,6 +268,10 @@ class TestLoomiSession:
             loves = data[0][3]
             assert isinstance(loves, Relationship)
             assert loves.type == "LOVES"
+
+            primitive = data[0][4]
+            assert isinstance(primitive, str)
+            assert primitive == "value"
 
 
 class TestLoomiTransaction:
@@ -360,7 +364,7 @@ class TestLoomiTransaction:
                 assert isinstance(tx, LoomiTransaction)
 
                 result = tx.run(
-                    "MATCH (n:Human), (m:Animal), (n)-[o:OWNS]->(m), (n)-[l:LOVES]->(m) RETURN n, m, o, l"
+                    "MATCH (n:Human), (m:Animal), (n)-[o:OWNS]->(m), (n)-[l:LOVES]->(m) RETURN n, m, o, l, 'value'"
                 )
                 assert isinstance(result, LoomiResult)
 
@@ -385,6 +389,10 @@ class TestLoomiTransaction:
                 loves = data[0][3]
                 assert isinstance(loves, Relationship)
                 assert loves.type == "LOVES"
+
+                primitive = data[0][4]
+                assert isinstance(primitive, str)
+                assert primitive == "value"
 
 
 class TestNativeResult:
@@ -740,7 +748,7 @@ class TestLoomiResult:
             data = result.graph()
             assert isinstance(data, LoomiGraph)
 
-    def test_transforms_records_from_iter(self, sync_driver: Driver):
+    def test_transforms_records_from_next(self, sync_driver: Driver):
         """Verify that the method transforms results to models."""
 
         class Human(LoomiNode):
@@ -759,6 +767,26 @@ class TestLoomiResult:
             data = next(result)
             assert isinstance(data[0], Human)
             assert data[0].name == "John"
+
+    def test_transforms_records_from_iter(self, sync_driver: Driver):
+        """Verify that the method transforms results to models."""
+
+        class Human(LoomiNode):
+            name: str
+
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human {name: $name})", {"name": "John"})
+
+        client = LoomiClient(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        with client.session("loomi") as session:
+            result = session.run("MATCH (n:Human) RETURN n")
+
+            for data in result:
+                assert isinstance(data[0], Human)
+                assert data[0].name == "John"
 
     def test_exposes_original_result_for_non_transformed_methods(self, sync_driver: Driver):
         """Verify that other methods which do not return graph entities are still available."""

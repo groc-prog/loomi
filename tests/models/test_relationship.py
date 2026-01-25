@@ -18,6 +18,23 @@ class TestModelHash:
         assert hash_1 == hash_2
 
 
+class TestRepr:
+    def test_repr_contains_model_info(self):
+        """Verify that the repr contains similar info about the model to the neo4j package"""
+
+        class Likes(LoomiRelationship):
+            loomi_config = {"type": "LIKES"}
+
+        repr_ = repr(Likes())
+        assert repr_ == "<Likes element_id=None type='LIKES'>"
+
+        likes = Likes()
+        likes._element_id = "element_id"
+
+        repr_ = repr(likes)
+        assert repr_ == "<Likes element_id='element_id' type='LIKES'>"
+
+
 class TestConfiguration:
     def test_config_can_be_defined(self):
         """Verify that all configuration options can be defined via the class variable."""

@@ -23,6 +23,30 @@ class TestModelHash:
         assert hash_1 != hash_2
 
 
+class TestEqualsMagicMethod:
+
+    def test_hash_with_same_inputs_has_different_result_with_different_entity(self):
+        """
+        Verify that same inputs for node and relationship model hashes result in different
+        strings.
+        """
+
+        class Human(LoomiNode): ...
+
+        class NotAModel: ...
+
+        assert Human() == Human()
+        assert Human() != NotAModel()
+
+        human1 = Human()
+        human1._element_id = "element_id_1"
+
+        human2 = Human()
+        human2._element_id = "element_id_2"
+
+        assert human1 != human2
+
+
 class TestFieldDefaults:
     def test_model_default_values(self):
         """Verify that a model is initialized with the correct defaults for graph related fields."""
