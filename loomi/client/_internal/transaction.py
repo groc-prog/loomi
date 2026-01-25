@@ -58,11 +58,22 @@ class LoomiTransaction(_Base):
         self,
         query: LiteralString,
         parameters: Optional[Dict[str, Any]] = None,
+        tracking: bool = False,
         **kwparameters: Any,
     ):
         """
-        Method providing the same interface as `neo4j.Transaction.run`. If a entity is returned,
-        it will be transformed to it's corresponding model.
+        Method providing the same interface as `neo4j.Transaction.run`, with some additional
+        functionality. For more information on the native behavior, see `neo4j.Transaction.run`.
+
+        Args:
+            query (Union[LiteralString, Query]): See `neo4j.Transaction.run`.
+            parameters (Optional[str, Any]): See `neo4j.Transaction.run`.
+            tracking (bool): Whether results from this query should automatically be tracked
+            in the `change tracker`. Defaults to `False`.
+            kwparameters: See `neo4j.Transaction.run`.
+
+        Returns:
+            LoomiResult: A wrapper for `neo4j.Result` objects.
         """
         logging_parameters = (
             ", ".join(f"{key}={value}" for key, value in dict(**parameters, **kwparameters).items())
@@ -72,7 +83,9 @@ class LoomiTransaction(_Base):
 
         _logger.info("Query: %s -- Parameters: [%s]", query, logging_parameters)
         original_result = self._transaction.run(query, parameters, **kwparameters)
-        return LoomiResult(original_result, self._client)
+        return LoomiResult(
+            original_result, self._client, self._change_tracker if tracking else None
+        )
 
 
 class LoomiAsyncTransaction(_AsyncBase):
@@ -111,11 +124,23 @@ class LoomiAsyncTransaction(_AsyncBase):
         self,
         query: LiteralString,
         parameters: Optional[Dict[str, Any]] = None,
+        tracking: bool = False,
         **kwparameters: Any,
     ):
         """
-        Method providing the same interface as `neo4j.AsyncTransaction.run`. If a entity is
-        returned, it will be transformed to it's corresponding model.
+        Method providing the same interface as `neo4j.AsyncTransaction.run`, with some additional
+        functionality. For more information on the native behavior, see
+        `neo4j.AsyncTransaction.run`.
+
+        Args:
+            query (Union[LiteralString, Query]): See `neo4j.AsyncTransaction.run`.
+            parameters (Optional[str, Any]): See `neo4j.AsyncTransaction.run`.
+            tracking (bool): Whether results from this query should automatically be tracked
+            in the `change tracker`. Defaults to `False`.
+            kwparameters: See `neo4j.AsyncTransaction.run`.
+
+        Returns:
+            LoomiResult: A wrapper for `neo4j.AsyncResult` objects.
         """
         logging_parameters = (
             ", ".join(f"{key}={value}" for key, value in dict(**parameters, **kwparameters).items())
@@ -125,4 +150,6 @@ class LoomiAsyncTransaction(_AsyncBase):
 
         _logger.info("Query: %s -- Parameters: [%s]", query, logging_parameters)
         original_result = await self._transaction.run(query, parameters, **kwparameters)
-        return LoomiAsyncResult(original_result, self._client)
+        return LoomiAsyncResult(
+            original_result, self._client, self._change_tracker if tracking else None
+        )

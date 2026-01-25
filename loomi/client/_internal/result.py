@@ -5,7 +5,10 @@ from typing import TYPE_CHECKING, Any, List, Literal, Optional, overload
 from neo4j import AsyncResult, EagerResult, Record, Result
 from neo4j.graph import EntitySetView
 
+from loomi.client._internal._change_tracker import AsyncChangeTracker, ChangeTracker
 from loomi.models.graph import LoomiGraph
+from loomi.models.node import LoomiNode
+from loomi.models.relationship import LoomiRelationship
 
 if TYPE_CHECKING:
     from loomi.client.async_client import LoomiAsyncClient
@@ -32,10 +35,14 @@ class LoomiResult(_Base):
 
     _result: Result
     _client: LoomiClient
+    _change_tracker: Optional[ChangeTracker]
 
-    def __init__(self, result: Result, client: LoomiClient):
+    def __init__(
+        self, result: Result, client: LoomiClient, change_tracker: Optional[ChangeTracker]
+    ):
         self._result = result
         self._client = client
+        self._change_tracker = change_tracker
 
     def __getattr__(self, name: str):
         return getattr(self._result, name)
@@ -43,64 +50,101 @@ class LoomiResult(_Base):
     def __iter__(self):
         original_iterator = iter(self._result)
 
-        for record in original_iterator:
-            transformed_record = [
-                (key, self._client._transform_entity(record)) for key, record in record.items()
-            ]
+        for original_record in original_iterator:
+            transformed_record: List[Any] = []
+            for key, record in original_record.items():
+                transformed = self._client._transform_entity(record)
+                transformed_record.append((key, transformed))
+
+                if self._change_tracker is not None and isinstance(
+                    transformed, (LoomiNode, LoomiRelationship)
+                ):
+                    self._change_tracker.add(transformed)
+
             yield Record(transformed_record)
 
     def __next__(self):
         original_result = self._result.__next__()
-        transformed_result = [
-            (key, self._client._transform_entity(record)) for key, record in original_result.items()
-        ]
+        transformed_result: List[Any] = []
+        for key, record in original_result.items():
+            transformed = self._client._transform_entity(record)
+            transformed_result.append((key, transformed))
+
+            if self._change_tracker is not None and isinstance(
+                transformed, (LoomiNode, LoomiRelationship)
+            ):
+                self._change_tracker.add(transformed)
 
         return Record(transformed_result)
 
     def peek(self):
         """
         Method providing the same interface as `neo4j.Result.peek`. If a entity is returned,
-        it will be transformed to it's corresponding model.
+        it will be transformed to it's corresponding model if that model has been registered with
+        the client.
         """
         original_result = self._result.peek()
         if original_result is None:
             return original_result
 
-        transformed_result = [
-            (key, self._client._transform_entity(record)) for key, record in original_result.items()
-        ]
+        transformed_result: List[Any] = []
+        for key, record in original_result.items():
+            transformed = self._client._transform_entity(record)
+            transformed_result.append((key, transformed))
+
+            if self._change_tracker is not None and isinstance(
+                transformed, (LoomiNode, LoomiRelationship)
+            ):
+                self._change_tracker.add(transformed)
 
         return Record(transformed_result)
 
     def fetch(self, n: int):
         """
-        Method providing the same interface as `neo4j.Result.fetch`. If entities are returned,
-        they will be transformed to their corresponding models.
+        Method providing the same interface as `neo4j.Result.fetch`. All returned entities will be
+        transformed to their corresponding models if that model has been registered with
+        the client.
         """
         original_result = self._result.fetch(n)
 
         transformed_result: List[Record] = []
-        for result in original_result:
-            transformed_record = [
-                (key, self._client._transform_entity(record)) for key, record in result.items()
-            ]
+        for original_record in original_result:
+            transformed_record: List[Any] = []
+            for key, record in original_record.items():
+                self._client._transform_entity(record)
+                transformed = self._client._transform_entity(record)
+                transformed_record.append((key, transformed))
+
+                if self._change_tracker is not None and isinstance(
+                    transformed, (LoomiNode, LoomiRelationship)
+                ):
+                    self._change_tracker.add(transformed)
+
             transformed_result.append(Record(transformed_record))
 
         return transformed_result
 
     def to_eager_result(self):
         """
-        Method providing the same interface as `neo4j.Result.to_eager_result`. If entities are
-        returned, they will be transformed to their corresponding models.
+        Method providing the same interface as `neo4j.Result.to_eager_result`. All returned entities
+        will be transformed to their corresponding models if that model has been registered with
+        the client.
         """
         original_result = self._result.to_eager_result()
 
         transformed_result: List[Record] = []
         for original_record in original_result.records:
-            transformed_record = [
-                (key, self._client._transform_entity(record))
-                for key, record in original_record.items()
-            ]
+            transformed_record: List[Any] = []
+            for key, record in original_record.items():
+                self._client._transform_entity(record)
+                transformed = self._client._transform_entity(record)
+                transformed_record.append((key, transformed))
+
+                if self._change_tracker is not None and isinstance(
+                    transformed, (LoomiNode, LoomiRelationship)
+                ):
+                    self._change_tracker.add(transformed)
+
             transformed_result.append(Record(transformed_record))
 
         return EagerResult(transformed_result, original_result.summary, original_result.keys)
@@ -115,22 +159,30 @@ class LoomiResult(_Base):
     def single(self, strict: bool = False) -> Optional[Record]:
         """
         Method providing the same interface as `neo4j.Result.single`. If a entity is returned,
-        it will be transformed to it's corresponding model.
+        it will be transformed to it's corresponding model if that model has been registered with
+        the client.
         """
         original_result = self._result.single(strict)
         if original_result is None:
             return original_result
 
-        transformed_result = [
-            (key, self._client._transform_entity(record)) for key, record in original_result.items()
-        ]
+        transformed_result: List[Any] = []
+        for key, record in original_result.items():
+            transformed = self._client._transform_entity(record)
+            transformed_result.append((key, transformed))
+
+            if self._change_tracker is not None and isinstance(
+                transformed, (LoomiNode, LoomiRelationship)
+            ):
+                self._change_tracker.add(transformed)
 
         return Record(transformed_result)
 
     def values(self, *keys: TResultKey):
         """
         Method providing the same interface as `neo4j.Result.values`. Entities returned in
-        the values list will be transformed to their corresponding models.
+        the values list will be transformed to their corresponding models if that model has
+        been registered with the client.
         """
         original_result = self._result.values(*keys)
 
@@ -139,7 +191,13 @@ class LoomiResult(_Base):
             transformed_list: List[Any] = []
 
             for result in result_list:
-                transformed_list.append(self._client._transform_entity(result))
+                transformed = self._client._transform_entity(result)
+                transformed_list.append(transformed)
+
+                if self._change_tracker is not None and isinstance(
+                    transformed, (LoomiNode, LoomiRelationship)
+                ):
+                    self._change_tracker.add(transformed)
 
             transformed_result.append(transformed_list)
 
@@ -148,13 +206,20 @@ class LoomiResult(_Base):
     def value(self, key=0, default=None):
         """
         Method providing the same interface as `neo4j.Result.value`. Entities returned in
-        the values list will be transformed to their corresponding models.
+        the values list will be transformed to their corresponding models if that model has
+        been registered with the client.
         """
         original_result = self._result.value(key, default)
 
         transformed_result: List[Any] = []
         for result in original_result:
-            transformed_result.append(self._client._transform_entity(result))
+            transformed = self._client._transform_entity(result)
+            transformed_result.append(transformed)
+
+            if self._change_tracker is not None and isinstance(
+                transformed, (LoomiNode, LoomiRelationship)
+            ):
+                self._change_tracker.add(transformed)
 
         return transformed_result
 
@@ -169,14 +234,20 @@ class LoomiResult(_Base):
         original_result = self._result.graph()
         graph = LoomiGraph()
 
-        graph._nodes = {
-            element_id: self._client._transform_entity(node)
-            for element_id, node in original_result._nodes.items()
-        }
-        graph._relationships = {
-            element_id: self._client._transform_entity(relationship)
-            for element_id, relationship in original_result._relationships.items()
-        }
+        for element_id, node in original_result._nodes.items():
+            transformed = self._client._transform_entity(node)
+            graph._nodes[element_id] = transformed
+
+            if self._change_tracker is not None and isinstance(transformed, LoomiNode):
+                self._change_tracker.add(transformed)
+
+        for element_id, relationship in original_result._relationships.items():
+            transformed = self._client._transform_entity(relationship)
+            graph._relationships[element_id] = transformed
+
+            if self._change_tracker is not None and isinstance(transformed, LoomiRelationship):
+                self._change_tracker.add(transformed)
+
         graph._relationship_types = {
             type_: self._client._relationship_type_to_model(type_) or relationship
             for type_, relationship in original_result._relationship_types.items()
@@ -195,10 +266,17 @@ class LoomiAsyncResult(_AsyncBase):
 
     _result: AsyncResult
     _client: LoomiAsyncClient
+    _change_tracker: Optional[AsyncChangeTracker]
 
-    def __init__(self, result: AsyncResult, client: LoomiAsyncClient):
+    def __init__(
+        self,
+        result: AsyncResult,
+        client: LoomiAsyncClient,
+        change_tracker: Optional[AsyncChangeTracker],
+    ):
         self._result = result
         self._client = client
+        self._change_tracker = change_tracker
 
     def __getattr__(self, name: str):
         return getattr(self._result, name)
@@ -206,64 +284,101 @@ class LoomiAsyncResult(_AsyncBase):
     async def __aiter__(self):
         original_iterator = aiter(self._result)
 
-        async for record in original_iterator:
-            transformed_record = [
-                (key, self._client._transform_entity(record)) for key, record in record.items()
-            ]
+        async for original_record in original_iterator:
+            transformed_record: List[Any] = []
+            for key, record in original_record.items():
+                transformed = self._client._transform_entity(record)
+                transformed_record.append((key, transformed))
+
+                if self._change_tracker is not None and isinstance(
+                    transformed, (LoomiNode, LoomiRelationship)
+                ):
+                    self._change_tracker.add(transformed)
+
             yield Record(transformed_record)
 
     async def __anext__(self):
         original_result = await self._result.__anext__()
-        transformed_result = [
-            (key, self._client._transform_entity(record)) for key, record in original_result.items()
-        ]
+        transformed_result: List[Any] = []
+        for key, record in original_result.items():
+            transformed = self._client._transform_entity(record)
+            transformed_result.append((key, transformed))
+
+            if self._change_tracker is not None and isinstance(
+                transformed, (LoomiNode, LoomiRelationship)
+            ):
+                self._change_tracker.add(transformed)
 
         return Record(transformed_result)
 
     async def peek(self):
         """
         Method providing the same interface as `neo4j.Result.peek`. If a entity is returned,
-        it will be transformed to it's corresponding model.
+        it will be transformed to it's corresponding model if that model has been registered with
+        the client.
         """
         original_result = await self._result.peek()
         if original_result is None:
             return original_result
 
-        transformed_result = [
-            (key, self._client._transform_entity(record)) for key, record in original_result.items()
-        ]
+        transformed_result: List[Any] = []
+        for key, record in original_result.items():
+            transformed = self._client._transform_entity(record)
+            transformed_result.append((key, transformed))
+
+            if self._change_tracker is not None and isinstance(
+                transformed, (LoomiNode, LoomiRelationship)
+            ):
+                self._change_tracker.add(transformed)
 
         return Record(transformed_result)
 
     async def fetch(self, n: int):
         """
-        Method providing the same interface as `neo4j.Result.fetch`. If entities are returned,
-        they will be transformed to their corresponding models.
+        Method providing the same interface as `neo4j.Result.fetch`. All returned entities will be
+        transformed to their corresponding models if that model has been registered with
+        the client.
         """
         original_result = await self._result.fetch(n)
 
         transformed_result: List[Record] = []
-        for result in original_result:
-            transformed_record = [
-                (key, self._client._transform_entity(record)) for key, record in result.items()
-            ]
+        for original_record in original_result:
+            transformed_record: List[Any] = []
+            for key, record in original_record.items():
+                self._client._transform_entity(record)
+                transformed = self._client._transform_entity(record)
+                transformed_record.append((key, transformed))
+
+                if self._change_tracker is not None and isinstance(
+                    transformed, (LoomiNode, LoomiRelationship)
+                ):
+                    self._change_tracker.add(transformed)
+
             transformed_result.append(Record(transformed_record))
 
         return transformed_result
 
     async def to_eager_result(self):
         """
-        Method providing the same interface as `neo4j.Result.to_eager_result`. If entities are
-        returned, they will be transformed to their corresponding models.
+        Method providing the same interface as `neo4j.Result.to_eager_result`. All returned entities
+        will be transformed to their corresponding models if that model has been registered with
+        the client.
         """
         original_result = await self._result.to_eager_result()
 
         transformed_result: List[Record] = []
         for original_record in original_result.records:
-            transformed_record = [
-                (key, self._client._transform_entity(record))
-                for key, record in original_record.items()
-            ]
+            transformed_record: List[Any] = []
+            for key, record in original_record.items():
+                self._client._transform_entity(record)
+                transformed = self._client._transform_entity(record)
+                transformed_record.append((key, transformed))
+
+                if self._change_tracker is not None and isinstance(
+                    transformed, (LoomiNode, LoomiRelationship)
+                ):
+                    self._change_tracker.add(transformed)
+
             transformed_result.append(Record(transformed_record))
 
         return EagerResult(transformed_result, original_result.summary, original_result.keys)
@@ -278,22 +393,30 @@ class LoomiAsyncResult(_AsyncBase):
     async def single(self, strict: bool = False) -> Optional[Record]:
         """
         Method providing the same interface as `neo4j.Result.single`. If a entity is returned,
-        it will be transformed to it's corresponding model.
+        it will be transformed to it's corresponding model if that model has been registered with
+        the client.
         """
         original_result = await self._result.single(strict)
         if original_result is None:
             return original_result
 
-        transformed_result = [
-            (key, self._client._transform_entity(record)) for key, record in original_result.items()
-        ]
+        transformed_result: List[Any] = []
+        for key, record in original_result.items():
+            transformed = self._client._transform_entity(record)
+            transformed_result.append((key, transformed))
+
+            if self._change_tracker is not None and isinstance(
+                transformed, (LoomiNode, LoomiRelationship)
+            ):
+                self._change_tracker.add(transformed)
 
         return Record(transformed_result)
 
     async def values(self, *keys: TResultKey):
         """
         Method providing the same interface as `neo4j.Result.values`. Entities returned in
-        the values list will be transformed to their corresponding models.
+        the values list will be transformed to their corresponding models if that model has
+        been registered with the client.
         """
         original_result = await self._result.values(*keys)
 
@@ -302,7 +425,13 @@ class LoomiAsyncResult(_AsyncBase):
             transformed_list: List[Any] = []
 
             for result in result_list:
-                transformed_list.append(self._client._transform_entity(result))
+                transformed = self._client._transform_entity(result)
+                transformed_list.append(transformed)
+
+                if self._change_tracker is not None and isinstance(
+                    transformed, (LoomiNode, LoomiRelationship)
+                ):
+                    self._change_tracker.add(transformed)
 
             transformed_result.append(transformed_list)
 
@@ -311,13 +440,20 @@ class LoomiAsyncResult(_AsyncBase):
     async def value(self, key=0, default=None):
         """
         Method providing the same interface as `neo4j.Result.value`. Entities returned in
-        the values list will be transformed to their corresponding models.
+        the values list will be transformed to their corresponding models if that model has
+        been registered with the client.
         """
         original_result = await self._result.value(key, default)
 
         transformed_result: List[Any] = []
         for result in original_result:
-            transformed_result.append(self._client._transform_entity(result))
+            transformed = self._client._transform_entity(result)
+            transformed_result.append(transformed)
+
+            if self._change_tracker is not None and isinstance(
+                transformed, (LoomiNode, LoomiRelationship)
+            ):
+                self._change_tracker.add(transformed)
 
         return transformed_result
 
@@ -334,14 +470,20 @@ class LoomiAsyncResult(_AsyncBase):
         original_result = await self._result.graph()
         graph = LoomiGraph()
 
-        graph._nodes = {
-            element_id: self._client._transform_entity(node)
-            for element_id, node in original_result._nodes.items()
-        }
-        graph._relationships = {
-            element_id: self._client._transform_entity(relationship)
-            for element_id, relationship in original_result._relationships.items()
-        }
+        for element_id, node in original_result._nodes.items():
+            transformed = self._client._transform_entity(node)
+            graph._nodes[element_id] = transformed
+
+            if self._change_tracker is not None and isinstance(transformed, LoomiNode):
+                self._change_tracker.add(transformed)
+
+        for element_id, relationship in original_result._relationships.items():
+            transformed = self._client._transform_entity(relationship)
+            graph._relationships[element_id] = transformed
+
+            if self._change_tracker is not None and isinstance(transformed, LoomiRelationship):
+                self._change_tracker.add(transformed)
+
         graph._relationship_types = {
             type_: self._client._relationship_type_to_model(type_) or relationship
             for type_, relationship in original_result._relationship_types.items()

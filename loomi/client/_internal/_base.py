@@ -75,6 +75,12 @@ class _BaseClient(Generic[T], ABC):
         self._models = {}
         self._configuration = LoomiClientConfiguration(**config)
 
+    def __repr__(self) -> str:
+        return (
+            f"<{self.__class__.__name__} driver={self._driver.__class__.__name__} "
+            f"server_type={self._server_type} server_version={self._server_version}>"
+        )
+
     def register(self, *models: _ModelType) -> None:
         """
         Registers models with the current client. Models which have not been registered can not be
@@ -92,10 +98,7 @@ class _BaseClient(Generic[T], ABC):
             for model in models:
                 if not issubclass(model, (LoomiNode, LoomiRelationship)):
                     _logger.warning(
-                        (
-                            "Invalid model %s provided during model registration. Class ",
-                            "will be ignored",
-                        ),
+                        "Invalid model %s provided during model registration, skipping",
                         model,
                     )
                     continue
@@ -103,7 +106,10 @@ class _BaseClient(Generic[T], ABC):
                 # Normally, the hash should always be initialized, but if there is some edge case
                 # we want to make it clear
                 if model._hash is None:
-                    raise ModelError(f"Hash on model {model.__name__} is not initialized")
+                    raise ModelError(
+                        f"Hash on model {model.__name__} is not initialized. Maybe you forgot to "
+                        f"call {model.model_rebuild.__name__}?"
+                    )
 
                 _logger.debug("Registering model %s with client %s", model, self)
                 self._models[model._hash] = model
@@ -143,8 +149,7 @@ class _BaseClient(Generic[T], ABC):
 
         if model_hash not in self._models:
             _logger.warning(
-                "No model with hash %s registered with client. Record will not be resolved "
-                "to model",
+                "No model with hash %s registered with client. Record will not be resolved",
                 model_hash,
             )
             return entity
@@ -165,8 +170,7 @@ class _BaseClient(Generic[T], ABC):
 
         if model_hash not in self._models:
             _logger.warning(
-                "No model with hash %s registered with client. Record will not be resolved "
-                "to model",
+                "No model with hash %s registered with client. Record will not be resolved",
                 model_hash,
             )
             return None

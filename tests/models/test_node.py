@@ -22,16 +22,16 @@ class TestRepr:
         """Verify that the repr contains similar info about the model to the neo4j package"""
 
         class Worker(LoomiNode):
-            loomi_config = {"labels": {"Human", "Worker"}}
+            loomi_config = {"labels": {"Worker"}}
 
         repr_ = repr(Worker())
-        assert repr_ == "<Worker element_id=None labels={'Worker', 'Human'}>"
+        assert repr_ == "<Worker element_id=None labels={'Worker'}>"
 
         worker = Worker()
         worker._element_id = "element_id"
 
         repr_ = repr(worker)
-        assert repr_ == "<Worker element_id='element_id' labels={'Worker', 'Human'}>"
+        assert repr_ == "<Worker element_id='element_id' labels={'Worker'}>"
 
 
 class TestConfiguration:

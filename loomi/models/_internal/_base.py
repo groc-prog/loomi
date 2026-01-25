@@ -182,7 +182,7 @@ class _EntityBase(BaseModel, ABC):
                         continue
                     except Exception as exc:
                         raise SerializationError(
-                            f"Property {field_name} is not JSON serializable"
+                            f"Property {field_name} is not serializable"
                         ) from exc
 
                 if isinstance(value, list):
@@ -206,7 +206,7 @@ class _EntityBase(BaseModel, ABC):
                                 continue
                             except Exception as exc:
                                 raise SerializationError(
-                                    f"Property {field_name}[{index}] is not JSON serializable"
+                                    f"Property {field_name}[{index}] is not serializable"
                                 ) from exc
 
                         serialized_list.append(item)
@@ -232,7 +232,10 @@ class _EntityBase(BaseModel, ABC):
         serialize_nested = client_config.get("serialize_nested", False)
         deserializer_fn = model_config.get("deserializer_fn")
         if deserializer_fn is None:
-            raise SerializationError("No `deserializer_fn` available")
+            raise SerializationError(
+                "No `deserializer_fn` available. Maybe you forgot to "
+                f"call {cls.model_rebuild.__name__}?"
+            )
 
         for field_name, value in obj.items():
             resolved_field_name = cls._alias_cache.get(field_name) or field_name
@@ -248,18 +251,18 @@ class _EntityBase(BaseModel, ABC):
             if mode == _ServerType.NEO4J and serialize_nested and isinstance(value, (str, list)):
                 if isinstance(value, str) and field_info.annotation is not str:
                     try:
-                        _logger.debug("Deserializing stringified property %s", field_name)
+                        _logger.debug("Deserializing property %s", field_name)
                         deserialized[field_name] = deserializer_fn(value)
                         continue
                     except Exception as exc:
                         raise SerializationError(
-                            f"Stringified value at {field_name} is not valid JSON"
+                            f"Serialized value at {field_name} could not be deserialized"
                         ) from exc
 
                 if isinstance(value, list):
                     try:
                         _logger.debug(
-                            "Deserializing possibly stringified list items at property %s",
+                            "Deserializing list items at property %s",
                             field_name,
                         )
                         deserialized[field_name] = [
@@ -268,7 +271,7 @@ class _EntityBase(BaseModel, ABC):
                         continue
                     except Exception as exc:
                         raise SerializationError(
-                            f"Stringified value at {field_name} is not valid JSON"
+                            f"Serialized value at {field_name} could not be deserialized"
                         ) from exc
 
             deserialized[field_name] = value

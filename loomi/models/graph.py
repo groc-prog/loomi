@@ -27,16 +27,16 @@ class LoomiGraph:
 
     @property
     def nodes(self) -> EntitySetView[Union[LoomiNode, Node]]:
-        """See `neo4j.graph.Graph.nodes`."""
+        """Property providing the same interface as `neo4j.graph.Graph.nodes`."""
         return self._node_set_view
 
     @property
     def relationships(self) -> EntitySetView[Union[LoomiRelationship, Relationship]]:
-        """See `neo4j.graph.Graph.relationships`."""
+        """Property providing the same interface as `neo4j.graph.Graph.relationships`."""
         return self._relationship_set_view
 
     def relationship_type(self, name: str) -> Type[Union[LoomiRelationship, Relationship]]:
-        """See `neo4j.graph.Graph.relationship_type`."""
+        """Property providing the same interface as `neo4j.graph.Graph.relationship_type`."""
         try:
             cls = self._relationship_types[name]
         except KeyError:

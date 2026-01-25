@@ -59,14 +59,25 @@ class LoomiSession(_Base):
         self,
         query: Union[LiteralString, Query],
         parameters: Dict[str, Any] | None = None,
+        tracking: bool = False,
         **kwargs: Any,
     ) -> LoomiResult:
         """
-        Method providing the same interface as `neo4j.Session.run`. If a entity is returned,
-        it will be transformed to it's corresponding model.
+        Method providing the same interface as `neo4j.Session.run`, with some additional
+        functionality. For more information on the native behavior, see `neo4j.Session.run`.
+
+        Args:
+            query (Union[LiteralString, Query]): See `neo4j.Session.run`.
+            parameters (Optional[str, Any]): See `neo4j.Session.run`.
+            tracking (bool): Whether results from this query should automatically be tracked
+            in the `change tracker`. Defaults to `False`.
+            kwargs: See `neo4j.Session.run`.
+
+        Returns:
+            LoomiResult: A wrapper for `neo4j.Result` objects.
         """
         logging_parameters = (
-            ", ".join(f"{key}={value}" for key, value in dict(**parameters, **kwargs).items())
+            ", ".join(f"{key}={value}" for key, value in {**parameters, **kwargs}.items())
             if parameters is not None
             else ""
         )
@@ -74,7 +85,9 @@ class LoomiSession(_Base):
 
         _logger.info("Query: %s -- Parameters: [%s]", logging_query, logging_parameters)
         original_result = self._session.run(query, parameters, **kwargs)
-        return LoomiResult(original_result, self._client)
+        return LoomiResult(
+            original_result, self._client, self._change_tracker if tracking else None
+        )
 
     def begin_transaction(
         self, metadata: Dict[str, Any] | None = None, timeout: float | None = None
@@ -123,11 +136,22 @@ class LoomiAsyncSession(_AsyncBase):
         self,
         query: Union[LiteralString, Query],
         parameters: Dict[str, Any] | None = None,
+        tracking: bool = False,
         **kwargs: Any,
     ) -> LoomiAsyncResult:
         """
-        Method providing the same interface as `neo4j.AsyncSession.run`. If a entity is returned,
-        it will be transformed to it's corresponding model.
+        Method providing the same interface as `neo4j.AsyncSession.run`, with some additional
+        functionality. For more information on the native behavior, see `neo4j.AsyncSession.run`.
+
+        Args:
+            query (Union[LiteralString, Query]): See `neo4j.AsyncSession.run`.
+            parameters (Optional[str, Any]): See `neo4j.AsyncSession.run`.
+            tracking (bool): Whether results from this query should automatically be tracked
+            in the `change tracker`. Defaults to `False`.
+            kwargs: See `neo4j.AsyncSession.run`.
+
+        Returns:
+            LoomiResult: A wrapper for `neo4j.AsyncResult` objects.
         """
         logging_parameters = (
             ", ".join(f"{key}={value}" for key, value in dict(**parameters, **kwargs).items())
@@ -138,7 +162,9 @@ class LoomiAsyncSession(_AsyncBase):
 
         _logger.info("Query: %s -- Parameters: [%s]", logging_query, logging_parameters)
         original_result = await self._session.run(query, parameters, **kwargs)
-        return LoomiAsyncResult(original_result, self._client)
+        return LoomiAsyncResult(
+            original_result, self._client, self._change_tracker if tracking else None
+        )
 
     async def begin_transaction(
         self, metadata: Dict[str, Any] | None = None, timeout: float | None = None
