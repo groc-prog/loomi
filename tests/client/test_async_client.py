@@ -1,4 +1,4 @@
-# pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, line-too-long
+# pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, line-too-long, unused-argument
 
 import pickle
 
@@ -13,11 +13,13 @@ from loomi.models.graph import LoomiGraph
 from loomi.models.node import LoomiNode
 from loomi.models.path import LoomiPath
 from loomi.models.relationship import LoomiRelationship
-from tests.fixtures.db import async_driver
+from tests.fixtures.db import DriverSpec, async_driver, driver_spec
 
 
 class TestNativeAsyncSession:
-    async def test_session_works_with_context_manager(self, async_driver: AsyncDriver):
+    async def test_session_works_with_context_manager(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """
         Verify that the session behaves like the original session without transformation when
         used with a context manager.
@@ -50,7 +52,9 @@ class TestNativeAsyncSession:
             assert "name" in properties
             assert properties["name"] == "John"
 
-    async def test_session_works_with_manual_management(self, async_driver: AsyncDriver):
+    async def test_session_works_with_manual_management(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """
         Verify that the session behaves like the original session without transformation when
         session is managed manually.
@@ -85,7 +89,9 @@ class TestNativeAsyncSession:
 
         await session.close()
 
-    async def test_transaction_works_with_context_manager(self, async_driver: AsyncDriver):
+    async def test_transaction_works_with_context_manager(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """
         Verify that the transaction behaves like the original transaction without transformation
         when used with a context manager.
@@ -120,7 +126,9 @@ class TestNativeAsyncSession:
                 assert "name" in properties
                 assert properties["name"] == "John"
 
-    async def test_transaction_works_with_manual_management(self, async_driver: AsyncDriver):
+    async def test_transaction_works_with_manual_management(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """
         Verify that the transaction behaves like the original transaction without transformation
         when transaction is managed manually.
@@ -161,7 +169,9 @@ class TestNativeAsyncSession:
 
 
 class TestLoomiAsyncSession:
-    async def test_session_works_with_context_manager(self, async_driver: AsyncDriver):
+    async def test_session_works_with_context_manager(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """
         Verify that the session behaves like the original session with transformation when
         used with a context manager.
@@ -190,7 +200,9 @@ class TestLoomiAsyncSession:
             assert isinstance(node, Human)
             assert node.name == "John"
 
-    async def test_session_works_with_manual_management(self, async_driver: AsyncDriver):
+    async def test_session_works_with_manual_management(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """
         Verify that the session behaves like the original session with transformation when
         session is managed manually.
@@ -221,7 +233,9 @@ class TestLoomiAsyncSession:
 
         await session.close()
 
-    async def test_session_partially_resolves_entities(self, async_driver: AsyncDriver):
+    async def test_session_partially_resolves_entities(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """Verify that only registered models get transformed."""
 
         class Human(LoomiNode):
@@ -271,7 +285,9 @@ class TestLoomiAsyncSession:
 
 
 class TestLoomiAsyncTransaction:
-    async def test_transaction_works_with_context_manager(self, async_driver: AsyncDriver):
+    async def test_transaction_works_with_context_manager(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """
         Verify that the transaction behaves like the original transaction with transformation
         when used with a context manager.
@@ -302,7 +318,9 @@ class TestLoomiAsyncTransaction:
                 assert isinstance(node, Human)
                 assert node.name == "John"
 
-    async def test_transaction_works_with_manual_management(self, async_driver: AsyncDriver):
+    async def test_transaction_works_with_manual_management(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """
         Verify that the transaction behaves like the original transaction without transformation
         when transaction is managed manually.
@@ -337,7 +355,9 @@ class TestLoomiAsyncTransaction:
         await tx.close()
         await session.close()
 
-    async def test_transaction_partially_resolves_entities(self, async_driver: AsyncDriver):
+    async def test_transaction_partially_resolves_entities(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """Verify that only registered models get transformed."""
 
         class Human(LoomiNode):
@@ -388,7 +408,9 @@ class TestLoomiAsyncTransaction:
 
 
 class TestNativeAsyncResult:
-    async def test_keeps_original_records_from_peek(self, async_driver: AsyncDriver):
+    async def test_keeps_original_records_from_peek(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """Verify that the method returns the unchanged results."""
 
         class Human(LoomiNode):
@@ -412,7 +434,9 @@ class TestNativeAsyncResult:
             assert "name" in properties
             assert properties["name"] == "John"
 
-    async def test_keeps_original_records_from_fetch(self, async_driver: AsyncDriver):
+    async def test_keeps_original_records_from_fetch(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """Verify that the method returns the unchanged results."""
 
         class Human(LoomiNode):
@@ -436,7 +460,9 @@ class TestNativeAsyncResult:
             assert "name" in properties
             assert properties["name"] == "John"
 
-    async def test_keeps_original_records_from_to_eager_result(self, async_driver: AsyncDriver):
+    async def test_keeps_original_records_from_to_eager_result(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """Verify that the method returns the unchanged results."""
 
         class Human(LoomiNode):
@@ -461,7 +487,9 @@ class TestNativeAsyncResult:
             assert "name" in properties
             assert properties["name"] == "John"
 
-    async def test_keeps_original_records_from_single(self, async_driver: AsyncDriver):
+    async def test_keeps_original_records_from_single(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """Verify that the method returns the unchanged results."""
 
         class Human(LoomiNode):
@@ -485,7 +513,9 @@ class TestNativeAsyncResult:
             assert "name" in properties
             assert properties["name"] == "John"
 
-    async def test_keeps_original_records_from_values(self, async_driver: AsyncDriver):
+    async def test_keeps_original_records_from_values(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """Verify that the method returns the unchanged results."""
 
         class Human(LoomiNode):
@@ -510,7 +540,9 @@ class TestNativeAsyncResult:
             assert "name" in properties
             assert properties["name"] == "John"
 
-    async def test_keeps_original_records_from_value(self, async_driver: AsyncDriver):
+    async def test_keeps_original_records_from_value(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """Verify that the method returns the unchanged results."""
 
         class Human(LoomiNode):
@@ -534,7 +566,9 @@ class TestNativeAsyncResult:
             assert "name" in properties
             assert properties["name"] == "John"
 
-    async def test_keeps_original_records_from_graph(self, async_driver: AsyncDriver):
+    async def test_keeps_original_records_from_graph(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """Verify that the method returns the unchanged results."""
 
         class Human(LoomiNode):
@@ -555,7 +589,9 @@ class TestNativeAsyncResult:
 
 
 class TestLoomiAsyncResult:
-    async def test_transforms_records_from_peek(self, async_driver: AsyncDriver):
+    async def test_transforms_records_from_peek(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """Verify that the method transforms results to models."""
 
         class Human(LoomiNode):
@@ -576,7 +612,9 @@ class TestLoomiAsyncResult:
             assert isinstance(data[0], Human)
             assert data[0].name == "John"
 
-    async def test_transforms_records_from_peek_with_no_result(self, async_driver: AsyncDriver):
+    async def test_transforms_records_from_peek_with_no_result(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """Verify that the method returns none if no results are returned."""
 
         class Human(LoomiNode):
@@ -597,7 +635,9 @@ class TestLoomiAsyncResult:
             data = await result.peek()
             assert data is None
 
-    async def test_transforms_records_from_fetch(self, async_driver: AsyncDriver):
+    async def test_transforms_records_from_fetch(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """Verify that the method transforms results to models."""
 
         class Human(LoomiNode):
@@ -618,7 +658,9 @@ class TestLoomiAsyncResult:
             assert isinstance(data[0][0], Human)
             assert data[0][0].name == "John"
 
-    async def test_transforms_records_from_to_eager_result(self, async_driver: AsyncDriver):
+    async def test_transforms_records_from_to_eager_result(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """Verify that the method transforms results to models."""
 
         class Human(LoomiNode):
@@ -640,7 +682,9 @@ class TestLoomiAsyncResult:
             assert isinstance(data.records[0][0], Human)
             assert data.records[0][0].name == "John"
 
-    async def test_transforms_records_from_single(self, async_driver: AsyncDriver):
+    async def test_transforms_records_from_single(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """Verify that the method transforms results to models."""
 
         class Human(LoomiNode):
@@ -661,7 +705,9 @@ class TestLoomiAsyncResult:
             assert isinstance(data[0], Human)
             assert data[0].name == "John"
 
-    async def test_transforms_records_from_single_with_no_result(self, async_driver: AsyncDriver):
+    async def test_transforms_records_from_single_with_no_result(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """Verify that the method transforms results to models."""
 
         class Human(LoomiNode):
@@ -682,7 +728,9 @@ class TestLoomiAsyncResult:
             data = await result.single()
             assert data is None
 
-    async def test_transforms_records_from_values(self, async_driver: AsyncDriver):
+    async def test_transforms_records_from_values(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """Verify that the method transforms results to models."""
 
         class Human(LoomiNode):
@@ -704,7 +752,9 @@ class TestLoomiAsyncResult:
             assert isinstance(data[0][0], Human)
             assert data[0][0].name == "John"
 
-    async def test_transforms_records_from_value(self, async_driver: AsyncDriver):
+    async def test_transforms_records_from_value(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """Verify that the method transforms results to models."""
 
         class Human(LoomiNode):
@@ -725,7 +775,9 @@ class TestLoomiAsyncResult:
             assert isinstance(data[0], Human)
             assert data[0].name == "John"
 
-    async def test_transforms_records_from_graph(self, async_driver: AsyncDriver):
+    async def test_transforms_records_from_graph(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """Verify that the method transforms results to models."""
 
         class Human(LoomiNode):
@@ -744,7 +796,9 @@ class TestLoomiAsyncResult:
             data = await result.graph()
             assert isinstance(data, LoomiGraph)
 
-    async def test_transforms_records_from_next(self, async_driver: AsyncDriver):
+    async def test_transforms_records_from_next(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """Verify that the method transforms results to models."""
 
         class Human(LoomiNode):
@@ -764,7 +818,9 @@ class TestLoomiAsyncResult:
             assert isinstance(data[0], Human)
             assert data[0].name == "John"
 
-    async def test_transforms_records_from_iter(self, async_driver: AsyncDriver):
+    async def test_transforms_records_from_iter(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """Verify that the method transforms results to models."""
 
         class Human(LoomiNode):
@@ -785,7 +841,7 @@ class TestLoomiAsyncResult:
                 assert data[0].name == "John"
 
     async def test_exposes_original_result_for_non_transformed_methods(
-        self, async_driver: AsyncDriver
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that other methods which do not return graph entities are still available."""
 
@@ -815,7 +871,9 @@ class PickledOwns(LoomiRelationship): ...
 
 
 class TestLoomiGraph:
-    async def test_graph_entities_are_transformed(self, async_driver: AsyncDriver):
+    async def test_graph_entities_are_transformed(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """Verify that entities inside the graph are transformed."""
 
         class Human(LoomiNode):
@@ -861,7 +919,7 @@ class TestLoomiGraph:
             rel_type = graph.relationship_type("OWNS")
             assert rel_type == Owns
 
-    async def test_graph_can_be_pickled(self, async_driver: AsyncDriver):
+    async def test_graph_can_be_pickled(self, async_driver: AsyncDriver, driver_spec: DriverSpec):
         """Verify that the graph can be pickled."""
         async with async_driver.session() as session:
             await session.run(
@@ -887,7 +945,9 @@ class TestLoomiGraph:
 
 
 class TestLoomiPath:
-    async def test_entities_from_path_are_transformed(self, async_driver: AsyncDriver):
+    async def test_entities_from_path_are_transformed(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """Verify that any returned paths have their entities transformed to Loomi equivalents."""
 
         class Human(LoomiNode):
@@ -935,7 +995,9 @@ class TestLoomiPath:
                 else:
                     assert isinstance(relationship, Owns)
 
-    async def test_path_graph_is_transformed(self, async_driver: AsyncDriver):
+    async def test_path_graph_is_transformed(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """Verify that the graph inside the path is transformed."""
 
         class Human(LoomiNode):

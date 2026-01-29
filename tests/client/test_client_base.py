@@ -1,4 +1,4 @@
-# pylint: disable=missing-class-docstring, redefined-outer-name, unused-import
+# pylint: disable=missing-class-docstring, redefined-outer-name, unused-import, unused-argument
 
 import pytest
 from neo4j import AsyncDriver, Driver
@@ -7,12 +7,12 @@ from loomi.client.async_client import LoomiAsyncClient
 from loomi.client.sync_client import LoomiClient
 from loomi.exceptions import ClientError, ModelError
 from loomi.models.node import LoomiNode
-from tests.fixtures.db import async_driver, sync_driver
+from tests.fixtures.db import DriverSpec, async_driver, driver_spec, sync_driver
 
 
 class TestRegistration:
 
-    def test_register_skips_non_model_classes(self, sync_driver: Driver):
+    def test_register_skips_non_model_classes(self, sync_driver: Driver, driver_spec: DriverSpec):
         """
         Verify that non model classes are skipped when passed to the `.register()` method.
         """
@@ -24,7 +24,9 @@ class TestRegistration:
 
         assert len(client._models) == 0
 
-    def test_raises_if_model_hash_is_not_initialized(self, sync_driver: Driver):
+    def test_raises_if_model_hash_is_not_initialized(
+        self, sync_driver: Driver, driver_spec: DriverSpec
+    ):
         """
         Verify that a exception if thrown if the models hash is not initialized when the model
         is registered.
@@ -40,7 +42,9 @@ class TestRegistration:
 
 
 class TestInitialization:
-    async def test_raises_if_not_initialized(self, sync_driver, async_driver: AsyncDriver):
+    async def test_raises_if_not_initialized(
+        self, sync_driver, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
         """
         Verify that a exception is thrown if a session is started without initializing the client.
         """

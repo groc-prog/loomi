@@ -1,4 +1,4 @@
-# pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, line-too-long
+# pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, line-too-long, unused-argument
 
 import pickle
 
@@ -13,11 +13,11 @@ from loomi.models.graph import LoomiGraph
 from loomi.models.node import LoomiNode
 from loomi.models.path import LoomiPath
 from loomi.models.relationship import LoomiRelationship
-from tests.fixtures.db import sync_driver
+from tests.fixtures.db import DriverSpec, driver_spec, sync_driver
 
 
 class TestNativeSession:
-    def test_session_works_with_context_manager(self, sync_driver: Driver):
+    def test_session_works_with_context_manager(self, sync_driver: Driver, driver_spec: DriverSpec):
         """
         Verify that the session behaves like the original session without transformation when
         used with a context manager.
@@ -50,7 +50,9 @@ class TestNativeSession:
             assert "name" in properties
             assert properties["name"] == "John"
 
-    def test_session_works_with_manual_management(self, sync_driver: Driver):
+    def test_session_works_with_manual_management(
+        self, sync_driver: Driver, driver_spec: DriverSpec
+    ):
         """
         Verify that the session behaves like the original session without transformation when
         session is managed manually.
@@ -85,7 +87,9 @@ class TestNativeSession:
 
         session.close()
 
-    def test_transaction_works_with_context_manager(self, sync_driver: Driver):
+    def test_transaction_works_with_context_manager(
+        self, sync_driver: Driver, driver_spec: DriverSpec
+    ):
         """
         Verify that the transaction behaves like the original transaction without transformation
         when used with a context manager.
@@ -120,7 +124,9 @@ class TestNativeSession:
                 assert "name" in properties
                 assert properties["name"] == "John"
 
-    def test_transaction_works_with_manual_management(self, sync_driver: Driver):
+    def test_transaction_works_with_manual_management(
+        self, sync_driver: Driver, driver_spec: DriverSpec
+    ):
         """
         Verify that the transaction behaves like the original transaction without transformation
         when transaction is managed manually.
@@ -161,7 +167,7 @@ class TestNativeSession:
 
 
 class TestLoomiSession:
-    def test_session_works_with_context_manager(self, sync_driver: Driver):
+    def test_session_works_with_context_manager(self, sync_driver: Driver, driver_spec: DriverSpec):
         """
         Verify that the session behaves like the original session with transformation when
         used with a context manager.
@@ -190,7 +196,9 @@ class TestLoomiSession:
             assert isinstance(node, Human)
             assert node.name == "John"
 
-    def test_session_works_with_manual_management(self, sync_driver: Driver):
+    def test_session_works_with_manual_management(
+        self, sync_driver: Driver, driver_spec: DriverSpec
+    ):
         """
         Verify that the session behaves like the original session with transformation when
         session is managed manually.
@@ -221,7 +229,9 @@ class TestLoomiSession:
 
         session.close()
 
-    def test_session_partially_resolves_entities(self, sync_driver: Driver):
+    def test_session_partially_resolves_entities(
+        self, sync_driver: Driver, driver_spec: DriverSpec
+    ):
         """Verify that only registered models get transformed."""
 
         class Human(LoomiNode):
@@ -275,7 +285,9 @@ class TestLoomiSession:
 
 
 class TestLoomiTransaction:
-    def test_transaction_works_with_context_manager(self, sync_driver: Driver):
+    def test_transaction_works_with_context_manager(
+        self, sync_driver: Driver, driver_spec: DriverSpec
+    ):
         """
         Verify that the transaction behaves like the original transaction with transformation
         when used with a context manager.
@@ -306,7 +318,9 @@ class TestLoomiTransaction:
                 assert isinstance(node, Human)
                 assert node.name == "John"
 
-    def test_transaction_works_with_manual_management(self, sync_driver: Driver):
+    def test_transaction_works_with_manual_management(
+        self, sync_driver: Driver, driver_spec: DriverSpec
+    ):
         """
         Verify that the transaction behaves like the original transaction without transformation
         when transaction is managed manually.
@@ -341,7 +355,9 @@ class TestLoomiTransaction:
         tx.close()
         session.close()
 
-    def test_transaction_partially_resolves_entities(self, sync_driver: Driver):
+    def test_transaction_partially_resolves_entities(
+        self, sync_driver: Driver, driver_spec: DriverSpec
+    ):
         """Verify that only registered models get transformed."""
 
         class Human(LoomiNode):
@@ -396,7 +412,7 @@ class TestLoomiTransaction:
 
 
 class TestNativeResult:
-    def test_keeps_original_records_from_peek(self, sync_driver: Driver):
+    def test_keeps_original_records_from_peek(self, sync_driver: Driver, driver_spec: DriverSpec):
         """Verify that the method returns the unchanged results."""
 
         class Human(LoomiNode):
@@ -420,7 +436,7 @@ class TestNativeResult:
             assert "name" in properties
             assert properties["name"] == "John"
 
-    def test_keeps_original_records_from_fetch(self, sync_driver: Driver):
+    def test_keeps_original_records_from_fetch(self, sync_driver: Driver, driver_spec: DriverSpec):
         """Verify that the method returns the unchanged results."""
 
         class Human(LoomiNode):
@@ -444,7 +460,9 @@ class TestNativeResult:
             assert "name" in properties
             assert properties["name"] == "John"
 
-    def test_keeps_original_records_from_to_eager_result(self, sync_driver: Driver):
+    def test_keeps_original_records_from_to_eager_result(
+        self, sync_driver: Driver, driver_spec: DriverSpec
+    ):
         """Verify that the method returns the unchanged results."""
 
         class Human(LoomiNode):
@@ -469,7 +487,7 @@ class TestNativeResult:
             assert "name" in properties
             assert properties["name"] == "John"
 
-    def test_keeps_original_records_from_single(self, sync_driver: Driver):
+    def test_keeps_original_records_from_single(self, sync_driver: Driver, driver_spec: DriverSpec):
         """Verify that the method returns the unchanged results."""
 
         class Human(LoomiNode):
@@ -493,7 +511,7 @@ class TestNativeResult:
             assert "name" in properties
             assert properties["name"] == "John"
 
-    def test_keeps_original_records_from_values(self, sync_driver: Driver):
+    def test_keeps_original_records_from_values(self, sync_driver: Driver, driver_spec: DriverSpec):
         """Verify that the method returns the unchanged results."""
 
         class Human(LoomiNode):
@@ -518,7 +536,7 @@ class TestNativeResult:
             assert "name" in properties
             assert properties["name"] == "John"
 
-    def test_keeps_original_records_from_value(self, sync_driver: Driver):
+    def test_keeps_original_records_from_value(self, sync_driver: Driver, driver_spec: DriverSpec):
         """Verify that the method returns the unchanged results."""
 
         class Human(LoomiNode):
@@ -542,7 +560,7 @@ class TestNativeResult:
             assert "name" in properties
             assert properties["name"] == "John"
 
-    def test_keeps_original_records_from_graph(self, sync_driver: Driver):
+    def test_keeps_original_records_from_graph(self, sync_driver: Driver, driver_spec: DriverSpec):
         """Verify that the method returns the unchanged results."""
 
         class Human(LoomiNode):
@@ -563,7 +581,7 @@ class TestNativeResult:
 
 
 class TestLoomiResult:
-    def test_transforms_records_from_peek(self, sync_driver: Driver):
+    def test_transforms_records_from_peek(self, sync_driver: Driver, driver_spec: DriverSpec):
         """Verify that the method transforms results to models."""
 
         class Human(LoomiNode):
@@ -584,7 +602,9 @@ class TestLoomiResult:
             assert isinstance(data[0], Human)
             assert data[0].name == "John"
 
-    def test_transforms_records_from_peek_with_no_result(self, sync_driver: Driver):
+    def test_transforms_records_from_peek_with_no_result(
+        self, sync_driver: Driver, driver_spec: DriverSpec
+    ):
         """Verify that the method returns none if no results are returned."""
 
         class Human(LoomiNode):
@@ -603,7 +623,7 @@ class TestLoomiResult:
             data = result.peek()
             assert data is None
 
-    def test_transforms_records_from_fetch(self, sync_driver: Driver):
+    def test_transforms_records_from_fetch(self, sync_driver: Driver, driver_spec: DriverSpec):
         """Verify that the method transforms results to models."""
 
         class Human(LoomiNode):
@@ -624,7 +644,9 @@ class TestLoomiResult:
             assert isinstance(data[0][0], Human)
             assert data[0][0].name == "John"
 
-    def test_transforms_records_from_to_eager_result(self, sync_driver: Driver):
+    def test_transforms_records_from_to_eager_result(
+        self, sync_driver: Driver, driver_spec: DriverSpec
+    ):
         """Verify that the method transforms results to models."""
 
         class Human(LoomiNode):
@@ -646,7 +668,7 @@ class TestLoomiResult:
             assert isinstance(data.records[0][0], Human)
             assert data.records[0][0].name == "John"
 
-    def test_transforms_records_from_single(self, sync_driver: Driver):
+    def test_transforms_records_from_single(self, sync_driver: Driver, driver_spec: DriverSpec):
         """Verify that the method transforms results to models."""
 
         class Human(LoomiNode):
@@ -667,7 +689,9 @@ class TestLoomiResult:
             assert isinstance(data[0], Human)
             assert data[0].name == "John"
 
-    def test_transforms_records_from_single_with_no_result(self, sync_driver: Driver):
+    def test_transforms_records_from_single_with_no_result(
+        self, sync_driver: Driver, driver_spec: DriverSpec
+    ):
         """Verify that the method transforms results to models."""
 
         class Human(LoomiNode):
@@ -686,7 +710,7 @@ class TestLoomiResult:
             data = result.single()
             assert data is None
 
-    def test_transforms_records_from_values(self, sync_driver: Driver):
+    def test_transforms_records_from_values(self, sync_driver: Driver, driver_spec: DriverSpec):
         """Verify that the method transforms results to models."""
 
         class Human(LoomiNode):
@@ -708,7 +732,7 @@ class TestLoomiResult:
             assert isinstance(data[0][0], Human)
             assert data[0][0].name == "John"
 
-    def test_transforms_records_from_value(self, sync_driver: Driver):
+    def test_transforms_records_from_value(self, sync_driver: Driver, driver_spec: DriverSpec):
         """Verify that the method transforms results to models."""
 
         class Human(LoomiNode):
@@ -729,7 +753,7 @@ class TestLoomiResult:
             assert isinstance(data[0], Human)
             assert data[0].name == "John"
 
-    def test_transforms_records_from_graph(self, sync_driver: Driver):
+    def test_transforms_records_from_graph(self, sync_driver: Driver, driver_spec: DriverSpec):
         """Verify that the method transforms results to models."""
 
         class Human(LoomiNode):
@@ -748,7 +772,7 @@ class TestLoomiResult:
             data = result.graph()
             assert isinstance(data, LoomiGraph)
 
-    def test_transforms_records_from_next(self, sync_driver: Driver):
+    def test_transforms_records_from_next(self, sync_driver: Driver, driver_spec: DriverSpec):
         """Verify that the method transforms results to models."""
 
         class Human(LoomiNode):
@@ -768,7 +792,7 @@ class TestLoomiResult:
             assert isinstance(data[0], Human)
             assert data[0].name == "John"
 
-    def test_transforms_records_from_iter(self, sync_driver: Driver):
+    def test_transforms_records_from_iter(self, sync_driver: Driver, driver_spec: DriverSpec):
         """Verify that the method transforms results to models."""
 
         class Human(LoomiNode):
@@ -788,7 +812,9 @@ class TestLoomiResult:
                 assert isinstance(data[0], Human)
                 assert data[0].name == "John"
 
-    def test_exposes_original_result_for_non_transformed_methods(self, sync_driver: Driver):
+    def test_exposes_original_result_for_non_transformed_methods(
+        self, sync_driver: Driver, driver_spec: DriverSpec
+    ):
         """Verify that other methods which do not return graph entities are still available."""
 
         class Human(LoomiNode):
@@ -817,7 +843,7 @@ class PickledOwns(LoomiRelationship): ...
 
 
 class TestLoomiGraph:
-    def test_graph_entities_are_transformed(self, sync_driver: Driver):
+    def test_graph_entities_are_transformed(self, sync_driver: Driver, driver_spec: DriverSpec):
         """Verify that entities inside the graph are transformed."""
 
         class Human(LoomiNode):
@@ -863,7 +889,7 @@ class TestLoomiGraph:
             rel_type = graph.relationship_type("OWNS")
             assert rel_type == Owns
 
-    def test_graph_can_be_pickled(self, sync_driver: Driver):
+    def test_graph_can_be_pickled(self, sync_driver: Driver, driver_spec: DriverSpec):
         """Verify that the graph can be pickled."""
         with sync_driver.session() as session:
             session.run(
@@ -889,7 +915,7 @@ class TestLoomiGraph:
 
 
 class TestLoomiPath:
-    def test_entities_from_path_are_transformed(self, sync_driver: Driver):
+    def test_entities_from_path_are_transformed(self, sync_driver: Driver, driver_spec: DriverSpec):
         """Verify that any returned paths have their entities transformed to Loomi equivalents."""
 
         class Human(LoomiNode):
@@ -935,7 +961,7 @@ class TestLoomiPath:
                 else:
                     assert isinstance(relationship, Owns)
 
-    def test_path_graph_is_transformed(self, sync_driver: Driver):
+    def test_path_graph_is_transformed(self, sync_driver: Driver, driver_spec: DriverSpec):
         """Verify that the graph inside the path is transformed."""
 
         class Human(LoomiNode):

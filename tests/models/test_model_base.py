@@ -57,12 +57,6 @@ class TestFieldDefaults:
 
         human = Human()
 
-        assert len(human._checksums.keys()) == 2
-        assert "name" in human._checksums
-        assert human._checksums["name"] is None
-        assert "min_age" in human._checksums
-        assert isinstance(human._checksums["min_age"], str)
-
         assert human._id is None
         assert human.id is None
 
