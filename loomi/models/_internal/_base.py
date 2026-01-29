@@ -82,7 +82,6 @@ class _EntityBase(BaseModel, ABC):
     _id: Optional[int] = PrivateAttr(None)
     _element_id: Optional[str] = PrivateAttr(None)
     _hash: Optional[str] = PrivateAttr(None)
-    _checksums: Dict[str, Optional[str]] = PrivateAttr(default_factory=dict)
     _alias_cache: ClassVar[Dict[str, str]] = {}
 
     model_config = ConfigDict(validate_assignment=True, populate_by_name=True)
@@ -125,9 +124,6 @@ class _EntityBase(BaseModel, ABC):
             Optional[int]: The ElementID or `None` if not hydrated or persisted.
         """
         return self._element_id
-
-    def model_post_init(self, context: Any) -> None:
-        self._checksums = self._compute_checksums()
 
     def _compute_checksums(self) -> Dict[str, Optional[str]]:
         checksums: Dict[str, Optional[str]] = {}

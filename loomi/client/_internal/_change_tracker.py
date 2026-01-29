@@ -66,8 +66,8 @@ class _TrackingOperation(Enum):
 
 
 class _TrackingOperationState(TypedDict):
-    nodes: Dict[int, LoomiNode]
-    relationships: Dict[int, LoomiRelationship]
+    nodes: Dict[int, Tuple[LoomiNode, Dict[str, Optional[str]]]]
+    relationships: Dict[int, Tuple[LoomiRelationship, Dict[str, Optional[str]]]]
 
 
 class _BaseChangeTracker(Generic[T]):
@@ -184,7 +184,10 @@ class _BaseChangeTracker(Generic[T]):
                     else _TrackingOperation.INSERT
                 )
                 if start_node_id not in self._state[start_node_operation]["nodes"]:
-                    self._state[start_node_operation]["nodes"][start_node_id] = start_node
+                    self._state[start_node_operation]["nodes"][start_node_id] = (
+                        start_node,
+                        start_node._compute_checksums(),
+                    )
 
                 end_node_id = id(end_node)
                 end_node_operation = (
@@ -193,7 +196,10 @@ class _BaseChangeTracker(Generic[T]):
                     else _TrackingOperation.INSERT
                 )
                 if end_node_id not in self._state[end_node_operation]["nodes"]:
-                    self._state[end_node_operation]["nodes"][end_node_id] = end_node
+                    self._state[end_node_operation]["nodes"][end_node_id] = (
+                        end_node,
+                        end_node._compute_checksums(),
+                    )
 
                 # Remember the dependencies between relationship and nodes to be able to resolve
                 # the queries later on
@@ -217,9 +223,12 @@ class _BaseChangeTracker(Generic[T]):
 
             _logger.debug("Tracking new entity")
             if is_relationship:
-                self._state[operation]["relationships"][obj_id] = model
+                self._state[operation]["relationships"][obj_id] = (
+                    model,
+                    model._compute_checksums(),
+                )
             else:
-                self._state[operation]["nodes"][obj_id] = model
+                self._state[operation]["nodes"][obj_id] = (model, model._compute_checksums())
 
     def remove(self, model: Union[LoomiNode, LoomiRelationship]) -> None:
         """
@@ -290,9 +299,15 @@ class _BaseChangeTracker(Generic[T]):
 
             _logger.debug("Tracking new entity")
             if is_relationship:
-                self._state[_TrackingOperation.DELETE]["relationships"][obj_id] = model
+                self._state[_TrackingOperation.DELETE]["relationships"][obj_id] = (
+                    model,
+                    model._compute_checksums(),
+                )
             else:
-                self._state[_TrackingOperation.DELETE]["nodes"][obj_id] = model
+                self._state[_TrackingOperation.DELETE]["nodes"][obj_id] = (
+                    model,
+                    model._compute_checksums(),
+                )
 
     def clear(self) -> None:
         """
@@ -316,18 +331,24 @@ class _BaseChangeTracker(Generic[T]):
             start_node_id, end_node_id = grouping
 
             if (
-                start_node_id not in self._state[_TrackingOperation.DELETE]["nodes"]
-                and end_node_id not in self._state[_TrackingOperation.DELETE]["nodes"]
+                (
+                    start_node_id not in self._state[_TrackingOperation.INSERT]["nodes"]
+                    and start_node_id not in self._state[_TrackingOperation.UPDATE]["nodes"]
+                )
+                or (
+                    end_node_id not in self._state[_TrackingOperation.INSERT]["nodes"]
+                    and end_node_id not in self._state[_TrackingOperation.UPDATE]["nodes"]
+                )
+                or start_node_id in self._state[_TrackingOperation.DELETE]["nodes"]
+                or end_node_id in self._state[_TrackingOperation.DELETE]["nodes"]
             ):
-                continue
-
-            _logger.debug(
-                "Start or end node is being tracked with operation %s, relationship "
-                "operation can be skipped",
-                _TrackingOperation.DELETE.name,
-            )
-            self._state[_TrackingOperation.INSERT]["relationships"].pop(relationship_id, None)
-            self._state[_TrackingOperation.UPDATE]["relationships"].pop(relationship_id, None)
+                _logger.debug(
+                    "Start or end node is being tracked with operation %s, relationship "
+                    "operation can be skipped",
+                    _TrackingOperation.DELETE.name,
+                )
+                self._state[_TrackingOperation.INSERT]["relationships"].pop(relationship_id, None)
+                self._state[_TrackingOperation.UPDATE]["relationships"].pop(relationship_id, None)
 
     def _compile_node_add_operations(self) -> List[Tuple[str, Dict[str, Any]]]:
         from loomi.client._internal._base import _ServerType
@@ -344,16 +365,22 @@ class _BaseChangeTracker(Generic[T]):
 
         # Since we can not define labels with parameters, we have to build a separate query for
         # each label combination
-        for obj_id, reference in self._state[_TrackingOperation.INSERT]["nodes"].items():
+        for obj_id, state in self._state[_TrackingOperation.INSERT]["nodes"].items():
+            reference, _ = state
+
             if reference._hash is None:
-                raise ModelError(f"Hash on model {reference.__class__.__name__} is not initialized")
+                raise ModelError(
+                    f"Hash on model {reference.__class__.__name__} is not initialized. Maybe you "
+                    f"forgot to call {reference.model_rebuild.__name__}?"
+                )
 
             if reference._hash not in groups:
                 _logger.debug("Encountered new model type %s", reference._hash)
                 labels = reference.loomi_config.get("labels")
                 if labels is None:
                     raise ModelError(
-                        f"Labels on model {reference.__class__.__name__} are not initialized"
+                        f"Labels on model {reference.__class__.__name__} are not initialized. "
+                        f"Maybe you forgot to call {reference.model_rebuild.__name__}?"
                     )
 
                 groups[reference._hash] = {"labels": labels, "batches": []}
@@ -402,9 +429,14 @@ class _BaseChangeTracker(Generic[T]):
             _TrackingOperation.INSERT.name,
         )
 
-        for obj_id, reference in self._state[_TrackingOperation.INSERT]["relationships"].items():
+        for obj_id, state in self._state[_TrackingOperation.INSERT]["relationships"].items():
+            reference, _ = state
+
             if reference._hash is None:
-                raise ModelError(f"Hash on model {reference.__class__.__name__} is not initialized")
+                raise ModelError(
+                    f"Hash on model {reference.__class__.__name__} is not initialized. Maybe you "
+                    f"forgot to call {reference.model_rebuild.__name__}?"
+                )
 
             # Since relationships must define a start and end node when they are created, we have
             # to create them separately from the nodes so that we can reference the start and end
@@ -414,7 +446,8 @@ class _BaseChangeTracker(Generic[T]):
                 type_ = reference.loomi_config.get("type")
                 if type_ is None:
                     raise ModelError(
-                        f"Type on model {reference.__class__.__name__} is not initialized"
+                        f"Type on model {reference.__class__.__name__} is not initialized. Maybe "
+                        f"you forgot to call {reference.model_rebuild.__name__}?"
                     )
 
                 groups[reference._hash] = {"type_": type_, "batches": []}
@@ -427,12 +460,15 @@ class _BaseChangeTracker(Generic[T]):
             if start_node_id in id_map:
                 start_node_entity_id = id_map[start_node_id]
             else:
-                start_node = self._state[_TrackingOperation.UPDATE]["nodes"].get(start_node_id)
-                if start_node is None:
+                start_node_state = self._state[_TrackingOperation.UPDATE]["nodes"].get(
+                    start_node_id
+                )
+                if start_node_state is None:
                     raise ChangeTrackerError(
                         "Start node for relationship not found in change tracker"
                     )
 
+                start_node, _ = start_node_state
                 start_node_entity_id = (
                     start_node._element_id
                     if cast(_ServerType, self._client._server_type) == _ServerType.NEO4J
@@ -448,12 +484,13 @@ class _BaseChangeTracker(Generic[T]):
             if end_node_id in id_map:
                 end_node_entity_id = id_map[end_node_id]
             else:
-                end_node = self._state[_TrackingOperation.UPDATE]["nodes"].get(end_node_id)
-                if end_node is None:
+                end_node_state = self._state[_TrackingOperation.UPDATE]["nodes"].get(end_node_id)
+                if end_node_state is None:
                     raise ChangeTrackerError(
                         "End node for relationship not found in change tracker"
                     )
 
+                end_node, _ = end_node_state
                 end_node_entity_id = (
                     end_node._element_id
                     if cast(_ServerType, self._client._server_type) == _ServerType.NEO4J
@@ -503,18 +540,20 @@ class _BaseChangeTracker(Generic[T]):
         _logger.debug("Compiling entity queries and parameters")
         node_batches: List[_UpdateBatch] = []
 
-        for reference in self._state[_TrackingOperation.UPDATE]["nodes"].values():
+        for state in self._state[_TrackingOperation.UPDATE]["nodes"].values():
+            reference, original_checksums = state
+
             if reference._element_id is None or reference._id is None:
                 raise ChangeTrackerError(
                     f"Entity is being tracked as {_TrackingOperation.UPDATE.name} but has not "
                     "been saved to the database yet"
                 )
 
-            checksums = reference._compute_checksums()
+            updated_checksums = reference._compute_checksums()
             changed_fields = [
                 field_name
-                for field_name, checksum in checksums.items()
-                if checksum not in (reference._checksums[field_name], None)
+                for field_name, checksum in updated_checksums.items()
+                if checksum not in (original_checksums[field_name], None)
             ]
 
             if len(changed_fields) == 0:
@@ -559,18 +598,20 @@ class _BaseChangeTracker(Generic[T]):
         _logger.debug("Compiling entity queries and parameters")
         relationship_batches: List[_UpdateBatch] = []
 
-        for reference in self._state[_TrackingOperation.UPDATE]["relationships"].values():
+        for state in self._state[_TrackingOperation.UPDATE]["relationships"].values():
+            reference, original_checksums = state
+
             if reference._element_id is None or reference._id is None:
                 raise ChangeTrackerError(
                     f"Entity is being tracked as {_TrackingOperation.UPDATE.name} but has not "
                     "been saved to the database yet"
                 )
 
-            checksums = reference._compute_checksums()
+            updated_checksums = reference._compute_checksums()
             changed_fields = [
                 field_name
-                for field_name, checksum in checksums.items()
-                if checksum not in (reference._checksums[field_name], None)
+                for field_name, checksum in updated_checksums.items()
+                if checksum not in (original_checksums[field_name], None)
             ]
 
             if len(changed_fields) == 0:
@@ -615,7 +656,9 @@ class _BaseChangeTracker(Generic[T]):
         _logger.debug("Compiling entity queries and parameters")
         node_ids: List[Union[str, int]] = []
 
-        for reference in self._state[_TrackingOperation.DELETE]["nodes"].values():
+        for state in self._state[_TrackingOperation.DELETE]["nodes"].values():
+            reference, _ = state
+
             if reference._element_id is None or reference._id is None:
                 raise ChangeTrackerError(
                     f"Entity is being tracked as {_TrackingOperation.DELETE.name} but has not "
@@ -645,7 +688,9 @@ class _BaseChangeTracker(Generic[T]):
         _logger.debug("Compiling entity queries and parameters")
         relationship_ids: List[Union[str, int]] = []
 
-        for reference in self._state[_TrackingOperation.DELETE]["relationships"].values():
+        for state in self._state[_TrackingOperation.DELETE]["relationships"].values():
+            reference, _ = state
+
             if reference._element_id is None or reference._id is None:
                 raise ChangeTrackerError(
                     f"Entity is being tracked as {_TrackingOperation.DELETE.name} but has not "
@@ -680,8 +725,6 @@ class ChangeTracker(_BaseChangeTracker[Union[Session, Transaction]]):
         on a `LoomiTransaction`, the flushed queries will be `part of that transaction` and
         will only be committed once `tx.commit()` is called.
         """
-        from loomi.client._internal.session import LoomiSession
-
         with _scoped_log_ctx(
             {
                 _LogContextKey.DRIVER: self._client.__class__.__name__,
@@ -689,10 +732,11 @@ class ChangeTracker(_BaseChangeTracker[Union[Session, Transaction]]):
             }
         ):
             id_map: Dict[int, Union[str, int]] = {}
+            self._omit_redundant_relationship_operations()
 
             # If the change tracker is called on a session, we create a new transaction and run
             # every operation in that transaction
-            if isinstance(self._session_or_tx, LoomiSession):
+            if isinstance(self._session_or_tx, Session):
                 _logger.debug(
                     "Flush called on session, creating new transaction to run pending changes"
                 )
@@ -777,8 +821,6 @@ class AsyncChangeTracker(_BaseChangeTracker[Union[AsyncSession, AsyncTransaction
         on a `LoomiAsyncTransaction`, the flushed queries will be `part of that transaction` and
         will only be committed once `tx.commit()` is called.
         """
-        from loomi.client._internal.session import LoomiAsyncSession
-
         with _scoped_log_ctx(
             {
                 _LogContextKey.DRIVER: self._client.__class__.__name__,
@@ -786,10 +828,11 @@ class AsyncChangeTracker(_BaseChangeTracker[Union[AsyncSession, AsyncTransaction
             }
         ):
             id_map: Dict[int, Union[str, int]] = {}
+            self._omit_redundant_relationship_operations()
 
             # If the change tracker is called on a session, we create a new transaction and run
             # every operation in that transaction
-            if isinstance(self._session_or_tx, LoomiAsyncSession):
+            if isinstance(self._session_or_tx, AsyncSession):
                 _logger.debug(
                     "Flush called on session, creating new transaction to run pending changes"
                 )
