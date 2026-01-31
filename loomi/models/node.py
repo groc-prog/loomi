@@ -21,7 +21,6 @@ class LoomiNode(_EntityBase):
 
         if not hasattr(cls, "loomi_config"):
             setattr(cls, "loomi_config", LoomiNodeConfiguration())
-        cls._init_config_defaults()
 
         # If not labels have been defined, fall back to the class name
         if "labels" not in cls.loomi_config:
@@ -40,6 +39,7 @@ class LoomiNode(_EntityBase):
 
             cls._merge_loomi_config(inherited_config)
 
+        cls._init_config_defaults()
         cls._hash = cls._generate_loomi_hash(list(cls.loomi_config["labels"]))
 
     def __repr__(self) -> str:
