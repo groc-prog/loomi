@@ -22,7 +22,7 @@ class LoomiRelationship(_EntityBase):
 
         if not hasattr(cls, "loomi_config"):
             setattr(cls, "loomi_config", LoomiRelationshipConfiguration())
-            cls._init_config_defaults()
+        cls._init_config_defaults()
 
         if "type" not in cls.loomi_config:
             cls.loomi_config["type"] = cls._get_normalized_type()

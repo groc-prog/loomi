@@ -158,7 +158,7 @@ class _EntityBase(BaseModel, ABC):
             if not isinstance(value, _SUPPORTED_DATA_TYPES):
                 raise SerializationError(
                     f"Data type {type(value)} can not be stored. Supported data types are "
-                    f"{", ".join(_SUPPORTED_DATA_TYPES)}"
+                    f"{", ".join(data_type.__name__ for data_type in _SUPPORTED_DATA_TYPES)}"
                 )
 
             # If mode is Neo4j and we encounter nested values, we either need to raise a exception
