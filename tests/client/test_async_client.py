@@ -5,6 +5,7 @@ import pickle
 from neo4j import AsyncDriver, AsyncResult, AsyncSession, AsyncTransaction, EagerResult
 from neo4j.graph import Graph, Node, Relationship
 
+from loomi.client._internal._change_tracker import _TrackingOperation
 from loomi.client._internal.result import LoomiAsyncResult
 from loomi.client._internal.session import LoomiAsyncSession
 from loomi.client._internal.transaction import LoomiAsyncTransaction
@@ -635,6 +636,29 @@ class TestLoomiAsyncResult:
             data = await result.peek()
             assert data is None
 
+    async def test_adds_records_from_peek_to_change_tracker(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
+        """Verify that the method adds results to the change tracker."""
+
+        class Human(LoomiNode):
+            name: str
+
+        async with async_driver.session() as session:
+            await session.run("CREATE (:Human {name: $name})", {"name": "John"})
+
+        client = LoomiAsyncClient(async_driver)
+        client.register(Human)
+        await client.initialize()
+
+        async with client.session("loomi") as session:
+            result = await session.run("MATCH (n:Human) RETURN n", tracking=True)
+
+            await result.peek()
+            assert (
+                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
+            )
+
     async def test_transforms_records_from_fetch(
         self, async_driver: AsyncDriver, driver_spec: DriverSpec
     ):
@@ -657,6 +681,29 @@ class TestLoomiAsyncResult:
             assert len(data) == 1
             assert isinstance(data[0][0], Human)
             assert data[0][0].name == "John"
+
+    async def test_adds_records_from_fetch_to_change_tracker(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
+        """Verify that the method adds results to the change tracker."""
+
+        class Human(LoomiNode):
+            name: str
+
+        async with async_driver.session() as session:
+            await session.run("CREATE (:Human {name: $name})", {"name": "John"})
+
+        client = LoomiAsyncClient(async_driver)
+        client.register(Human)
+        await client.initialize()
+
+        async with client.session("loomi") as session:
+            result = await session.run("MATCH (n:Human) RETURN n", tracking=True)
+
+            await result.fetch(1)
+            assert (
+                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
+            )
 
     async def test_transforms_records_from_to_eager_result(
         self, async_driver: AsyncDriver, driver_spec: DriverSpec
@@ -681,6 +728,29 @@ class TestLoomiAsyncResult:
             assert len(data.records) == 1
             assert isinstance(data.records[0][0], Human)
             assert data.records[0][0].name == "John"
+
+    async def test_adds_records_from_to_eager_result_to_change_tracker(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
+        """Verify that the method adds results to the change tracker."""
+
+        class Human(LoomiNode):
+            name: str
+
+        async with async_driver.session() as session:
+            await session.run("CREATE (:Human {name: $name})", {"name": "John"})
+
+        client = LoomiAsyncClient(async_driver)
+        client.register(Human)
+        await client.initialize()
+
+        async with client.session("loomi") as session:
+            result = await session.run("MATCH (n:Human) RETURN n", tracking=True)
+
+            await result.to_eager_result()
+            assert (
+                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
+            )
 
     async def test_transforms_records_from_single(
         self, async_driver: AsyncDriver, driver_spec: DriverSpec
@@ -728,6 +798,29 @@ class TestLoomiAsyncResult:
             data = await result.single()
             assert data is None
 
+    async def test_adds_records_from_single_to_change_tracker(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
+        """Verify that the method adds results to the change tracker."""
+
+        class Human(LoomiNode):
+            name: str
+
+        async with async_driver.session() as session:
+            await session.run("CREATE (:Human {name: $name})", {"name": "John"})
+
+        client = LoomiAsyncClient(async_driver)
+        client.register(Human)
+        await client.initialize()
+
+        async with client.session("loomi") as session:
+            result = await session.run("MATCH (n:Human) RETURN n", tracking=True)
+
+            await result.single()
+            assert (
+                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
+            )
+
     async def test_transforms_records_from_values(
         self, async_driver: AsyncDriver, driver_spec: DriverSpec
     ):
@@ -752,6 +845,29 @@ class TestLoomiAsyncResult:
             assert isinstance(data[0][0], Human)
             assert data[0][0].name == "John"
 
+    async def test_adds_records_from_values_to_change_tracker(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
+        """Verify that the method adds results to the change tracker."""
+
+        class Human(LoomiNode):
+            name: str
+
+        async with async_driver.session() as session:
+            await session.run("CREATE (:Human {name: $name})", {"name": "John"})
+
+        client = LoomiAsyncClient(async_driver)
+        client.register(Human)
+        await client.initialize()
+
+        async with client.session("loomi") as session:
+            result = await session.run("MATCH (n:Human) RETURN n", tracking=True)
+
+            await result.values()
+            assert (
+                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
+            )
+
     async def test_transforms_records_from_value(
         self, async_driver: AsyncDriver, driver_spec: DriverSpec
     ):
@@ -775,6 +891,29 @@ class TestLoomiAsyncResult:
             assert isinstance(data[0], Human)
             assert data[0].name == "John"
 
+    async def test_adds_records_from_value_to_change_tracker(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
+        """Verify that the method adds results to the change tracker."""
+
+        class Human(LoomiNode):
+            name: str
+
+        async with async_driver.session() as session:
+            await session.run("CREATE (:Human {name: $name})", {"name": "John"})
+
+        client = LoomiAsyncClient(async_driver)
+        client.register(Human)
+        await client.initialize()
+
+        async with client.session("loomi") as session:
+            result = await session.run("MATCH (n:Human) RETURN n", tracking=True)
+
+            await result.value()
+            assert (
+                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
+            )
+
     async def test_transforms_records_from_graph(
         self, async_driver: AsyncDriver, driver_spec: DriverSpec
     ):
@@ -795,6 +934,42 @@ class TestLoomiAsyncResult:
 
             data = await result.graph()
             assert isinstance(data, LoomiGraph)
+
+    async def test_adds_records_from_graph_to_change_tracker(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
+        """Verify that the method adds results to the change tracker."""
+
+        class Human(LoomiNode):
+            name: str
+
+        class Likes(LoomiRelationship): ...
+
+        async with async_driver.session() as session:
+            await session.run(
+                "CREATE (:Human {name: $name1})-[r:LIKES]->(:Human {name: $name2})",
+                {"name1": "John", "name2": "Jane"},
+            )
+
+        client = LoomiAsyncClient(async_driver)
+        client.register(Human, Likes)
+        await client.initialize()
+
+        async with client.session("loomi") as session:
+            result = await session.run(
+                "MATCH (n1:Human)-[r:LIKES]->(n2:Human) RETURN n1, r, n2", tracking=True
+            )
+
+            await result.graph()
+            assert (
+                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 2
+            )
+            assert (
+                len(
+                    session.change_tracker._state[_TrackingOperation.UPDATE]["relationships"].keys()
+                )
+                == 1
+            )
 
     async def test_transforms_records_from_next(
         self, async_driver: AsyncDriver, driver_spec: DriverSpec
@@ -818,6 +993,29 @@ class TestLoomiAsyncResult:
             assert isinstance(data[0], Human)
             assert data[0].name == "John"
 
+    async def test_adds_records_from_next_to_change_tracker(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
+        """Verify that the method adds results to the change tracker."""
+
+        class Human(LoomiNode):
+            name: str
+
+        async with async_driver.session() as session:
+            await session.run("CREATE (:Human {name: $name})", {"name": "John"})
+
+        client = LoomiAsyncClient(async_driver)
+        client.register(Human)
+        await client.initialize()
+
+        async with client.session("loomi") as session:
+            result = await session.run("MATCH (n:Human) RETURN n", tracking=True)
+
+            await anext(result)
+            assert (
+                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
+            )
+
     async def test_transforms_records_from_iter(
         self, async_driver: AsyncDriver, driver_spec: DriverSpec
     ):
@@ -839,6 +1037,31 @@ class TestLoomiAsyncResult:
             async for data in result:
                 assert isinstance(data[0], Human)
                 assert data[0].name == "John"
+
+    async def test_adds_records_from_iter_to_change_tracker(
+        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+    ):
+        """Verify that the method adds results to the change tracker."""
+
+        class Human(LoomiNode):
+            name: str
+
+        async with async_driver.session() as session:
+            await session.run("CREATE (:Human {name: $name})", {"name": "John"})
+
+        client = LoomiAsyncClient(async_driver)
+        client.register(Human)
+        await client.initialize()
+
+        async with client.session("loomi") as session:
+            result = await session.run("MATCH (n:Human) RETURN n", tracking=True)
+
+            async for _ in result:
+                pass
+
+            assert (
+                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
+            )
 
     async def test_exposes_original_result_for_non_transformed_methods(
         self, async_driver: AsyncDriver, driver_spec: DriverSpec

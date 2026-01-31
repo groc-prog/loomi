@@ -5,6 +5,7 @@ import pickle
 from neo4j import Driver, EagerResult, Result, Session, Transaction
 from neo4j.graph import Graph, Node, Relationship
 
+from loomi.client._internal._change_tracker import _TrackingOperation
 from loomi.client._internal.result import LoomiResult
 from loomi.client._internal.session import LoomiSession
 from loomi.client._internal.transaction import LoomiTransaction
@@ -623,6 +624,29 @@ class TestLoomiResult:
             data = result.peek()
             assert data is None
 
+    def test_adds_records_from_peek_to_change_tracker(
+        self, sync_driver: Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the method adds results to the change tracker."""
+
+        class Human(LoomiNode):
+            name: str
+
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human {name: $name})", {"name": "John"})
+
+        client = LoomiClient(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        with client.session("loomi") as session:
+            result = session.run("MATCH (n:Human) RETURN n", tracking=True)
+
+            result.peek()
+            assert (
+                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
+            )
+
     def test_transforms_records_from_fetch(self, sync_driver: Driver, driver_spec: DriverSpec):
         """Verify that the method transforms results to models."""
 
@@ -643,6 +667,29 @@ class TestLoomiResult:
             assert len(data) == 1
             assert isinstance(data[0][0], Human)
             assert data[0][0].name == "John"
+
+    def test_adds_records_from_fetch_to_change_tracker(
+        self, sync_driver: Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the method adds results to the change tracker."""
+
+        class Human(LoomiNode):
+            name: str
+
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human {name: $name})", {"name": "John"})
+
+        client = LoomiClient(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        with client.session("loomi") as session:
+            result = session.run("MATCH (n:Human) RETURN n", tracking=True)
+
+            result.fetch(1)
+            assert (
+                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
+            )
 
     def test_transforms_records_from_to_eager_result(
         self, sync_driver: Driver, driver_spec: DriverSpec
@@ -667,6 +714,29 @@ class TestLoomiResult:
             assert len(data.records) == 1
             assert isinstance(data.records[0][0], Human)
             assert data.records[0][0].name == "John"
+
+    def test_adds_records_from_to_eager_result_to_change_tracker(
+        self, sync_driver: Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the method adds results to the change tracker."""
+
+        class Human(LoomiNode):
+            name: str
+
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human {name: $name})", {"name": "John"})
+
+        client = LoomiClient(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        with client.session("loomi") as session:
+            result = session.run("MATCH (n:Human) RETURN n", tracking=True)
+
+            result.to_eager_result()
+            assert (
+                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
+            )
 
     def test_transforms_records_from_single(self, sync_driver: Driver, driver_spec: DriverSpec):
         """Verify that the method transforms results to models."""
@@ -710,6 +780,29 @@ class TestLoomiResult:
             data = result.single()
             assert data is None
 
+    def test_adds_records_from_single_to_change_tracker(
+        self, sync_driver: Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the method adds results to the change tracker."""
+
+        class Human(LoomiNode):
+            name: str
+
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human {name: $name})", {"name": "John"})
+
+        client = LoomiClient(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        with client.session("loomi") as session:
+            result = session.run("MATCH (n:Human) RETURN n", tracking=True)
+
+            result.single()
+            assert (
+                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
+            )
+
     def test_transforms_records_from_values(self, sync_driver: Driver, driver_spec: DriverSpec):
         """Verify that the method transforms results to models."""
 
@@ -732,6 +825,29 @@ class TestLoomiResult:
             assert isinstance(data[0][0], Human)
             assert data[0][0].name == "John"
 
+    def test_adds_records_from_values_to_change_tracker(
+        self, sync_driver: Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the method adds results to the change tracker."""
+
+        class Human(LoomiNode):
+            name: str
+
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human {name: $name})", {"name": "John"})
+
+        client = LoomiClient(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        with client.session("loomi") as session:
+            result = session.run("MATCH (n:Human) RETURN n", tracking=True)
+
+            result.values()
+            assert (
+                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
+            )
+
     def test_transforms_records_from_value(self, sync_driver: Driver, driver_spec: DriverSpec):
         """Verify that the method transforms results to models."""
 
@@ -753,6 +869,29 @@ class TestLoomiResult:
             assert isinstance(data[0], Human)
             assert data[0].name == "John"
 
+    def test_adds_records_from_value_to_change_tracker(
+        self, sync_driver: Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the method adds results to the change tracker."""
+
+        class Human(LoomiNode):
+            name: str
+
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human {name: $name})", {"name": "John"})
+
+        client = LoomiClient(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        with client.session("loomi") as session:
+            result = session.run("MATCH (n:Human) RETURN n", tracking=True)
+
+            result.value()
+            assert (
+                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
+            )
+
     def test_transforms_records_from_graph(self, sync_driver: Driver, driver_spec: DriverSpec):
         """Verify that the method transforms results to models."""
 
@@ -771,6 +910,42 @@ class TestLoomiResult:
 
             data = result.graph()
             assert isinstance(data, LoomiGraph)
+
+    def test_adds_records_from_graph_to_change_tracker(
+        self, sync_driver: Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the method adds results to the change tracker."""
+
+        class Human(LoomiNode):
+            name: str
+
+        class Likes(LoomiRelationship): ...
+
+        with sync_driver.session() as session:
+            session.run(
+                "CREATE (:Human {name: $name1})-[r:LIKES]->(:Human {name: $name2})",
+                {"name1": "John", "name2": "Jane"},
+            )
+
+        client = LoomiClient(sync_driver)
+        client.register(Human, Likes)
+        client.initialize()
+
+        with client.session("loomi") as session:
+            result = session.run(
+                "MATCH (n1:Human)-[r:LIKES]->(n2:Human) RETURN n1, r, n2", tracking=True
+            )
+
+            result.graph()
+            assert (
+                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 2
+            )
+            assert (
+                len(
+                    session.change_tracker._state[_TrackingOperation.UPDATE]["relationships"].keys()
+                )
+                == 1
+            )
 
     def test_transforms_records_from_next(self, sync_driver: Driver, driver_spec: DriverSpec):
         """Verify that the method transforms results to models."""
@@ -792,6 +967,29 @@ class TestLoomiResult:
             assert isinstance(data[0], Human)
             assert data[0].name == "John"
 
+    def test_adds_records_from_next_to_change_tracker(
+        self, sync_driver: Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the method adds results to the change tracker."""
+
+        class Human(LoomiNode):
+            name: str
+
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human {name: $name})", {"name": "John"})
+
+        client = LoomiClient(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        with client.session("loomi") as session:
+            result = session.run("MATCH (n:Human) RETURN n", tracking=True)
+
+            next(result)
+            assert (
+                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
+            )
+
     def test_transforms_records_from_iter(self, sync_driver: Driver, driver_spec: DriverSpec):
         """Verify that the method transforms results to models."""
 
@@ -811,6 +1009,31 @@ class TestLoomiResult:
             for data in result:
                 assert isinstance(data[0], Human)
                 assert data[0].name == "John"
+
+    def test_adds_records_from_iter_to_change_tracker(
+        self, sync_driver: Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the method adds results to the change tracker."""
+
+        class Human(LoomiNode):
+            name: str
+
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human {name: $name})", {"name": "John"})
+
+        client = LoomiClient(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        with client.session("loomi") as session:
+            result = session.run("MATCH (n:Human) RETURN n", tracking=True)
+
+            for _ in result:
+                pass
+
+            assert (
+                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
+            )
 
     def test_exposes_original_result_for_non_transformed_methods(
         self, sync_driver: Driver, driver_spec: DriverSpec
