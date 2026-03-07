@@ -33,28 +33,28 @@ else:
 T = TypeVar("T", bound=Union[Session, AsyncSession, Transaction, AsyncTransaction])
 
 
-class _NodeInsertBatch(TypedDict):
+class _NodeInsertProperties(TypedDict):
     id_: int
     properties: Dict[str, Any]
 
 
-class _NodeInsertGrouping(TypedDict):
+class _NodeInsertBatch(TypedDict):
     labels: Set[str]
-    batches: List[_NodeInsertBatch]
+    batches: List[_NodeInsertProperties]
 
 
-class _RelationshipInsertBatch(TypedDict):
+class _RelationshipInsertProperties(TypedDict):
     start_node_id: Union[str, int]
     end_node_id: Union[str, int]
     properties: Dict[str, Any]
 
 
-class _RelationshipInsertGrouping(TypedDict):
+class _RelationshipInsertBatch(TypedDict):
     type_: str
-    batches: List[_RelationshipInsertBatch]
+    batches: List[_RelationshipInsertProperties]
 
 
-class _UpdateBatch(TypedDict):
+class _EntityUpdateBatch(TypedDict):
     id_: Union[str, int]
     properties: Dict[str, Any]
 
@@ -107,12 +107,19 @@ class _BaseChangeTracker(Generic[T]):
         Starts tracking a model in the change tracker. The entity will be saved/updated once the
         change tracker is flushed.
 
+        [!NOTE] Depending on whether the model has been `persisted or not`, any model passed to this
+        function will be tracked as `UPDATE` (element_id set) or `INSERT` (element_id not set).
+
         Args:
             model (Union[LoomiNode, LoomiRelationship]): The model to start tracking.
             start_node (Optional[LoomiNode]): The start node of the relationship. Only relevant if
             `model` is a `LoomiRelationship`.
             end_node (Optional[LoomiNode]): The end node of the relationship. Only relevant if
             `model` is a `LoomiRelationship`.
+
+        Raises:
+            ChangeTrackerError: If start- or end nodes are missing when a relationship model is
+            provided.
         """
         obj_id = id(model)
         is_relationship = isinstance(model, LoomiRelationship)
@@ -240,6 +247,7 @@ class _BaseChangeTracker(Generic[T]):
 
         Raises:
             ModelTrackingError: If a invalid model is provided.
+            ChangeTrackerError: If the model has not been persisted or tracked yet.
         """
         obj_id = id(model)
         is_relationship = isinstance(model, LoomiRelationship)
@@ -272,7 +280,6 @@ class _BaseChangeTracker(Generic[T]):
                     "Non persisted entity has been previously added to change tracker, stopping "
                     "tracking"
                 )
-
                 if is_relationship:
                     self._state[operation]["relationships"].pop(obj_id)
                 else:
@@ -285,7 +292,7 @@ class _BaseChangeTracker(Generic[T]):
                     "Persisted entity has previously been tracked as %s, updating to tracking "
                     "operation %s",
                     operation.name,
-                    _TrackingOperation.UPDATE.name,
+                    _TrackingOperation.DELETE.name,
                 )
 
                 if is_relationship:
@@ -330,15 +337,18 @@ class _BaseChangeTracker(Generic[T]):
         for relationship_id, grouping in self._grouping_map.items():
             start_node_id, end_node_id = grouping
 
+            start_node_not_tracked = (
+                start_node_id not in self._state[_TrackingOperation.INSERT]["nodes"]
+                and start_node_id not in self._state[_TrackingOperation.UPDATE]["nodes"]
+            )
+            end_node_not_tracked = (
+                end_node_id not in self._state[_TrackingOperation.INSERT]["nodes"]
+                and end_node_id not in self._state[_TrackingOperation.UPDATE]["nodes"]
+            )
+
             if (
-                (
-                    start_node_id not in self._state[_TrackingOperation.INSERT]["nodes"]
-                    and start_node_id not in self._state[_TrackingOperation.UPDATE]["nodes"]
-                )
-                or (
-                    end_node_id not in self._state[_TrackingOperation.INSERT]["nodes"]
-                    and end_node_id not in self._state[_TrackingOperation.UPDATE]["nodes"]
-                )
+                start_node_not_tracked
+                or end_node_not_tracked
                 or start_node_id in self._state[_TrackingOperation.DELETE]["nodes"]
                 or end_node_id in self._state[_TrackingOperation.DELETE]["nodes"]
             ):
@@ -357,7 +367,7 @@ class _BaseChangeTracker(Generic[T]):
             _logger.debug("No added nodes to compile queries for, skipping")
             return []
 
-        groups: Dict[str, _NodeInsertGrouping] = {}
+        groups: Dict[str, _NodeInsertBatch] = {}
         _logger.debug(
             "Compiling queries for node entities with operation type %s",
             _TrackingOperation.INSERT.name,
@@ -423,7 +433,7 @@ class _BaseChangeTracker(Generic[T]):
             _logger.debug("No added relationships to compile queries for, skipping")
             return []
 
-        groups: Dict[str, _RelationshipInsertGrouping] = {}
+        groups: Dict[str, _RelationshipInsertBatch] = {}
         _logger.debug(
             "Compiling queries for relationship entities with operation type %s",
             _TrackingOperation.INSERT.name,
@@ -538,7 +548,7 @@ class _BaseChangeTracker(Generic[T]):
             return None
 
         _logger.debug("Compiling entity queries and parameters")
-        node_batches: List[_UpdateBatch] = []
+        node_batches: List[_EntityUpdateBatch] = []
 
         for state in self._state[_TrackingOperation.UPDATE]["nodes"].values():
             reference, original_checksums = state
@@ -596,7 +606,7 @@ class _BaseChangeTracker(Generic[T]):
             return None
 
         _logger.debug("Compiling entity queries and parameters")
-        relationship_batches: List[_UpdateBatch] = []
+        relationship_batches: List[_EntityUpdateBatch] = []
 
         for state in self._state[_TrackingOperation.UPDATE]["relationships"].values():
             reference, original_checksums = state
@@ -731,82 +741,87 @@ class ChangeTracker(_BaseChangeTracker[Union[Session, Transaction]]):
                 _LogContextKey.SERVER_TYPE: self._client._server_type,
             }
         ):
-            id_map: Dict[int, Union[str, int]] = {}
             self._omit_redundant_relationship_operations()
 
-            # If the change tracker is called on a session, we create a new transaction and run
-            # every operation in that transaction
             if isinstance(self._session_or_tx, Session):
-                _logger.debug(
-                    "Flush called on session, creating new transaction to run pending changes"
-                )
-
-                with self._session_or_tx.begin_transaction() as tx:
-                    for query, parameters in self._compile_node_add_operations():
-                        result = tx.run(cast(LiteralString, query), parameters)
-
-                        entity_id_map = cast(Dict[int, Union[str, int]], dict(result.values()))
-                        id_map.update(entity_id_map)
-
-                    queries = [*self._compile_relationship_add_operations(id_map)]
-
-                    node_update_queries = self._compile_node_update_operations()
-                    if node_update_queries is not None:
-                        queries.append(node_update_queries)
-
-                    relationship_update_queries = self._compile_relationship_update_operations()
-                    if relationship_update_queries is not None:
-                        queries.append(relationship_update_queries)
-
-                    node_delete_queries = self._compile_node_delete_operations()
-                    if node_delete_queries is not None:
-                        queries.append(node_delete_queries)
-
-                    relationship_delete_queries = self._compile_relationship_delete_operations()
-                    if relationship_delete_queries is not None:
-                        queries.append(relationship_delete_queries)
-
-                    for query_info in queries:
-                        query, parameters = query_info
-                        result = tx.run(cast(LiteralString, query), parameters)
-                        result.consume()
+                # If the change tracker is called on a session, we create a new transaction and run
+                # every operation in that transaction
+                self._flush_with_session()
             else:
                 # If this is called on a transaction already, we pass the responsibility of calling
                 # `.commit()` to the caller
-                _logger.debug(
-                    "Flush called on transaction, run pending changes directly on transaction "
-                    "without committing changes"
-                )
-                for query, parameters in self._compile_node_add_operations():
-                    result = self._session_or_tx.run(cast(LiteralString, query), parameters)
-
-                    entity_id_map = cast(Dict[int, Union[str, int]], dict(result.values()))
-                    id_map.update(entity_id_map)
-
-                queries = [*self._compile_relationship_add_operations(id_map)]
-
-                node_update_queries = self._compile_node_update_operations()
-                if node_update_queries is not None:
-                    queries.append(node_update_queries)
-
-                relationship_update_queries = self._compile_relationship_update_operations()
-                if relationship_update_queries is not None:
-                    queries.append(relationship_update_queries)
-
-                node_delete_queries = self._compile_node_delete_operations()
-                if node_delete_queries is not None:
-                    queries.append(node_delete_queries)
-
-                relationship_delete_queries = self._compile_relationship_delete_operations()
-                if relationship_delete_queries is not None:
-                    queries.append(relationship_delete_queries)
-
-                for query_info in queries:
-                    query, parameters = query_info
-                    result = self._session_or_tx.run(cast(LiteralString, query), parameters)
-                    result.consume()
+                self._flush_with_transaction()
 
             self.clear()
+
+    def _flush_with_session(self) -> None:
+        id_map: Dict[int, Union[str, int]] = {}
+        _logger.debug("Flush called on session, creating new transaction to run pending changes")
+
+        with cast(Session, self._session_or_tx).begin_transaction() as tx:
+            for query, parameters in self._compile_node_add_operations():
+                result = tx.run(cast(LiteralString, query), parameters)
+
+                entity_id_map = cast(Dict[int, Union[str, int]], dict(result.values()))
+                id_map.update(entity_id_map)
+
+            queries = [*self._compile_relationship_add_operations(id_map)]
+
+            node_update_queries = self._compile_node_update_operations()
+            if node_update_queries is not None:
+                queries.append(node_update_queries)
+
+            relationship_update_queries = self._compile_relationship_update_operations()
+            if relationship_update_queries is not None:
+                queries.append(relationship_update_queries)
+
+            node_delete_queries = self._compile_node_delete_operations()
+            if node_delete_queries is not None:
+                queries.append(node_delete_queries)
+
+            relationship_delete_queries = self._compile_relationship_delete_operations()
+            if relationship_delete_queries is not None:
+                queries.append(relationship_delete_queries)
+
+            for query_info in queries:
+                query, parameters = query_info
+                result = tx.run(cast(LiteralString, query), parameters)
+                result.consume()
+
+    def _flush_with_transaction(self) -> None:
+        id_map: Dict[int, Union[str, int]] = {}
+        _logger.debug(
+            "Flush called on transaction, run pending changes directly on transaction "
+            "without committing changes"
+        )
+        for query, parameters in self._compile_node_add_operations():
+            result = self._session_or_tx.run(cast(LiteralString, query), parameters)
+
+            entity_id_map = cast(Dict[int, Union[str, int]], dict(result.values()))
+            id_map.update(entity_id_map)
+
+        queries = [*self._compile_relationship_add_operations(id_map)]
+
+        node_update_queries = self._compile_node_update_operations()
+        if node_update_queries is not None:
+            queries.append(node_update_queries)
+
+        relationship_update_queries = self._compile_relationship_update_operations()
+        if relationship_update_queries is not None:
+            queries.append(relationship_update_queries)
+
+        node_delete_queries = self._compile_node_delete_operations()
+        if node_delete_queries is not None:
+            queries.append(node_delete_queries)
+
+        relationship_delete_queries = self._compile_relationship_delete_operations()
+        if relationship_delete_queries is not None:
+            queries.append(relationship_delete_queries)
+
+        for query_info in queries:
+            query, parameters = query_info
+            result = self._session_or_tx.run(cast(LiteralString, query), parameters)
+            result.consume()
 
 
 class AsyncChangeTracker(_BaseChangeTracker[Union[AsyncSession, AsyncTransaction]]):
@@ -827,58 +842,26 @@ class AsyncChangeTracker(_BaseChangeTracker[Union[AsyncSession, AsyncTransaction
                 _LogContextKey.SERVER_TYPE: self._client._server_type,
             }
         ):
-            id_map: Dict[int, Union[str, int]] = {}
             self._omit_redundant_relationship_operations()
 
-            # If the change tracker is called on a session, we create a new transaction and run
-            # every operation in that transaction
             if isinstance(self._session_or_tx, AsyncSession):
-                _logger.debug(
-                    "Flush called on session, creating new transaction to run pending changes"
-                )
+                # If the change tracker is called on a session, we create a new transaction and run
+                # every operation in that transaction
+                await self._flush_with_session()
+            else:
+                # If this is called on a transaction already, we pass the responsibility of calling
+                # `.commit()` to the caller
+                await self._flush_with_transactions()
 
-                async with await self._session_or_tx.begin_transaction() as tx:
-                    for query, parameters in self._compile_node_add_operations():
-                        result = await tx.run(cast(LiteralString, query), parameters)
+        self.clear()
 
-                        entity_id_map = cast(
-                            Dict[int, Union[str, int]], dict(await result.values())
-                        )
-                        id_map.update(entity_id_map)
+    async def _flush_with_session(self) -> None:
+        id_map: Dict[int, Union[str, int]] = {}
+        _logger.debug("Flush called on session, creating new transaction to run pending changes")
 
-                    queries = [*self._compile_relationship_add_operations(id_map)]
-
-                    node_update_queries = self._compile_node_update_operations()
-                    if node_update_queries is not None:
-                        queries.append(node_update_queries)
-
-                    relationship_update_queries = self._compile_relationship_update_operations()
-                    if relationship_update_queries is not None:
-                        queries.append(relationship_update_queries)
-
-                    node_delete_queries = self._compile_node_delete_operations()
-                    if node_delete_queries is not None:
-                        queries.append(node_delete_queries)
-
-                    relationship_delete_queries = self._compile_relationship_delete_operations()
-                    if relationship_delete_queries is not None:
-                        queries.append(relationship_delete_queries)
-
-                    for query_info in queries:
-                        query, parameters = query_info
-                        result = await tx.run(cast(LiteralString, query), parameters)
-                        await result.consume()
-
-                return
-
-            # If this is called on a transaction already, we pass the responsibility of calling
-            # `.commit()` to the caller
-            _logger.debug(
-                "Flush called on transaction, run pending changes directly on transaction without "
-                "committing changes"
-            )
+        async with await cast(AsyncSession, self._session_or_tx).begin_transaction() as tx:
             for query, parameters in self._compile_node_add_operations():
-                result = await self._session_or_tx.run(cast(LiteralString, query), parameters)
+                result = await tx.run(cast(LiteralString, query), parameters)
 
                 entity_id_map = cast(Dict[int, Union[str, int]], dict(await result.values()))
                 id_map.update(entity_id_map)
@@ -903,7 +886,40 @@ class AsyncChangeTracker(_BaseChangeTracker[Union[AsyncSession, AsyncTransaction
 
             for query_info in queries:
                 query, parameters = query_info
-                result = await self._session_or_tx.run(cast(LiteralString, query), parameters)
+                result = await tx.run(cast(LiteralString, query), parameters)
                 await result.consume()
 
-        self.clear()
+    async def _flush_with_transactions(self) -> None:
+        id_map: Dict[int, Union[str, int]] = {}
+        _logger.debug(
+            "Flush called on transaction, run pending changes directly on transaction without "
+            "committing changes"
+        )
+        for query, parameters in self._compile_node_add_operations():
+            result = await self._session_or_tx.run(cast(LiteralString, query), parameters)
+
+            entity_id_map = cast(Dict[int, Union[str, int]], dict(await result.values()))
+            id_map.update(entity_id_map)
+
+        queries = [*self._compile_relationship_add_operations(id_map)]
+
+        node_update_queries = self._compile_node_update_operations()
+        if node_update_queries is not None:
+            queries.append(node_update_queries)
+
+        relationship_update_queries = self._compile_relationship_update_operations()
+        if relationship_update_queries is not None:
+            queries.append(relationship_update_queries)
+
+        node_delete_queries = self._compile_node_delete_operations()
+        if node_delete_queries is not None:
+            queries.append(node_delete_queries)
+
+        relationship_delete_queries = self._compile_relationship_delete_operations()
+        if relationship_delete_queries is not None:
+            queries.append(relationship_delete_queries)
+
+        for query_info in queries:
+            query, parameters = query_info
+            result = await self._session_or_tx.run(cast(LiteralString, query), parameters)
+            await result.consume()

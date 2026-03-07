@@ -23,10 +23,7 @@ else:
 
 
 class LoomiTransaction(_Base):
-    """
-    Wrapper for `neo4j.Transaction` allowing for automatic transformation of entities returned by
-    queries.
-    """
+    """Wrapper for `neo4j.Transaction` allowing for additional functionality."""
 
     _transaction: Transaction
     _client: LoomiClient
@@ -50,7 +47,8 @@ class LoomiTransaction(_Base):
     @property
     def change_tracker(self) -> ChangeTracker:
         """
-        The change tracker specific to this transaction.
+        Change tracker exposed by this transaction. Will be used when `tracking` is set to `true` in a
+        query.
         """
         return self._change_tracker
 
@@ -89,10 +87,7 @@ class LoomiTransaction(_Base):
 
 
 class LoomiAsyncTransaction(_AsyncBase):
-    """
-    Wrapper for `neo4j.AsyncTransaction` allowing for automatic transformation of entities returned
-    by queries.
-    """
+    """Wrapper for `neo4j.AsyncTransaction` allowing for additional functionality."""
 
     _transaction: AsyncTransaction
     _client: LoomiAsyncClient
@@ -116,7 +111,8 @@ class LoomiAsyncTransaction(_AsyncBase):
     @property
     def change_tracker(self) -> AsyncChangeTracker:
         """
-        The change tracker specific to this transaction.
+        Change tracker exposed by this transaction. Will be used when `tracking` is set to `true` in a
+        query.
         """
         return self._change_tracker
 

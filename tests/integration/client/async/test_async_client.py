@@ -10,7 +10,7 @@ from loomi.models.graph import LoomiGraph
 from loomi.models.node import LoomiNode
 from loomi.models.path import LoomiPath
 from loomi.models.relationship import LoomiRelationship
-from tests.fixtures.db import DriverSpec, async_driver, driver_spec
+from tests.integration.fixtures.db import DriverSpec, async_driver, driver_spec
 
 
 class PickledHuman(LoomiNode):

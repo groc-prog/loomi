@@ -28,10 +28,7 @@ TResultKey = int | str
 
 
 class LoomiResult(_Base):
-    """
-    Wrapper for `neo4j.Result` objects containing nodes and relationships transformed into the
-    corresponding Loomi models.
-    """
+    """Wrapper for `neo4j.Result` allowing for additional functionality."""
 
     _result: Result
     _client: LoomiClient
@@ -79,9 +76,11 @@ class LoomiResult(_Base):
 
     def peek(self):
         """
-        Method providing the same interface as `neo4j.Result.peek`. If a entity is returned,
-        it will be transformed to it's corresponding model if that model has been registered with
-        the client.
+        Method providing the same interface as `neo4j.Result.peek`.
+
+        If a entity is returned, it will be transformed to it's corresponding model if that model has
+        been registered with the client.
+        If `tracking` has been set to `true`, the entity will be added to the `change tracker`.
         """
         original_result = self._result.peek()
         if original_result is None:
@@ -101,9 +100,11 @@ class LoomiResult(_Base):
 
     def fetch(self, n: int):
         """
-        Method providing the same interface as `neo4j.Result.fetch`. All returned entities will be
-        transformed to their corresponding models if that model has been registered with
-        the client.
+        Method providing the same interface as `neo4j.Result.fetch`.
+
+        All returned entities will be transformed to their corresponding models if that model has been
+        registered with the client.
+        If `tracking` has been set to `true`, all entities will be added to the `change tracker`.
         """
         original_result = self._result.fetch(n)
 
@@ -126,9 +127,11 @@ class LoomiResult(_Base):
 
     def to_eager_result(self):
         """
-        Method providing the same interface as `neo4j.Result.to_eager_result`. All returned entities
-        will be transformed to their corresponding models if that model has been registered with
-        the client.
+        Method providing the same interface as `neo4j.Result.to_eager_result`.
+
+        All returned entities will be transformed to their corresponding models if that model has been
+        registered with the client.
+        If `tracking` has been set to `true`, all entities will be added to the `change tracker`.
         """
         original_result = self._result.to_eager_result()
 
@@ -158,9 +161,11 @@ class LoomiResult(_Base):
 
     def single(self, strict: bool = False) -> Optional[Record]:
         """
-        Method providing the same interface as `neo4j.Result.single`. If a entity is returned,
-        it will be transformed to it's corresponding model if that model has been registered with
-        the client.
+        Method providing the same interface as `neo4j.Result.single`.
+
+        If a entity is returned, it will be transformed to it's corresponding model if that model has
+        been registered with the client.
+        If `tracking` has been set to `true`, the entity will be added to the `change tracker`.
         """
         original_result = self._result.single(strict)
         if original_result is None:
@@ -180,9 +185,11 @@ class LoomiResult(_Base):
 
     def values(self, *keys: TResultKey):
         """
-        Method providing the same interface as `neo4j.Result.values`. Entities returned in
-        the values list will be transformed to their corresponding models if that model has
-        been registered with the client.
+        Method providing the same interface as `neo4j.Result.values`.
+
+        All returned entities will be transformed to their corresponding models if that model has been
+        registered with the client.
+        If `tracking` has been set to `true`, all entities will be added to the `change tracker`.
         """
         original_result = self._result.values(*keys)
 
@@ -205,9 +212,11 @@ class LoomiResult(_Base):
 
     def value(self, key=0, default=None):
         """
-        Method providing the same interface as `neo4j.Result.value`. Entities returned in
-        the values list will be transformed to their corresponding models if that model has
-        been registered with the client.
+        Method providing the same interface as `neo4j.Result.value`.
+
+        All returned entities will be transformed to their corresponding models if that model has been
+        registered with the client.
+        If `tracking` has been set to `true`, all entities will be added to the `change tracker`.
         """
         original_result = self._result.value(key, default)
 
@@ -259,10 +268,7 @@ class LoomiResult(_Base):
 
 
 class LoomiAsyncResult(_AsyncBase):
-    """
-    Wrapper for `neo4j.AsyncResult` objects containing nodes and relationships transformed into the
-    corresponding Loomi models.
-    """
+    """Wrapper for `neo4j.AsyncResult` allowing for additional functionality."""
 
     _result: AsyncResult
     _client: LoomiAsyncClient
@@ -313,9 +319,11 @@ class LoomiAsyncResult(_AsyncBase):
 
     async def peek(self):
         """
-        Method providing the same interface as `neo4j.Result.peek`. If a entity is returned,
-        it will be transformed to it's corresponding model if that model has been registered with
-        the client.
+        Method providing the same interface as `neo4j.Result.peek`.
+
+        If a entity is returned, it will be transformed to it's corresponding model if that model has
+        been registered with the client.
+        If `tracking` has been set to `true`, the entity will be added to the `change tracker`.
         """
         original_result = await self._result.peek()
         if original_result is None:
@@ -335,9 +343,11 @@ class LoomiAsyncResult(_AsyncBase):
 
     async def fetch(self, n: int):
         """
-        Method providing the same interface as `neo4j.Result.fetch`. All returned entities will be
-        transformed to their corresponding models if that model has been registered with
-        the client.
+        Method providing the same interface as `neo4j.Result.fetch`.
+
+        All returned entities will be transformed to their corresponding models if that model has been
+        registered with the client.
+        If `tracking` has been set to `true`, all entities will be added to the `change tracker`.
         """
         original_result = await self._result.fetch(n)
 
@@ -360,9 +370,11 @@ class LoomiAsyncResult(_AsyncBase):
 
     async def to_eager_result(self):
         """
-        Method providing the same interface as `neo4j.Result.to_eager_result`. All returned entities
-        will be transformed to their corresponding models if that model has been registered with
-        the client.
+        Method providing the same interface as `neo4j.Result.to_eager_result`.
+
+        All returned entities will be transformed to their corresponding models if that model has been
+        registered with the client.
+        If `tracking` has been set to `true`, all entities will be added to the `change tracker`.
         """
         original_result = await self._result.to_eager_result()
 
@@ -392,9 +404,11 @@ class LoomiAsyncResult(_AsyncBase):
 
     async def single(self, strict: bool = False) -> Optional[Record]:
         """
-        Method providing the same interface as `neo4j.Result.single`. If a entity is returned,
-        it will be transformed to it's corresponding model if that model has been registered with
-        the client.
+        Method providing the same interface as `neo4j.Result.single`.
+
+        If a entity is returned, it will be transformed to it's corresponding model if that model has
+        been registered with the client.
+        If `tracking` has been set to `true`, the entity will be added to the `change tracker`.
         """
         original_result = await self._result.single(strict)
         if original_result is None:
@@ -414,9 +428,11 @@ class LoomiAsyncResult(_AsyncBase):
 
     async def values(self, *keys: TResultKey):
         """
-        Method providing the same interface as `neo4j.Result.values`. Entities returned in
-        the values list will be transformed to their corresponding models if that model has
-        been registered with the client.
+        Method providing the same interface as `neo4j.Result.values`.
+
+        All returned entities will be transformed to their corresponding models if that model has been
+        registered with the client.
+        If `tracking` has been set to `true`, all entities will be added to the `change tracker`.
         """
         original_result = await self._result.values(*keys)
 
@@ -439,9 +455,11 @@ class LoomiAsyncResult(_AsyncBase):
 
     async def value(self, key=0, default=None):
         """
-        Method providing the same interface as `neo4j.Result.value`. Entities returned in
-        the values list will be transformed to their corresponding models if that model has
-        been registered with the client.
+        Method providing the same interface as `neo4j.Result.value`.
+
+        All returned entities will be transformed to their corresponding models if that model has been
+        registered with the client.
+        If `tracking` has been set to `true`, all entities will be added to the `change tracker`.
         """
         original_result = await self._result.value(key, default)
 

@@ -9,7 +9,7 @@ from loomi.client._internal.transaction import LoomiTransaction
 from loomi.client.sync_client import LoomiClient
 from loomi.models.node import LoomiNode
 from loomi.models.relationship import LoomiRelationship
-from tests.fixtures.db import DriverSpec, driver_spec, sync_driver
+from tests.integration.fixtures.db import DriverSpec, driver_spec, sync_driver
 
 
 class TestLoomiTransaction:

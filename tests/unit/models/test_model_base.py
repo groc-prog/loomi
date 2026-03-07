@@ -75,7 +75,7 @@ class TestFieldDefaults:
 class TestSerialize:
     def test_serializes_supported_values_to_python_dict(self):
         """
-        Verify that support python primitive types are serializes to a python dict.
+        Verify that supported python primitive types are serializes to a python dict.
         """
 
         class Human(LoomiNode):

@@ -11,7 +11,7 @@ class LoomiNodeConfiguration(_EntityConfiguration, total=False):
 
 
 class LoomiNode(_EntityBase):
-    """A base class for creating Loomi node models."""
+    """A base class for Loomi nodes."""
 
     loomi_config: ClassVar[LoomiNodeConfiguration]
 
@@ -49,7 +49,6 @@ class LoomiNode(_EntityBase):
     @classmethod
     def _merge_loomi_config(cls, config: LoomiNodeConfiguration) -> None:
         for key, value in config.items():
-            # If the key has not been set before, always set it
             if key not in cls.loomi_config:
                 cls.loomi_config[key] = value
 

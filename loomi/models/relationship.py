@@ -12,7 +12,7 @@ class LoomiRelationshipConfiguration(_EntityConfiguration, total=False):
 
 
 class LoomiRelationship(_EntityBase):
-    """A base class for creating Loomi relationship models."""
+    """A base class for Loomi relationships."""
 
     loomi_config: ClassVar[LoomiRelationshipConfiguration]
 
@@ -55,7 +55,6 @@ class LoomiRelationship(_EntityBase):
             if key == "type":
                 continue
 
-            # If the key has not been set before, always set it
             if key not in cls.loomi_config:
                 cls.loomi_config[key] = value
 

@@ -23,7 +23,7 @@ class LoomiAsyncClient(_BaseClient[AsyncDriver]):
             _logger.info("Verifying connectivity to remote")
             await self._driver.verify_connectivity()
 
-            _logger.info("Getting remote server information")
+            _logger.info("Getting remote server metadata")
             server_info = await self._driver.get_server_info()
 
             self._server_type = (

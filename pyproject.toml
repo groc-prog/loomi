@@ -39,9 +39,6 @@ addopts = "--cov=loomi --cov-report=term-missing"
 env_files = [".env.test"]
 
 [tool.coverage.run]
-# Only measure coverage in your source code folder
-source = ["your_package_name"]
-# Explicitly omit the tests directory
 omit = ["tests/*"]
 
 [tool.coverage.report]

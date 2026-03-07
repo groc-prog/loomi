@@ -24,10 +24,7 @@ else:
 
 
 class LoomiSession(_Base):
-    """
-    Wrapper for `neo4j.Session` allowing for automatic transformation of entities returned by
-    queries.
-    """
+    """Wrapper for `neo4j.Session` allowing for additional functionality."""
 
     _session: Session
     _client: LoomiClient
@@ -51,7 +48,8 @@ class LoomiSession(_Base):
     @property
     def change_tracker(self) -> ChangeTracker:
         """
-        The change tracker specific to this session.
+        Change tracker exposed by this session. Will be used when `tracking` is set to `true` in a
+        query.
         """
         return self._change_tracker
 
@@ -93,18 +91,15 @@ class LoomiSession(_Base):
         self, metadata: Dict[str, Any] | None = None, timeout: float | None = None
     ) -> LoomiTransaction:
         """
-        Method providing the same interface as `neo4j.Session.begin_transaction`. If a entity is
-        returned, it will be transformed to it's corresponding model.
+        Method providing the same interface as `neo4j.Session.begin_transaction`. If any entity
+        is returned, it will be transformed to it's corresponding model.
         """
         original_transaction = self._session.begin_transaction(metadata, timeout)
         return LoomiTransaction(original_transaction, self._client)
 
 
 class LoomiAsyncSession(_AsyncBase):
-    """
-    Wrapper for `neo4j.AsyncSession` allowing for automatic transformation of entities returned by
-    queries.
-    """
+    """Wrapper for `neo4j.AsyncSession` allowing for additional functionality."""
 
     _session: AsyncSession
     _client: LoomiAsyncClient
@@ -128,7 +123,8 @@ class LoomiAsyncSession(_AsyncBase):
     @property
     def change_tracker(self) -> AsyncChangeTracker:
         """
-        The change tracker specific to this session.
+        Change tracker exposed by this session. Will be used when `tracking` is set to `true` in a
+        query.
         """
         return self._change_tracker
 
@@ -170,7 +166,7 @@ class LoomiAsyncSession(_AsyncBase):
         self, metadata: Dict[str, Any] | None = None, timeout: float | None = None
     ) -> LoomiAsyncTransaction:
         """
-        Method providing the same interface as `neo4j.AsyncSession.begin_transaction`. If a entity
+        Method providing the same interface as `neo4j.AsyncSession.begin_transaction`. If any entity
         is returned, it will be transformed to it's corresponding model.
         """
         original_transaction = await self._session.begin_transaction(metadata, timeout)

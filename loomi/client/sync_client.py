@@ -23,7 +23,7 @@ class LoomiClient(_BaseClient[Driver]):
             _logger.info("Verifying connectivity to remote")
             self._driver.verify_connectivity()
 
-            _logger.info("Getting remote server information")
+            _logger.info("Getting remote server metadata")
             server_info = self._driver.get_server_info()
 
             self._server_type = (

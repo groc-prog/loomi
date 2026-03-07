@@ -1,5 +1,5 @@
-import asyncio
 import functools
+import inspect
 from abc import ABC
 from enum import StrEnum
 from typing import (
@@ -56,7 +56,7 @@ def _require_server_metadata(func: F) -> F:
             raise ClientError(f"Method '{func.__name__}' requires a connected server. ")
         return func(self, *args, **kwargs)
 
-    if asyncio.iscoroutinefunction(func):
+    if inspect.iscoroutinefunction(func):
         return cast(F, async_wrapper)
     return cast(F, sync_wrapper)
 
@@ -103,8 +103,8 @@ class _BaseClient(Generic[T], ABC):
                     )
                     continue
 
-                # Normally, the hash should always be initialized, but if there is some edge case
-                # we want to make it clear
+                # In most cases, the hash should always be initialized, but there can be some issues when using
+                # forward refs
                 if model._hash is None:
                     raise ModelError(
                         f"Hash on model {model.__name__} is not initialized. Maybe you forgot to "

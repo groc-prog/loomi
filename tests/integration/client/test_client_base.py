@@ -7,7 +7,7 @@ from loomi.client.async_client import LoomiAsyncClient
 from loomi.client.sync_client import LoomiClient
 from loomi.exceptions import ClientError, ModelError
 from loomi.models.node import LoomiNode
-from tests.fixtures.db import DriverSpec, async_driver, driver_spec, sync_driver
+from tests.integration.fixtures.db import DriverSpec, async_driver, driver_spec, sync_driver
 
 
 class TestRegistration:
