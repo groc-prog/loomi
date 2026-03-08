@@ -3,10 +3,10 @@
 import pytest
 from neo4j import AsyncDriver, Driver
 
-from loomi.client.async_client import LoomiAsyncClient
-from loomi.client.sync_client import LoomiClient
+from loomi.client.async_client import AsyncClient
+from loomi.client.sync_client import Client
 from loomi.exceptions import ClientError, ModelError
-from loomi.models.node import LoomiNode
+from loomi.models.node import Node
 from tests.integration.fixtures.db import DriverSpec, async_driver, driver_spec, sync_driver
 
 
@@ -19,7 +19,7 @@ class TestRegistration:
 
         class NotAModel: ...
 
-        client = LoomiClient(sync_driver)
+        client = Client(sync_driver)
         client.register(NotAModel)  # type: ignore
 
         assert len(client._models) == 0
@@ -32,10 +32,10 @@ class TestRegistration:
         is registered.
         """
 
-        class Human(LoomiNode): ...
+        class Human(Node): ...
 
         Human._hash = None
-        client = LoomiClient(sync_driver)
+        client = Client(sync_driver)
 
         with pytest.raises(ModelError):
             client.register(Human)  # type: ignore
@@ -48,7 +48,7 @@ class TestInitialization:
         """
         Verify that a exception is thrown if a session is started without initializing the client.
         """
-        sync_client = LoomiClient(sync_driver)
+        sync_client = Client(sync_driver)
 
         with pytest.raises(ClientError):
             sync_client.session()
@@ -56,7 +56,7 @@ class TestInitialization:
         with pytest.raises(ClientError):
             sync_client.session("native")
 
-        async_client = LoomiAsyncClient(async_driver)
+        async_client = AsyncClient(async_driver)
 
         with pytest.raises(ClientError):
             async_client.session()

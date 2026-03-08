@@ -6,18 +6,18 @@ import pytest
 from neo4j import GraphDatabase
 
 from loomi.client._internal._change_tracker import ChangeTracker, _TrackingOperation
-from loomi.client.sync_client import LoomiClient
+from loomi.client.sync_client import Client
 from loomi.exceptions import ChangeTrackerError
-from loomi.models.node import LoomiNode
-from loomi.models.relationship import LoomiRelationship
+from loomi.models.node import Node
+from loomi.models.relationship import Relationship
 
 
-class Human(LoomiNode):
+class Human(Node):
     name: str
     age: int
 
 
-class Likes(LoomiRelationship):
+class Likes(Relationship):
     scale: float
 
 
@@ -31,7 +31,7 @@ def change_tracker():
         pytest.skip("Missing environment variable for database connection.")
 
     driver = GraphDatabase.driver(uri, auth=(user, pwd))
-    client = LoomiClient(driver)
+    client = Client(driver)
     client.initialize()
 
     with client.session() as session:

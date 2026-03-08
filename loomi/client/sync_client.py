@@ -1,14 +1,14 @@
 from typing import Any, Literal, Union, overload
 
-from neo4j import Driver, Session
+import neo4j
 
 from loomi._logger import _LogContextKey, _logger, _scoped_log_ctx
 from loomi.client._internal._base import _BaseClient, _require_server_metadata, _ServerType
-from loomi.client._internal.session import LoomiSession
+from loomi.client._internal.session import Session
 from loomi.exceptions import ClientError
 
 
-class LoomiClient(_BaseClient[Driver]):
+class Client(_BaseClient[neo4j.Driver]):
     """Sync database client for interacting with Loomi models."""
 
     def initialize(self) -> None:
@@ -54,17 +54,19 @@ class LoomiClient(_BaseClient[Driver]):
             raise ClientError("Could not get required metadata from remote") from exc
 
     @overload
-    def session(self, mode: Literal["loomi"] = "loomi", **session_config: Any) -> LoomiSession: ...
+    def session(self, mode: Literal["loomi"] = "loomi", **session_config: Any) -> Session: ...
 
     @overload
-    def session(self, mode: Literal["native"] = "native", **session_config: Any) -> Session: ...
+    def session(
+        self, mode: Literal["native"] = "native", **session_config: Any
+    ) -> neo4j.Session: ...
 
     @_require_server_metadata
     def session(
         self,
         mode: Union[Literal["native"], Literal["loomi"]] = "loomi",
         **session_config: Any,
-    ) -> Union[Session, LoomiSession]:
+    ) -> Union[neo4j.Session, Session]:
         """
         Start a new session. This behaves the same as the `.session()` from the driver except it
         exposes additional functionality if `mode` is set to `loomi`.
@@ -83,6 +85,6 @@ class LoomiClient(_BaseClient[Driver]):
             session = self._driver.session(**session_config)
 
             if mode == "loomi":
-                return LoomiSession(session, self)
+                return Session(session, self)
 
             return session

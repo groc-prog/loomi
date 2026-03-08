@@ -9,8 +9,8 @@ from pydantic import BaseModel, ValidationError
 
 from loomi.client._internal._base import _ServerType
 from loomi.exceptions import SerializationError
-from loomi.models.node import LoomiNode
-from loomi.models.relationship import LoomiRelationship
+from loomi.models.node import Node
+from loomi.models.relationship import Relationship
 
 
 class TestModelHash:
@@ -21,12 +21,12 @@ class TestModelHash:
         strings.
         """
 
-        class Human(LoomiNode): ...
+        class Human(Node): ...
 
-        class Likes(LoomiRelationship): ...
+        class Likes(Relationship): ...
 
-        hash_1 = Human._generate_loomi_hash(set("input"))  # type: ignore
-        hash_2 = Likes._generate_loomi_hash(set("input"))  # type: ignore
+        hash_1 = Human._generate_hash(set("input"))  # type: ignore
+        hash_2 = Likes._generate_hash(set("input"))  # type: ignore
         assert hash_1 != hash_2
 
 
@@ -37,7 +37,7 @@ class TestEqualsMagicMethod:
         Verify that entities of the same type with different element ids are not equal.
         """
 
-        class Human(LoomiNode): ...
+        class Human(Node): ...
 
         class NotAModel: ...
 
@@ -57,7 +57,7 @@ class TestFieldDefaults:
     def test_model_default_values(self):
         """Verify that a model is initialized with the correct defaults for graph related fields."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: Optional[str] = None
             min_age: int = 18
 
@@ -78,7 +78,7 @@ class TestSerialize:
         Verify that supported python primitive types are serializes to a python dict.
         """
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
             age: int
             jobs: List[str]
@@ -107,7 +107,7 @@ class TestSerialize:
         class Metadata(BaseModel):
             field: str = "value"
 
-        class Human(LoomiNode):
+        class Human(Node):
             metadata: Metadata = Metadata()
 
         human = Human()
@@ -125,7 +125,7 @@ class TestSerialize:
         class Metadata(BaseModel):
             field: str = "value"
 
-        class Human(LoomiNode):
+        class Human(Node):
             metadata: List[Metadata] = [Metadata()]
 
         human = Human()
@@ -139,7 +139,7 @@ class TestSerialize:
     def test_raises_if_serializer_function_not_defined(self):
         """Verify that a error is thrown if no serializer function is provided."""
 
-        class Human(LoomiNode): ...
+        class Human(Node): ...
 
         Human.loomi_config.pop("serializer_fn")
 
@@ -152,7 +152,7 @@ class TestSerialize:
         Verify that a error is thrown if a not supported datatype is present in the dumped object.
         """
 
-        class Human(LoomiNode):
+        class Human(Node):
             values: UUID
 
         human = Human(values=uuid4())
@@ -164,7 +164,7 @@ class TestSerialize:
         Verify that a error is thrown if a not supported datatype is present in the dumped object.
         """
 
-        class Human(LoomiNode):
+        class Human(Node):
             values: List[Set[str]]
 
         human = Human(values=[set(["a", "b"])])
@@ -180,7 +180,7 @@ class TestSerialize:
         class Metadata(BaseModel):
             field: str = "value"
 
-        class Human(LoomiNode):
+        class Human(Node):
             metadata: Metadata = Metadata()
 
         human = Human()
@@ -196,7 +196,7 @@ class TestSerialize:
         class Metadata(BaseModel):
             field: str = "value"
 
-        class Human(LoomiNode):
+        class Human(Node):
             metadata: List[Metadata] = [Metadata()]
 
         human = Human()
@@ -214,12 +214,12 @@ class TestSerialize:
         class Metadata(BaseModel):
             field: str = "value"
 
-        class HumanNestedDict(LoomiNode):
+        class HumanNestedDict(Node):
             metadata: Metadata = Metadata()
 
             loomi_config = {"serializer_fn": serialization_fn}  # type: ignore
 
-        class HumanNestedList(LoomiNode):
+        class HumanNestedList(Node):
             metadata: List[Metadata] = [Metadata()]
 
             loomi_config = {"serializer_fn": serialization_fn}  # type: ignore
@@ -239,7 +239,7 @@ class TestDeserialize:
         Verify that dicts are correctly deserializes into models.
         """
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
             age: int
             jobs: List[str]
@@ -264,7 +264,7 @@ class TestDeserialize:
         class Metadata(BaseModel):
             field: str = "value"
 
-        class Human(LoomiNode):
+        class Human(Node):
             metadata: Metadata
 
         human = Human._deserialize(
@@ -283,7 +283,7 @@ class TestDeserialize:
         class Metadata(BaseModel):
             field: str = "value"
 
-        class Human(LoomiNode):
+        class Human(Node):
             metadata: List[Metadata]
 
         human = Human._deserialize(
@@ -297,7 +297,7 @@ class TestDeserialize:
     def test_raises_if_deserializer_function_not_defined(self):
         """Verify that a error is thrown if no deserializer function is provided."""
 
-        class Human(LoomiNode): ...
+        class Human(Node): ...
 
         Human.loomi_config.pop("deserializer_fn")
 
@@ -309,7 +309,7 @@ class TestDeserialize:
         Verify that unknown keys from dicts are ignored when deserializing into a model.
         """
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
             age: int
 
@@ -335,7 +335,7 @@ class TestDeserialize:
         class Metadata(BaseModel):
             field: str = "value"
 
-        class Human(LoomiNode):
+        class Human(Node):
             metadata: Metadata
 
         with pytest.raises(ValidationError):
@@ -350,7 +350,7 @@ class TestDeserialize:
         class Metadata(BaseModel):
             field: str = "value"
 
-        class Human(LoomiNode):
+        class Human(Node):
             metadata: List[Metadata]
 
         with pytest.raises(ValidationError):
@@ -369,12 +369,12 @@ class TestDeserialize:
         class Metadata(BaseModel):
             field: str = "value"
 
-        class HumanNestedDict(LoomiNode):
+        class HumanNestedDict(Node):
             metadata: Metadata
 
             loomi_config = {"deserializer_fn": deserialization_fn}  # type: ignore
 
-        class HumanNestedList(LoomiNode):
+        class HumanNestedList(Node):
             metadata: List[Metadata] = [Metadata()]
 
             loomi_config = {"deserializer_fn": deserialization_fn}  # type: ignore

@@ -3,19 +3,19 @@
 import pytest
 from neo4j import AsyncDriver
 
-from loomi.client.async_client import LoomiAsyncClient
+from loomi.client.async_client import AsyncClient
 from loomi.exceptions import ChangeTrackerError, ModelError
-from loomi.models.node import LoomiNode
-from loomi.models.relationship import LoomiRelationship
+from loomi.models.node import Node
+from loomi.models.relationship import Relationship
 from tests.integration.fixtures.db import DriverSpec, ServerName, async_driver, driver_spec
 
 
-class Human(LoomiNode):
+class Human(Node):
     name: str
     age: int
 
 
-class Likes(LoomiRelationship):
+class Likes(Relationship):
     scale: float
 
 
@@ -28,7 +28,7 @@ class TestFlushSession:
         human1 = Human(name="John", age=21)
         human2 = Human(name="Jane", age=20)
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -77,7 +77,7 @@ class TestFlushSession:
                 human2._element_id = str(ids[0][1])
                 human2._id = ids[0][1]
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -110,7 +110,7 @@ class TestFlushSession:
         human._element_id = "element_id"
         human._id = 0
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -130,11 +130,11 @@ class TestFlushSession:
         accessed when compiling queries.
         """
 
-        class Worker(LoomiNode): ...
+        class Worker(Node): ...
 
         worker = Worker()
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Worker)
         await client.initialize()
 
@@ -153,11 +153,11 @@ class TestFlushSession:
         accessed when compiling queries.
         """
 
-        class Worker(LoomiNode): ...
+        class Worker(Node): ...
 
         worker = Worker()
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Worker)
         await client.initialize()
 
@@ -199,7 +199,7 @@ class TestFlushSession:
                 human2._element_id = str(ids[0][1])
                 human2._id = ids[0][1]
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -225,7 +225,7 @@ class TestFlushSession:
         human._element_id = "element_id"
         human._id = 0
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -248,7 +248,7 @@ class TestFlushSession:
         human2 = Human(name="Jane", age=20)
         likes = Likes(scale=2.1)
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human, Likes)
         await client.initialize()
 
@@ -275,7 +275,7 @@ class TestFlushSession:
         likes1 = Likes(scale=9.2)
         likes2 = Likes(scale=3.8)
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human, Likes)
         await client.initialize()
 
@@ -302,13 +302,13 @@ class TestFlushSession:
         accessed when compiling queries.
         """
 
-        class Loves(LoomiRelationship): ...
+        class Loves(Relationship): ...
 
         human1 = Human(name="John", age=21)
         human2 = Human(name="Jane", age=20)
         loves = Loves()
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human, Loves)
         await client.initialize()
 
@@ -327,13 +327,13 @@ class TestFlushSession:
         accessed when compiling queries.
         """
 
-        class Loves(LoomiRelationship): ...
+        class Loves(Relationship): ...
 
         human1 = Human(name="John", age=21)
         human2 = Human(name="Jane", age=20)
         loves = Loves()
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human, Loves)
         await client.initialize()
 
@@ -378,7 +378,7 @@ class TestFlushSession:
                 human2._element_id = str(ids[0][1])
                 human2._id = ids[0][1]
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human, Likes)
         await client.initialize()
 
@@ -424,7 +424,7 @@ class TestFlushSession:
                 human2._element_id = str(ids[0][1])
                 human2._id = ids[0][1]
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human, Likes)
         await client.initialize()
 
@@ -483,7 +483,7 @@ class TestFlushSession:
                 likes2._element_id = str(ids[0][3])
                 likes2._id = ids[0][3]
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human, Likes)
         await client.initialize()
 
@@ -545,7 +545,7 @@ class TestFlushSession:
                 likes._element_id = str(ids[0][2])
                 likes._id = ids[0][2]
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human, Likes)
         await client.initialize()
 
@@ -604,7 +604,7 @@ class TestFlushSession:
                 likes2._element_id = str(ids[0][3])
                 likes2._id = ids[0][3]
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human, Likes)
         await client.initialize()
 
@@ -661,7 +661,7 @@ class TestFlushSession:
                 likes._element_id = str(ids[0][2])
                 likes._id = ids[0][2]
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human, Likes)
         await client.initialize()
 
@@ -714,7 +714,7 @@ class TestFlushTransaction:
                 likes1._element_id = str(ids[0][2])
                 likes1._id = ids[0][2]
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human, Likes)
         await client.initialize()
 

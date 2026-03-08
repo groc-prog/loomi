@@ -17,17 +17,17 @@ from typing import (
     overload,
 )
 
-from neo4j import AsyncDriver, Driver
-from neo4j.graph import Node, Path, Relationship
+import neo4j
+import neo4j.graph
 
 from loomi._logger import _LogContextKey, _logger, _scoped_log_ctx
 from loomi.exceptions import ClientError, ModelError
 from loomi.models._internal._types import _ModelType
-from loomi.models.node import LoomiNode
-from loomi.models.path import LoomiPath
-from loomi.models.relationship import LoomiRelationship
+from loomi.models.node import Node
+from loomi.models.path import Path
+from loomi.models.relationship import Relationship
 
-T = TypeVar("T", bound=Union[Driver, AsyncDriver])
+T = TypeVar("T", bound=Union[neo4j.Driver, neo4j.AsyncDriver])
 F = TypeVar("F", bound=Callable[..., Any])
 
 
@@ -36,8 +36,8 @@ class _ServerType(StrEnum):
     MEMGRAPH = "Memgraph"
 
 
-class LoomiClientConfiguration(TypedDict, total=False):
-    """TypedDict for configuring Loomi client behavior."""
+class BaseClientConfiguration(TypedDict, total=False):
+    """Base TypedDict for configuring Loomi client behavior."""
 
     serialize_nested: bool
 
@@ -66,14 +66,14 @@ class _BaseClient(Generic[T], ABC):
     _server_type: Optional[_ServerType]
     _server_version: Optional[Tuple[int, ...]]
     _models: Dict[str, _ModelType]
-    _configuration: LoomiClientConfiguration
+    _configuration: BaseClientConfiguration
 
     def __init__(self, driver: T, **config):
         self._driver = driver
         self._server_type = None
         self._server_version = None
         self._models = {}
-        self._configuration = LoomiClientConfiguration(**config)
+        self._configuration = BaseClientConfiguration(**config)
 
     def __repr__(self) -> str:
         return (
@@ -87,7 +87,7 @@ class _BaseClient(Generic[T], ABC):
         resolved from query results.
 
         Args:
-            *models (Union[Type[LoomiNode], Type[LoomiRelationship]]): The models to register.
+            *models (Union[Type[Node], Type[Relationship]]): The models to register.
         """
         with _scoped_log_ctx(
             {
@@ -96,15 +96,15 @@ class _BaseClient(Generic[T], ABC):
             }
         ):
             for model in models:
-                if not issubclass(model, (LoomiNode, LoomiRelationship)):
+                if not issubclass(model, (Node, Relationship)):
                     _logger.warning(
                         "Invalid model %s provided during model registration, skipping",
                         model,
                     )
                     continue
 
-                # In most cases, the hash should always be initialized, but there can be some issues when using
-                # forward refs
+                # In most cases, the hash should always be initialized, but there can be some issues
+                # when using forward refs
                 if model._hash is None:
                     raise ModelError(
                         f"Hash on model {model.__name__} is not initialized. Maybe you forgot to "
@@ -118,11 +118,11 @@ class _BaseClient(Generic[T], ABC):
         self._server_version = tuple(int(part) for part in version.split("."))
 
     def _transform_entity(self, entity: Any) -> Any:
-        if isinstance(entity, (Node, Relationship)):
+        if isinstance(entity, (neo4j.graph.Node, neo4j.graph.Relationship)):
             return self._entity_to_model(entity)
-        if isinstance(entity, Path):
+        if isinstance(entity, neo4j.graph.Path):
             _logger.debug("Transforming nodes and relationships from path %s", entity)
-            return LoomiPath(
+            return Path(
                 self,
                 tuple(self._entity_to_model(node) for node in entity.nodes),
                 tuple(self._entity_to_model(relationship) for relationship in entity.relationships),
@@ -133,18 +133,20 @@ class _BaseClient(Generic[T], ABC):
         return entity
 
     @overload
-    def _entity_to_model(self, entity: Node) -> Union[LoomiNode, Node]: ...
+    def _entity_to_model(self, entity: neo4j.graph.Node) -> Union[Node, neo4j.graph.Node]: ...
 
     @overload
-    def _entity_to_model(self, entity: Relationship) -> Union[LoomiRelationship, Relationship]: ...
+    def _entity_to_model(
+        self, entity: neo4j.graph.Relationship
+    ) -> Union[Relationship, neo4j.graph.Relationship]: ...
 
     def _entity_to_model(
-        self, entity: Union[Node, Relationship]
-    ) -> Union[LoomiNode, LoomiRelationship, Node, Relationship]:
+        self, entity: Union[neo4j.graph.Node, neo4j.graph.Relationship]
+    ) -> Union[Node, Relationship, neo4j.graph.Node, neo4j.graph.Relationship]:
         model_hash = (
-            LoomiNode._generate_loomi_hash(list(entity.labels))
-            if isinstance(entity, Node)
-            else LoomiRelationship._generate_loomi_hash(entity.type)
+            Node._generate_hash(list(entity.labels))
+            if isinstance(entity, neo4j.graph.Node)
+            else Relationship._generate_hash(entity.type)
         )
 
         if model_hash not in self._models:
@@ -165,8 +167,8 @@ class _BaseClient(Generic[T], ABC):
 
         return instance
 
-    def _relationship_type_to_model(self, type_: str) -> Optional[Type[LoomiRelationship]]:
-        model_hash = LoomiRelationship._generate_loomi_hash(type_)
+    def _relationship_type_to_model(self, type_: str) -> Optional[Type[Relationship]]:
+        model_hash = Relationship._generate_hash(type_)
 
         if model_hash not in self._models:
             _logger.warning(
@@ -175,4 +177,4 @@ class _BaseClient(Generic[T], ABC):
             )
             return None
 
-        return cast(Type[LoomiRelationship], self._models[model_hash])
+        return cast(Type[Relationship], self._models[model_hash])

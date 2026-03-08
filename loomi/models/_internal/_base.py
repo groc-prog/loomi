@@ -16,18 +16,19 @@ from typing import (
     cast,
 )
 
+import neo4j.spatial
+import neo4j.time
 import xxhash
-from neo4j import spatial, time
 from pydantic import BaseModel, ConfigDict, PrivateAttr, computed_field
 
 from loomi._logger import _logger
 from loomi.exceptions import SerializationError
 
 if TYPE_CHECKING:
-    from loomi.client._internal._base import LoomiClientConfiguration, _ServerType
+    from loomi.client._internal._base import BaseClientConfiguration, _ServerType
 else:
     _ServerType = object
-    LoomiClientConfiguration = object
+    BaseClientConfiguration = object
 
 SUPPORTED_DATA_TYPES = (
     bool,
@@ -39,11 +40,11 @@ SUPPORTED_DATA_TYPES = (
     list,
     dict,
     type(None),
-    time.Date,
-    time.Time,
-    time.DateTime,
-    time.Duration,
-    spatial.Point,
+    neo4j.time.Date,
+    neo4j.time.Time,
+    neo4j.time.DateTime,
+    neo4j.time.Duration,
+    neo4j.spatial.Point,
     datetime.date,
     datetime.time,
     datetime.datetime,
@@ -57,11 +58,11 @@ SUPPORTED_LIST_DATA_TYPES = (
     str,
     bytes,
     bytearray,
-    time.Date,
-    time.Time,
-    time.DateTime,
-    time.Duration,
-    spatial.Point,
+    neo4j.time.Date,
+    neo4j.time.Time,
+    neo4j.time.DateTime,
+    neo4j.time.Duration,
+    neo4j.spatial.Point,
     datetime.date,
     datetime.time,
     datetime.datetime,
@@ -150,7 +151,7 @@ class _EntityBase(BaseModel, ABC):
         return checksums
 
     def _serialize(
-        self, mode: _ServerType, client_config: LoomiClientConfiguration, **kwargs
+        self, mode: _ServerType, client_config: BaseClientConfiguration, **kwargs
     ) -> Dict[str, Any]:
         from loomi.client._internal._base import _ServerType
 
@@ -245,7 +246,7 @@ class _EntityBase(BaseModel, ABC):
 
     @classmethod
     def _deserialize(
-        cls, obj: Dict[str, Any], mode: _ServerType, client_config: LoomiClientConfiguration
+        cls, obj: Dict[str, Any], mode: _ServerType, client_config: BaseClientConfiguration
     ) -> Self:
         from loomi.client._internal._base import _ServerType
 

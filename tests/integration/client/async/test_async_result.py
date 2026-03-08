@@ -1,29 +1,29 @@
 # pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, line-too-long, unused-argument
 
-from neo4j import AsyncDriver, EagerResult
-from neo4j.graph import Graph, Node
+import neo4j
+import neo4j.graph
 
 from loomi.client._internal._change_tracker import _TrackingOperation
-from loomi.client.async_client import LoomiAsyncClient
-from loomi.models.graph import LoomiGraph
-from loomi.models.node import LoomiNode
-from loomi.models.relationship import LoomiRelationship
+from loomi.client.async_client import AsyncClient
+from loomi.models.graph import Graph
+from loomi.models.node import Node
+from loomi.models.relationship import Relationship
 from tests.integration.fixtures.db import DriverSpec, async_driver, driver_spec
 
 
 class TestNativeAsyncResult:
     async def test_keeps_original_records_from_peek(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method returns the unchanged results."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -32,24 +32,24 @@ class TestNativeAsyncResult:
 
             data = await result.peek()
             assert data is not None
-            assert isinstance(data[0], Node)
+            assert isinstance(data[0], neo4j.graph.Node)
 
             properties = dict(data[0])
             assert "name" in properties
             assert properties["name"] == "John"
 
     async def test_keeps_original_records_from_fetch(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method returns the unchanged results."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -58,24 +58,24 @@ class TestNativeAsyncResult:
 
             data = await result.fetch(1)
             assert len(data) == 1
-            assert isinstance(data[0][0], Node)
+            assert isinstance(data[0][0], neo4j.graph.Node)
 
             properties = dict(data[0][0])
             assert "name" in properties
             assert properties["name"] == "John"
 
     async def test_keeps_original_records_from_to_eager_result(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method returns the unchanged results."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -83,26 +83,26 @@ class TestNativeAsyncResult:
             result = await session.run("MATCH (n:Human) RETURN n")
 
             data = await result.to_eager_result()
-            assert isinstance(data, EagerResult)
+            assert isinstance(data, neo4j.EagerResult)
             assert len(data.records) == 1
-            assert isinstance(data.records[0][0], Node)
+            assert isinstance(data.records[0][0], neo4j.graph.Node)
 
             properties = dict(data.records[0][0])
             assert "name" in properties
             assert properties["name"] == "John"
 
     async def test_keeps_original_records_from_single(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method returns the unchanged results."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -111,24 +111,24 @@ class TestNativeAsyncResult:
 
             data = await result.single()
             assert data is not None
-            assert isinstance(data[0], Node)
+            assert isinstance(data[0], neo4j.graph.Node)
 
             properties = dict(data[0])
             assert "name" in properties
             assert properties["name"] == "John"
 
     async def test_keeps_original_records_from_values(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method returns the unchanged results."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -138,24 +138,24 @@ class TestNativeAsyncResult:
             data = await result.values()
             assert len(data) == 1
             assert len(data[0]) == 1
-            assert isinstance(data[0][0], Node)
+            assert isinstance(data[0][0], neo4j.graph.Node)
 
             properties = dict(data[0][0])
             assert "name" in properties
             assert properties["name"] == "John"
 
     async def test_keeps_original_records_from_value(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method returns the unchanged results."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -164,24 +164,24 @@ class TestNativeAsyncResult:
 
             data = await result.value()
             assert len(data) == 1
-            assert isinstance(data[0], Node)
+            assert isinstance(data[0], neo4j.graph.Node)
 
             properties = dict(data[0])
             assert "name" in properties
             assert properties["name"] == "John"
 
     async def test_keeps_original_records_from_graph(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method returns the unchanged results."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -189,22 +189,22 @@ class TestNativeAsyncResult:
             result = await session.run("MATCH (n:Human) RETURN n")
 
             data = await result.graph()
-            assert isinstance(data, Graph)
+            assert isinstance(data, neo4j.graph.Graph)
 
 
-class TestLoomiAsyncResult:
+class TestAsyncResult:
     async def test_transforms_records_from_peek(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method transforms results to models."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -217,17 +217,17 @@ class TestLoomiAsyncResult:
             assert data[0].name == "John"
 
     async def test_transforms_records_from_peek_with_no_result(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method returns none if no results are returned."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -240,17 +240,17 @@ class TestLoomiAsyncResult:
             assert data is None
 
     async def test_adds_records_from_peek_to_change_tracker(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method adds results to the change tracker."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -263,17 +263,17 @@ class TestLoomiAsyncResult:
             )
 
     async def test_transforms_records_from_fetch(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method transforms results to models."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -286,17 +286,17 @@ class TestLoomiAsyncResult:
             assert data[0][0].name == "John"
 
     async def test_adds_records_from_fetch_to_change_tracker(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method adds results to the change tracker."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -309,17 +309,17 @@ class TestLoomiAsyncResult:
             )
 
     async def test_transforms_records_from_to_eager_result(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method transforms results to models."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -327,23 +327,23 @@ class TestLoomiAsyncResult:
             result = await session.run("MATCH (n:Human) RETURN n")
 
             data = await result.to_eager_result()
-            assert isinstance(data, EagerResult)
+            assert isinstance(data, neo4j.EagerResult)
             assert len(data.records) == 1
             assert isinstance(data.records[0][0], Human)
             assert data.records[0][0].name == "John"
 
     async def test_adds_records_from_to_eager_result_to_change_tracker(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method adds results to the change tracker."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -356,17 +356,17 @@ class TestLoomiAsyncResult:
             )
 
     async def test_transforms_records_from_single(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method transforms results to models."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -379,17 +379,17 @@ class TestLoomiAsyncResult:
             assert data[0].name == "John"
 
     async def test_transforms_records_from_single_with_no_result(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method transforms results to models."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -402,17 +402,17 @@ class TestLoomiAsyncResult:
             assert data is None
 
     async def test_adds_records_from_single_to_change_tracker(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method adds results to the change tracker."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -425,17 +425,17 @@ class TestLoomiAsyncResult:
             )
 
     async def test_transforms_records_from_values(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method transforms results to models."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -449,17 +449,17 @@ class TestLoomiAsyncResult:
             assert data[0][0].name == "John"
 
     async def test_adds_records_from_values_to_change_tracker(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method adds results to the change tracker."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -472,17 +472,17 @@ class TestLoomiAsyncResult:
             )
 
     async def test_transforms_records_from_value(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method transforms results to models."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -495,17 +495,17 @@ class TestLoomiAsyncResult:
             assert data[0].name == "John"
 
     async def test_adds_records_from_value_to_change_tracker(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method adds results to the change tracker."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -518,17 +518,17 @@ class TestLoomiAsyncResult:
             )
 
     async def test_transforms_records_from_graph(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method transforms results to models."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -536,17 +536,17 @@ class TestLoomiAsyncResult:
             result = await session.run("MATCH (n:Human) RETURN n")
 
             data = await result.graph()
-            assert isinstance(data, LoomiGraph)
+            assert isinstance(data, Graph)
 
     async def test_adds_records_from_graph_to_change_tracker(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method adds results to the change tracker."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
-        class Likes(LoomiRelationship): ...
+        class Likes(Relationship): ...
 
         async with async_driver.session() as session:
             await session.run(
@@ -554,7 +554,7 @@ class TestLoomiAsyncResult:
                 {"name1": "John", "name2": "Jane"},
             )
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human, Likes)
         await client.initialize()
 
@@ -575,17 +575,17 @@ class TestLoomiAsyncResult:
             )
 
     async def test_transforms_records_from_next(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method transforms results to models."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -597,17 +597,17 @@ class TestLoomiAsyncResult:
             assert data[0].name == "John"
 
     async def test_adds_records_from_next_to_change_tracker(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method adds results to the change tracker."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -620,17 +620,17 @@ class TestLoomiAsyncResult:
             )
 
     async def test_transforms_records_from_iter(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method transforms results to models."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -642,17 +642,17 @@ class TestLoomiAsyncResult:
                 assert data[0].name == "John"
 
     async def test_adds_records_from_iter_to_change_tracker(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method adds results to the change tracker."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 
@@ -667,17 +667,17 @@ class TestLoomiAsyncResult:
             )
 
     async def test_exposes_original_result_for_non_transformed_methods(
-        self, async_driver: AsyncDriver, driver_spec: DriverSpec
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that other methods which do not return graph entities are still available."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         async with async_driver.session() as session:
             await session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiAsyncClient(async_driver)
+        client = AsyncClient(async_driver)
         client.register(Human)
         await client.initialize()
 

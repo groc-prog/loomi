@@ -1,14 +1,14 @@
 from typing import Any, Literal, Union, overload
 
-from neo4j import AsyncDriver, AsyncSession
+import neo4j
 
 from loomi._logger import _LogContextKey, _logger, _scoped_log_ctx
 from loomi.client._internal._base import _BaseClient, _require_server_metadata, _ServerType
-from loomi.client._internal.session import LoomiAsyncSession
+from loomi.client._internal.session import AsyncSession
 from loomi.exceptions import ClientError
 
 
-class LoomiAsyncClient(_BaseClient[AsyncDriver]):
+class AsyncClient(_BaseClient[neo4j.AsyncDriver]):
     """Async database client for interacting with Loomi models."""
 
     async def initialize(self) -> None:
@@ -54,21 +54,19 @@ class LoomiAsyncClient(_BaseClient[AsyncDriver]):
             raise ClientError("Could not get required metadata from remote") from exc
 
     @overload
-    def session(
-        self, mode: Literal["loomi"] = "loomi", **session_config: Any
-    ) -> LoomiAsyncSession: ...
+    def session(self, mode: Literal["loomi"] = "loomi", **session_config: Any) -> AsyncSession: ...
 
     @overload
     def session(
         self, mode: Literal["native"] = "native", **session_config: Any
-    ) -> AsyncSession: ...
+    ) -> neo4j.AsyncSession: ...
 
     @_require_server_metadata
     def session(
         self,
         mode: Union[Literal["native"], Literal["loomi"]] = "loomi",
         **session_config: Any,
-    ) -> Union[AsyncSession, LoomiAsyncSession]:
+    ) -> Union[neo4j.AsyncSession, AsyncSession]:
         """
         Start a new session. This behaves the same as the `.session()` from the driver except it
         exposes additional functionality if `mode` is set to `loomi`.
@@ -87,6 +85,6 @@ class LoomiAsyncClient(_BaseClient[AsyncDriver]):
             session = self._driver.session(**session_config)
 
             if mode == "loomi":
-                return LoomiAsyncSession(session, self)
+                return AsyncSession(session, self)
 
             return session

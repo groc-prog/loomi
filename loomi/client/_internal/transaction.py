@@ -2,34 +2,34 @@
 
 from typing import TYPE_CHECKING, Any, Dict, LiteralString, Optional
 
-from neo4j import AsyncTransaction, Transaction
+import neo4j
 
 from loomi._logger import _logger
 from loomi.client._internal._change_tracker import AsyncChangeTracker, ChangeTracker
-from loomi.client._internal.result import LoomiAsyncResult, LoomiResult
+from loomi.client._internal.result import AsyncResult, Result
 
 if TYPE_CHECKING:
-    from loomi.client.async_client import LoomiAsyncClient
-    from loomi.client.sync_client import LoomiClient
+    from loomi.client.async_client import AsyncClient
+    from loomi.client.sync_client import Client
 
-    _Base = Transaction
-    _AsyncBase = AsyncTransaction
+    _Base = neo4j.Transaction
+    _AsyncBase = neo4j.AsyncTransaction
 else:
-    LoomiClient = object
-    LoomiAsyncClient = object
+    Client = object
+    AsyncClient = object
 
     _Base = object
     _AsyncBase = object
 
 
-class LoomiTransaction(_Base):
+class Transaction(_Base):
     """Wrapper for `neo4j.Transaction` allowing for additional functionality."""
 
-    _transaction: Transaction
-    _client: LoomiClient
+    _transaction: neo4j.Transaction
+    _client: Client
     _change_tracker: ChangeTracker
 
-    def __init__(self, transaction: Transaction, client: LoomiClient):
+    def __init__(self, transaction: neo4j.Transaction, client: Client):
         self._transaction = transaction
         self._client = client
         self._change_tracker = ChangeTracker(transaction, client)
@@ -47,8 +47,8 @@ class LoomiTransaction(_Base):
     @property
     def change_tracker(self) -> ChangeTracker:
         """
-        Change tracker exposed by this transaction. Will be used when `tracking` is set to `true` in a
-        query.
+        Change tracker exposed by this transaction. Will be used when `tracking` is set to `true`
+        in a query.
         """
         return self._change_tracker
 
@@ -71,7 +71,7 @@ class LoomiTransaction(_Base):
             kwparameters: See `neo4j.Transaction.run`.
 
         Returns:
-            LoomiResult: A wrapper for `neo4j.Result` objects.
+            Result: A wrapper for `neo4j.Result` objects.
         """
         logging_parameters = (
             ", ".join(f"{key}={value}" for key, value in dict(**parameters, **kwparameters).items())
@@ -81,19 +81,17 @@ class LoomiTransaction(_Base):
 
         _logger.info("Query: %s -- Parameters: [%s]", query, logging_parameters)
         original_result = self._transaction.run(query, parameters, **kwparameters)
-        return LoomiResult(
-            original_result, self._client, self._change_tracker if tracking else None
-        )
+        return Result(original_result, self._client, self._change_tracker if tracking else None)
 
 
-class LoomiAsyncTransaction(_AsyncBase):
+class AsyncTransaction(_AsyncBase):
     """Wrapper for `neo4j.AsyncTransaction` allowing for additional functionality."""
 
-    _transaction: AsyncTransaction
-    _client: LoomiAsyncClient
+    _transaction: neo4j.AsyncTransaction
+    _client: AsyncClient
     _change_tracker: AsyncChangeTracker
 
-    def __init__(self, transaction: AsyncTransaction, client: LoomiAsyncClient):
+    def __init__(self, transaction: neo4j.AsyncTransaction, client: AsyncClient):
         self._transaction = transaction
         self._client = client
         self._change_tracker = AsyncChangeTracker(transaction, client)
@@ -111,8 +109,8 @@ class LoomiAsyncTransaction(_AsyncBase):
     @property
     def change_tracker(self) -> AsyncChangeTracker:
         """
-        Change tracker exposed by this transaction. Will be used when `tracking` is set to `true` in a
-        query.
+        Change tracker exposed by this transaction. Will be used when `tracking` is set to `true`
+        in a query.
         """
         return self._change_tracker
 
@@ -136,7 +134,7 @@ class LoomiAsyncTransaction(_AsyncBase):
             kwparameters: See `neo4j.AsyncTransaction.run`.
 
         Returns:
-            LoomiResult: A wrapper for `neo4j.AsyncResult` objects.
+            Result: A wrapper for `neo4j.AsyncResult` objects.
         """
         logging_parameters = (
             ", ".join(f"{key}={value}" for key, value in dict(**parameters, **kwparameters).items())
@@ -146,6 +144,6 @@ class LoomiAsyncTransaction(_AsyncBase):
 
         _logger.info("Query: %s -- Parameters: [%s]", query, logging_parameters)
         original_result = await self._transaction.run(query, parameters, **kwparameters)
-        return LoomiAsyncResult(
+        return AsyncResult(
             original_result, self._client, self._change_tracker if tracking else None
         )

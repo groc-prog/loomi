@@ -10,11 +10,11 @@ from .annotations import (
     VectorIndex,
 )
 from .constraint import DataTypeConstraintType, MemgraphConstraintType, Neo4jConstraintType
-from .graph import LoomiGraph
+from .graph import Graph
 from .index import MemgraphIndexType, Neo4jIndexType
-from .node import LoomiNode, LoomiNodeConfiguration
-from .path import LoomiPath
-from .relationship import LoomiRelationship, LoomiRelationshipConfiguration
+from .node import Node, NodeConfiguration
+from .path import Path
+from .relationship import Relationship, RelationshipConfiguration
 
 __all__ = [
     "DataTypeConstraint",
@@ -27,12 +27,12 @@ __all__ = [
     "TextIndex",
     "UniquenessConstraint",
     "VectorIndex",
-    "LoomiGraph",
-    "LoomiNode",
-    "LoomiNodeConfiguration",
-    "LoomiPath",
-    "LoomiRelationship",
-    "LoomiRelationshipConfiguration",
+    "Graph",
+    "Node",
+    "NodeConfiguration",
+    "Path",
+    "Relationship",
+    "RelationshipConfiguration",
     "Neo4jIndexType",
     "MemgraphIndexType",
     "Neo4jConstraintType",

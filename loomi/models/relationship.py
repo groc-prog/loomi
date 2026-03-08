@@ -5,23 +5,23 @@ from loomi.exceptions import ModelError
 from loomi.models._internal._base import _EntityBase, _EntityConfiguration
 
 
-class LoomiRelationshipConfiguration(_EntityConfiguration, total=False):
+class RelationshipConfiguration(_EntityConfiguration, total=False):
     """TypedDict for configuring Loomi relationship behavior."""
 
     type: str
 
 
-class LoomiRelationship(_EntityBase):
+class Relationship(_EntityBase):
     """A base class for Loomi relationships."""
 
-    loomi_config: ClassVar[LoomiRelationshipConfiguration]
+    loomi_config: ClassVar[RelationshipConfiguration]
 
     @classmethod
     def __pydantic_init_subclass__(cls, **kwargs):
         super().__pydantic_init_subclass__(**kwargs)
 
         if not hasattr(cls, "loomi_config"):
-            setattr(cls, "loomi_config", LoomiRelationshipConfiguration())
+            setattr(cls, "loomi_config", RelationshipConfiguration())
 
         if "type" not in cls.loomi_config:
             cls.loomi_config["type"] = cls._get_normalized_type()
@@ -37,10 +37,10 @@ class LoomiRelationship(_EntityBase):
                     f"forgot to call {cls.model_rebuild.__name__}?"
                 )
 
-            cls._merge_loomi_config(inherited_config)
+            cls._merge_config(inherited_config)
 
         cls._init_config_defaults()
-        cls._hash = cls._generate_loomi_hash(cls.loomi_config["type"])
+        cls._hash = cls._generate_hash(cls.loomi_config["type"])
 
     def __repr__(self) -> str:
         type_ = self.loomi_config.get("type", set())
@@ -48,7 +48,7 @@ class LoomiRelationship(_EntityBase):
         return f"<{self.__class__.__name__} element_id={self._element_id!r} type={type_!r}>"
 
     @classmethod
-    def _merge_loomi_config(cls, config: LoomiRelationshipConfiguration) -> None:
+    def _merge_config(cls, config: RelationshipConfiguration) -> None:
         for key, value in config.items():
             # We can not merge the type here and we do not want duplicate types, so
             # we skip
@@ -64,5 +64,5 @@ class LoomiRelationship(_EntityBase):
         return pattern.sub("_", cls.__name__).upper()
 
     @classmethod
-    def _generate_loomi_hash(cls, type_: str) -> str:
+    def _generate_hash(cls, type_: str) -> str:
         return f"r_{type_}"

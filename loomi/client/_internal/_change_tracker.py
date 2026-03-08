@@ -16,21 +16,23 @@ from typing import (
     overload,
 )
 
-from neo4j import AsyncSession, AsyncTransaction, Session, Transaction
+import neo4j
 
 from loomi._logger import _LogContextKey, _logger, _scoped_log_ctx
 from loomi.exceptions import ChangeTrackerError, ModelError
-from loomi.models.node import LoomiNode
-from loomi.models.relationship import LoomiRelationship
+from loomi.models.node import Node
+from loomi.models.relationship import Relationship
 
 if TYPE_CHECKING:
-    from loomi.client.async_client import LoomiAsyncClient
-    from loomi.client.sync_client import LoomiClient
+    from loomi.client.async_client import AsyncClient
+    from loomi.client.sync_client import Client
 else:
-    LoomiAsyncClient = object
-    LoomiClient = object
+    AsyncClient = object
+    Client = object
 
-T = TypeVar("T", bound=Union[Session, AsyncSession, Transaction, AsyncTransaction])
+T = TypeVar(
+    "T", bound=Union[neo4j.Session, neo4j.AsyncSession, neo4j.Transaction, neo4j.AsyncTransaction]
+)
 
 
 class _NodeInsertProperties(TypedDict):
@@ -66,17 +68,17 @@ class _TrackingOperation(Enum):
 
 
 class _TrackingOperationState(TypedDict):
-    nodes: Dict[int, Tuple[LoomiNode, Dict[str, Optional[str]]]]
-    relationships: Dict[int, Tuple[LoomiRelationship, Dict[str, Optional[str]]]]
+    nodes: Dict[int, Tuple[Node, Dict[str, Optional[str]]]]
+    relationships: Dict[int, Tuple[Relationship, Dict[str, Optional[str]]]]
 
 
 class _BaseChangeTracker(Generic[T]):
     _state: Dict[_TrackingOperation, _TrackingOperationState]
     _grouping_map: Dict[int, Tuple[int, int]]
     _session_or_tx: T
-    _client: Union[LoomiClient, LoomiAsyncClient]
+    _client: Union[Client, AsyncClient]
 
-    def __init__(self, session_or_tx: T, client: Union[LoomiClient, LoomiAsyncClient]):
+    def __init__(self, session_or_tx: T, client: Union[Client, AsyncClient]):
         self._state = {
             _TrackingOperation.INSERT: {"nodes": {}, "relationships": {}},
             _TrackingOperation.UPDATE: {"nodes": {}, "relationships": {}},
@@ -87,21 +89,21 @@ class _BaseChangeTracker(Generic[T]):
         self._client = client
 
     @overload
-    def add(self, model: LoomiNode) -> None: ...
+    def add(self, model: Node) -> None: ...
 
     @overload
     def add(
         self,
-        model: LoomiRelationship,
-        start_node: Optional[LoomiNode] = None,
-        end_node: Optional[LoomiNode] = None,
+        model: Relationship,
+        start_node: Optional[Node] = None,
+        end_node: Optional[Node] = None,
     ) -> None: ...
 
     def add(
         self,
-        model: Union[LoomiNode, LoomiRelationship],
-        start_node: Optional[LoomiNode] = None,
-        end_node: Optional[LoomiNode] = None,
+        model: Union[Node, Relationship],
+        start_node: Optional[Node] = None,
+        end_node: Optional[Node] = None,
     ) -> None:
         """
         Starts tracking a model in the change tracker. The entity will be saved/updated once the
@@ -111,18 +113,18 @@ class _BaseChangeTracker(Generic[T]):
         function will be tracked as `UPDATE` (element_id set) or `INSERT` (element_id not set).
 
         Args:
-            model (Union[LoomiNode, LoomiRelationship]): The model to start tracking.
-            start_node (Optional[LoomiNode]): The start node of the relationship. Only relevant if
-            `model` is a `LoomiRelationship`.
-            end_node (Optional[LoomiNode]): The end node of the relationship. Only relevant if
-            `model` is a `LoomiRelationship`.
+            model (Union[Node, Relationship]): The model to start tracking.
+            start_node (Optional[Node]): The start node of the relationship. Only relevant if
+            `model` is a `Relationship`.
+            end_node (Optional[Node]): The end node of the relationship. Only relevant if
+            `model` is a `Relationship`.
 
         Raises:
             ChangeTrackerError: If start- or end nodes are missing when a relationship model is
             provided.
         """
         obj_id = id(model)
-        is_relationship = isinstance(model, LoomiRelationship)
+        is_relationship = isinstance(model, Relationship)
         operation = (
             _TrackingOperation.UPDATE
             if model._element_id is not None
@@ -237,20 +239,20 @@ class _BaseChangeTracker(Generic[T]):
             else:
                 self._state[operation]["nodes"][obj_id] = (model, model._compute_checksums())
 
-    def remove(self, model: Union[LoomiNode, LoomiRelationship]) -> None:
+    def remove(self, model: Union[Node, Relationship]) -> None:
         """
         Starts tracking a existing model to be deleted in the change tracker. The entity will be
         deleted once the change tracker is flushed.
 
         Args:
-            model (Union[LoomiNode, LoomiRelationship]): The model to start tracking.
+            model (Union[Node, Relationship]): The model to start tracking.
 
         Raises:
             ModelTrackingError: If a invalid model is provided.
             ChangeTrackerError: If the model has not been persisted or tracked yet.
         """
         obj_id = id(model)
-        is_relationship = isinstance(model, LoomiRelationship)
+        is_relationship = isinstance(model, Relationship)
         operation = (
             _TrackingOperation.UPDATE
             if model._element_id is not None
@@ -723,16 +725,16 @@ class _BaseChangeTracker(Generic[T]):
         return (relationship_query, {"p0": relationship_ids})
 
 
-class ChangeTracker(_BaseChangeTracker[Union[Session, Transaction]]):
+class ChangeTracker(_BaseChangeTracker[Union[neo4j.Session, neo4j.Transaction]]):
     """Manages state synchronization between local entities and the database state."""
 
     def flush(self) -> None:
         """
         Flushes the tracker by generating and running all queries for the tracked models.
 
-        If this is called on a `LoomiSession`, a `new transaction` will be created (based on
+        If this is called on a `Session`, a `new transaction` will be created (based on
         the current session) which will run all queries and `commit them`. If this is called
-        on a `LoomiTransaction`, the flushed queries will be `part of that transaction` and
+        on a `Transaction`, the flushed queries will be `part of that transaction` and
         will only be committed once `tx.commit()` is called.
         """
         with _scoped_log_ctx(
@@ -743,7 +745,7 @@ class ChangeTracker(_BaseChangeTracker[Union[Session, Transaction]]):
         ):
             self._omit_redundant_relationship_operations()
 
-            if isinstance(self._session_or_tx, Session):
+            if isinstance(self._session_or_tx, neo4j.Session):
                 # If the change tracker is called on a session, we create a new transaction and run
                 # every operation in that transaction
                 self._flush_with_session()
@@ -758,7 +760,7 @@ class ChangeTracker(_BaseChangeTracker[Union[Session, Transaction]]):
         id_map: Dict[int, Union[str, int]] = {}
         _logger.debug("Flush called on session, creating new transaction to run pending changes")
 
-        with cast(Session, self._session_or_tx).begin_transaction() as tx:
+        with cast(neo4j.Session, self._session_or_tx).begin_transaction() as tx:
             for query, parameters in self._compile_node_add_operations():
                 result = tx.run(cast(LiteralString, query), parameters)
 
@@ -824,16 +826,16 @@ class ChangeTracker(_BaseChangeTracker[Union[Session, Transaction]]):
             result.consume()
 
 
-class AsyncChangeTracker(_BaseChangeTracker[Union[AsyncSession, AsyncTransaction]]):
+class AsyncChangeTracker(_BaseChangeTracker[Union[neo4j.AsyncSession, neo4j.AsyncTransaction]]):
     """Manages state synchronization between local entities and the database state."""
 
     async def flush(self) -> None:
         """
         Flushes the tracker by generating and running all queries for the tracked models.
 
-        If this is called on a `LoomiAsyncSession`, a `new transaction` will be created (based
+        If this is called on a `AsyncSession`, a `new transaction` will be created (based
         on the current session) which will run all queries and `commit them`. If this is called
-        on a `LoomiAsyncTransaction`, the flushed queries will be `part of that transaction` and
+        on a `AsyncTransaction`, the flushed queries will be `part of that transaction` and
         will only be committed once `tx.commit()` is called.
         """
         with _scoped_log_ctx(
@@ -844,7 +846,7 @@ class AsyncChangeTracker(_BaseChangeTracker[Union[AsyncSession, AsyncTransaction
         ):
             self._omit_redundant_relationship_operations()
 
-            if isinstance(self._session_or_tx, AsyncSession):
+            if isinstance(self._session_or_tx, neo4j.AsyncSession):
                 # If the change tracker is called on a session, we create a new transaction and run
                 # every operation in that transaction
                 await self._flush_with_session()
@@ -859,7 +861,7 @@ class AsyncChangeTracker(_BaseChangeTracker[Union[AsyncSession, AsyncTransaction
         id_map: Dict[int, Union[str, int]] = {}
         _logger.debug("Flush called on session, creating new transaction to run pending changes")
 
-        async with await cast(AsyncSession, self._session_or_tx).begin_transaction() as tx:
+        async with await cast(neo4j.AsyncSession, self._session_or_tx).begin_transaction() as tx:
             for query, parameters in self._compile_node_add_operations():
                 result = await tx.run(cast(LiteralString, query), parameters)
 

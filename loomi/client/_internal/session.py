@@ -2,35 +2,35 @@
 
 from typing import TYPE_CHECKING, Any, Dict, LiteralString, Union
 
-from neo4j import AsyncSession, Query, Session
+import neo4j
 
 from loomi._logger import _logger
 from loomi.client._internal._change_tracker import AsyncChangeTracker, ChangeTracker
-from loomi.client._internal.result import LoomiAsyncResult, LoomiResult
-from loomi.client._internal.transaction import LoomiAsyncTransaction, LoomiTransaction
+from loomi.client._internal.result import AsyncResult, Result
+from loomi.client._internal.transaction import AsyncTransaction, Transaction
 
 if TYPE_CHECKING:
-    from loomi.client.async_client import LoomiAsyncClient
-    from loomi.client.sync_client import LoomiClient
+    from loomi.client.async_client import AsyncClient
+    from loomi.client.sync_client import Client
 
-    _Base = Session
-    _AsyncBase = AsyncSession
+    _Base = neo4j.Session
+    _AsyncBase = neo4j.AsyncSession
 else:
-    LoomiClient = object
-    LoomiAsyncClient = object
+    Client = object
+    AsyncClient = object
 
     _Base = object
     _AsyncBase = object
 
 
-class LoomiSession(_Base):
+class Session(_Base):
     """Wrapper for `neo4j.Session` allowing for additional functionality."""
 
-    _session: Session
-    _client: LoomiClient
+    _session: neo4j.Session
+    _client: Client
     _change_tracker: ChangeTracker
 
-    def __init__(self, session: Session, client: LoomiClient):
+    def __init__(self, session: neo4j.Session, client: Client):
         self._session = session
         self._client = client
         self._change_tracker = ChangeTracker(session, client)
@@ -55,11 +55,11 @@ class LoomiSession(_Base):
 
     def run(
         self,
-        query: Union[LiteralString, Query],
+        query: Union[LiteralString, neo4j.Query],
         parameters: Dict[str, Any] | None = None,
         tracking: bool = False,
         **kwargs: Any,
-    ) -> LoomiResult:
+    ) -> Result:
         """
         Method providing the same interface as `neo4j.Session.run`, with some additional
         functionality. For more information on the native behavior, see `neo4j.Session.run`.
@@ -72,7 +72,7 @@ class LoomiSession(_Base):
             kwargs: See `neo4j.Session.run`.
 
         Returns:
-            LoomiResult: A wrapper for `neo4j.Result` objects.
+            Result: A wrapper for `neo4j.Result` objects.
         """
         logging_parameters = (
             ", ".join(f"{key}={value}" for key, value in {**parameters, **kwargs}.items())
@@ -83,29 +83,27 @@ class LoomiSession(_Base):
 
         _logger.info("Query: %s -- Parameters: [%s]", logging_query, logging_parameters)
         original_result = self._session.run(query, parameters, **kwargs)
-        return LoomiResult(
-            original_result, self._client, self._change_tracker if tracking else None
-        )
+        return Result(original_result, self._client, self._change_tracker if tracking else None)
 
     def begin_transaction(
         self, metadata: Dict[str, Any] | None = None, timeout: float | None = None
-    ) -> LoomiTransaction:
+    ) -> Transaction:
         """
         Method providing the same interface as `neo4j.Session.begin_transaction`. If any entity
         is returned, it will be transformed to it's corresponding model.
         """
         original_transaction = self._session.begin_transaction(metadata, timeout)
-        return LoomiTransaction(original_transaction, self._client)
+        return Transaction(original_transaction, self._client)
 
 
-class LoomiAsyncSession(_AsyncBase):
+class AsyncSession(_AsyncBase):
     """Wrapper for `neo4j.AsyncSession` allowing for additional functionality."""
 
-    _session: AsyncSession
-    _client: LoomiAsyncClient
+    _session: neo4j.AsyncSession
+    _client: AsyncClient
     _change_tracker: AsyncChangeTracker
 
-    def __init__(self, session: AsyncSession, client: LoomiAsyncClient):
+    def __init__(self, session: neo4j.AsyncSession, client: AsyncClient):
         self._session = session
         self._client = client
         self._change_tracker = AsyncChangeTracker(session, client)
@@ -130,11 +128,11 @@ class LoomiAsyncSession(_AsyncBase):
 
     async def run(
         self,
-        query: Union[LiteralString, Query],
+        query: Union[LiteralString, neo4j.Query],
         parameters: Dict[str, Any] | None = None,
         tracking: bool = False,
         **kwargs: Any,
-    ) -> LoomiAsyncResult:
+    ) -> AsyncResult:
         """
         Method providing the same interface as `neo4j.AsyncSession.run`, with some additional
         functionality. For more information on the native behavior, see `neo4j.AsyncSession.run`.
@@ -147,7 +145,7 @@ class LoomiAsyncSession(_AsyncBase):
             kwargs: See `neo4j.AsyncSession.run`.
 
         Returns:
-            LoomiResult: A wrapper for `neo4j.AsyncResult` objects.
+            Result: A wrapper for `neo4j.AsyncResult` objects.
         """
         logging_parameters = (
             ", ".join(f"{key}={value}" for key, value in dict(**parameters, **kwargs).items())
@@ -158,16 +156,16 @@ class LoomiAsyncSession(_AsyncBase):
 
         _logger.info("Query: %s -- Parameters: [%s]", logging_query, logging_parameters)
         original_result = await self._session.run(query, parameters, **kwargs)
-        return LoomiAsyncResult(
+        return AsyncResult(
             original_result, self._client, self._change_tracker if tracking else None
         )
 
     async def begin_transaction(
         self, metadata: Dict[str, Any] | None = None, timeout: float | None = None
-    ) -> LoomiAsyncTransaction:
+    ) -> AsyncTransaction:
         """
         Method providing the same interface as `neo4j.AsyncSession.begin_transaction`. If any entity
         is returned, it will be transformed to it's corresponding model.
         """
         original_transaction = await self._session.begin_transaction(metadata, timeout)
-        return LoomiAsyncTransaction(original_transaction, self._client)
+        return AsyncTransaction(original_transaction, self._client)

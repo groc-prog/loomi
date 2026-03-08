@@ -1,44 +1,46 @@
 # pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, line-too-long, unused-argument
 
-from neo4j import Driver, Result, Session, Transaction
-from neo4j.graph import Node, Relationship
+import neo4j
+import neo4j.graph
 
-from loomi.client._internal.result import LoomiResult
-from loomi.client._internal.session import LoomiSession
-from loomi.client.sync_client import LoomiClient
-from loomi.models.node import LoomiNode
-from loomi.models.relationship import LoomiRelationship
+from loomi.client._internal.result import Result
+from loomi.client._internal.session import Session
+from loomi.client.sync_client import Client
+from loomi.models.node import Node
+from loomi.models.relationship import Relationship
 from tests.integration.fixtures.db import DriverSpec, driver_spec, sync_driver
 
 
 class TestNativeSession:
-    def test_session_works_with_context_manager(self, sync_driver: Driver, driver_spec: DriverSpec):
+    def test_session_works_with_context_manager(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
         """
         Verify that the session behaves like the original session without transformation when
         used with a context manager.
         """
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         with sync_driver.session() as session:
             session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiClient(sync_driver)
+        client = Client(sync_driver)
         client.register(Human)
         client.initialize()
 
         with client.session("native") as session:
-            assert isinstance(session, Session)
+            assert isinstance(session, neo4j.Session)
 
             result = session.run("MATCH (n:Human) RETURN n")
-            assert isinstance(result, Result)
+            assert isinstance(result, neo4j.Result)
 
             data = result.value()
             assert isinstance(data, list)
 
             node = data[0]
-            assert isinstance(node, Node)
+            assert isinstance(node, neo4j.graph.Node)
             assert node.labels == {"Human"}
 
             properties = dict(node)
@@ -46,34 +48,34 @@ class TestNativeSession:
             assert properties["name"] == "John"
 
     def test_session_works_with_manual_management(
-        self, sync_driver: Driver, driver_spec: DriverSpec
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
     ):
         """
         Verify that the session behaves like the original session without transformation when
         session is managed manually.
         """
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         with sync_driver.session() as session:
             session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiClient(sync_driver)
+        client = Client(sync_driver)
         client.register(Human)
         client.initialize()
 
         session = client.session("native")
-        assert isinstance(session, Session)
+        assert isinstance(session, neo4j.Session)
 
         result = session.run("MATCH (n:Human) RETURN n")
-        assert isinstance(result, Result)
+        assert isinstance(result, neo4j.Result)
 
         data = result.value()
         assert isinstance(data, list)
 
         node = data[0]
-        assert isinstance(node, Node)
+        assert isinstance(node, neo4j.graph.Node)
         assert node.labels == {"Human"}
 
         properties = dict(node)
@@ -83,36 +85,36 @@ class TestNativeSession:
         session.close()
 
     def test_transaction_works_with_context_manager(
-        self, sync_driver: Driver, driver_spec: DriverSpec
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
     ):
         """
         Verify that the transaction behaves like the original transaction without transformation
         when used with a context manager.
         """
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
-        client = LoomiClient(sync_driver)
+        client = Client(sync_driver)
         client.register(Human)
         client.initialize()
 
         with client.session("native") as session:
-            assert isinstance(session, Session)
+            assert isinstance(session, neo4j.Session)
 
             with session.begin_transaction() as tx:
-                assert isinstance(tx, Transaction)
+                assert isinstance(tx, neo4j.Transaction)
 
                 tx.run("CREATE (:Human {name: $name})", {"name": "John"})
 
                 result = tx.run("MATCH (n:Human) RETURN n")
-                assert isinstance(result, Result)
+                assert isinstance(result, neo4j.Result)
 
                 data = result.value()
                 assert isinstance(data, list)
 
                 node = data[0]
-                assert isinstance(node, Node)
+                assert isinstance(node, neo4j.graph.Node)
                 assert node.labels == {"Human"}
 
                 properties = dict(node)
@@ -120,36 +122,36 @@ class TestNativeSession:
                 assert properties["name"] == "John"
 
     def test_transaction_works_with_manual_management(
-        self, sync_driver: Driver, driver_spec: DriverSpec
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
     ):
         """
         Verify that the transaction behaves like the original transaction without transformation
         when transaction is managed manually.
         """
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
-        client = LoomiClient(sync_driver)
+        client = Client(sync_driver)
         client.register(Human)
         client.initialize()
 
         session = client.session("native")
-        assert isinstance(session, Session)
+        assert isinstance(session, neo4j.Session)
 
         tx = session.begin_transaction()
-        assert isinstance(tx, Transaction)
+        assert isinstance(tx, neo4j.Transaction)
 
         tx.run("CREATE (:Human {name: $name})", {"name": "John"})
 
         result = tx.run("MATCH (n:Human) RETURN n")
-        assert isinstance(result, Result)
+        assert isinstance(result, neo4j.Result)
 
         data = result.value()
         assert isinstance(data, list)
 
         node = data[0]
-        assert isinstance(node, Node)
+        assert isinstance(node, neo4j.graph.Node)
         assert node.labels == {"Human"}
 
         properties = dict(node)
@@ -161,28 +163,30 @@ class TestNativeSession:
         session.close()
 
 
-class TestLoomiSession:
-    def test_session_works_with_context_manager(self, sync_driver: Driver, driver_spec: DriverSpec):
+class TestSession:
+    def test_session_works_with_context_manager(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
         """
         Verify that the session behaves like the original session with transformation when
         used with a context manager.
         """
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         with sync_driver.session() as session:
             session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiClient(sync_driver)
+        client = Client(sync_driver)
         client.register(Human)
         client.initialize()
 
         with client.session("loomi") as session:
-            assert isinstance(session, LoomiSession)
+            assert isinstance(session, Session)
 
             result = session.run("MATCH (n:Human) RETURN n")
-            assert isinstance(result, LoomiResult)
+            assert isinstance(result, Result)
 
             data = result.value()
             assert isinstance(data, list)
@@ -192,28 +196,28 @@ class TestLoomiSession:
             assert node.name == "John"
 
     def test_session_works_with_manual_management(
-        self, sync_driver: Driver, driver_spec: DriverSpec
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
     ):
         """
         Verify that the session behaves like the original session with transformation when
         session is managed manually.
         """
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
         with sync_driver.session() as session:
             session.run("CREATE (:Human {name: $name})", {"name": "John"})
 
-        client = LoomiClient(sync_driver)
+        client = Client(sync_driver)
         client.register(Human)
         client.initialize()
 
         session = client.session("loomi")
-        assert isinstance(session, LoomiSession)
+        assert isinstance(session, Session)
 
         result = session.run("MATCH (n:Human) RETURN n")
-        assert isinstance(result, LoomiResult)
+        assert isinstance(result, Result)
 
         data = result.value()
         assert isinstance(data, list)
@@ -225,14 +229,14 @@ class TestLoomiSession:
         session.close()
 
     def test_session_partially_resolves_entities(
-        self, sync_driver: Driver, driver_spec: DriverSpec
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
     ):
         """Verify that only registered models get transformed."""
 
-        class Human(LoomiNode):
+        class Human(Node):
             name: str
 
-        class Owns(LoomiRelationship): ...
+        class Owns(Relationship): ...
 
         with sync_driver.session() as session:
             session.run(
@@ -240,17 +244,17 @@ class TestLoomiSession:
                 {"name": "John", "kind": "dog"},
             )
 
-        client = LoomiClient(sync_driver)
+        client = Client(sync_driver)
         client.register(Human, Owns)
         client.initialize()
 
         with client.session("loomi") as session:
-            assert isinstance(session, LoomiSession)
+            assert isinstance(session, Session)
 
             result = session.run(
                 "MATCH (n:Human), (m:Animal), (n)-[o:OWNS]->(m), (n)-[l:LOVES]->(m) RETURN n, m, o, l, 'value'"
             )
-            assert isinstance(result, LoomiResult)
+            assert isinstance(result, Result)
 
             data = result.values()
             assert isinstance(data, list)
@@ -260,7 +264,7 @@ class TestLoomiSession:
             assert animal.name == "John"
 
             animal = data[0][1]
-            assert isinstance(animal, Node)
+            assert isinstance(animal, neo4j.graph.Node)
             assert animal.labels == {"Animal"}
 
             animal_properties = dict(animal)
@@ -271,7 +275,7 @@ class TestLoomiSession:
             assert isinstance(owns, Owns)
 
             loves = data[0][3]
-            assert isinstance(loves, Relationship)
+            assert isinstance(loves, neo4j.graph.Relationship)
             assert loves.type == "LOVES"
 
             primitive = data[0][4]

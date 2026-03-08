@@ -4,23 +4,23 @@ from loomi.exceptions import ModelError
 from loomi.models._internal._base import _EntityBase, _EntityConfiguration
 
 
-class LoomiNodeConfiguration(_EntityConfiguration, total=False):
+class NodeConfiguration(_EntityConfiguration, total=False):
     """TypedDict for configuring Loomi node behavior."""
 
     labels: Set[str]
 
 
-class LoomiNode(_EntityBase):
+class Node(_EntityBase):
     """A base class for Loomi nodes."""
 
-    loomi_config: ClassVar[LoomiNodeConfiguration]
+    loomi_config: ClassVar[NodeConfiguration]
 
     @classmethod
     def __pydantic_init_subclass__(cls, **kwargs):
         super().__pydantic_init_subclass__(**kwargs)
 
         if not hasattr(cls, "loomi_config"):
-            setattr(cls, "loomi_config", LoomiNodeConfiguration())
+            setattr(cls, "loomi_config", NodeConfiguration())
 
         # If not labels have been defined, fall back to the class name
         if "labels" not in cls.loomi_config:
@@ -37,17 +37,17 @@ class LoomiNode(_EntityBase):
                     f"forgot to call {cls.model_rebuild.__name__}?"
                 )
 
-            cls._merge_loomi_config(inherited_config)
+            cls._merge_config(inherited_config)
 
         cls._init_config_defaults()
-        cls._hash = cls._generate_loomi_hash(list(cls.loomi_config["labels"]))
+        cls._hash = cls._generate_hash(list(cls.loomi_config["labels"]))
 
     def __repr__(self) -> str:
         labels = self.loomi_config.get("labels", set())
         return f"<{self.__class__.__name__} element_id={self._element_id!r} labels={labels!r}>"
 
     @classmethod
-    def _merge_loomi_config(cls, config: LoomiNodeConfiguration) -> None:
+    def _merge_config(cls, config: NodeConfiguration) -> None:
         for key, value in config.items():
             if key not in cls.loomi_config:
                 cls.loomi_config[key] = value
@@ -57,5 +57,5 @@ class LoomiNode(_EntityBase):
                 cls.loomi_config[key] = cast(Set[str], cls.loomi_config[key]).union(value)
 
     @classmethod
-    def _generate_loomi_hash(cls, labels: List[str]) -> str:
+    def _generate_hash(cls, labels: List[str]) -> str:
         return f"n_{"_".join(sorted(labels))}"
