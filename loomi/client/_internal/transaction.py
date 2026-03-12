@@ -67,7 +67,7 @@ class Transaction(_Base):
             query (Union[LiteralString, Query]): See `neo4j.Transaction.run`.
             parameters (Optional[str, Any]): See `neo4j.Transaction.run`.
             tracking (bool): Whether results from this query should automatically be tracked
-            in the `change tracker`. Defaults to `False`.
+                in the `change tracker`. Defaults to `False`.
             kwparameters: See `neo4j.Transaction.run`.
 
         Returns:
@@ -130,7 +130,7 @@ class AsyncTransaction(_AsyncBase):
             query (Union[LiteralString, Query]): See `neo4j.AsyncTransaction.run`.
             parameters (Optional[str, Any]): See `neo4j.AsyncTransaction.run`.
             tracking (bool): Whether results from this query should automatically be tracked
-            in the `change tracker`. Defaults to `False`.
+                in the `change tracker`. Defaults to `False`.
             kwparameters: See `neo4j.AsyncTransaction.run`.
 
         Returns:

@@ -76,8 +76,8 @@ class _EntityConfiguration(TypedDict, total=False):
     A custom function used when serializing nested objects before storing the model to the
     database. Defaults to `json.dumps` if not defined.
 
-    [!NOTE] This function will be called for all properties which are not included in `SUPPORTED_DATA_TYPES`
-    after `model.model_dump()` has been called.
+    [!NOTE] This function will be called for all properties which are not included in
+    `SUPPORTED_DATA_TYPES` after `model.model_dump()` has been called.
     """
 
     deserializer_fn: Callable[[Any], Any]

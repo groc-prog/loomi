@@ -17,7 +17,7 @@ class AsyncClient(_BaseClient[neo4j.AsyncDriver]):
 
         Raises:
             ClientError: If the remote server can not be reached or does not return required
-            metadata.
+                metadata.
         """
         try:
             _logger.info("Verifying connectivity to remote")
@@ -73,7 +73,7 @@ class AsyncClient(_BaseClient[neo4j.AsyncDriver]):
 
         Args:
             mode (Union[Literal["native"], Literal["loomi"]]): Whether to use a native session or a
-            Loomi session. Defaults to `loomi`.
+                Loomi session. Defaults to `loomi`.
             session_config: Key-word arguments passed to the session directly.
         """
         with _scoped_log_ctx(

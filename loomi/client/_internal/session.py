@@ -68,7 +68,7 @@ class Session(_Base):
             query (Union[LiteralString, Query]): See `neo4j.Session.run`.
             parameters (Optional[str, Any]): See `neo4j.Session.run`.
             tracking (bool): Whether results from this query should automatically be tracked
-            in the `change tracker`. Defaults to `False`.
+                in the `change tracker`. Defaults to `False`.
             kwargs: See `neo4j.Session.run`.
 
         Returns:
@@ -141,7 +141,7 @@ class AsyncSession(_AsyncBase):
             query (Union[LiteralString, Query]): See `neo4j.AsyncSession.run`.
             parameters (Optional[str, Any]): See `neo4j.AsyncSession.run`.
             tracking (bool): Whether results from this query should automatically be tracked
-            in the `change tracker`. Defaults to `False`.
+                in the `change tracker`. Defaults to `False`.
             kwargs: See `neo4j.AsyncSession.run`.
 
         Returns:

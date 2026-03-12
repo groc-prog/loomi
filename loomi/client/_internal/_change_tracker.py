@@ -115,13 +115,13 @@ class _BaseChangeTracker(Generic[T]):
         Args:
             model (Union[Node, Relationship]): The model to start tracking.
             start_node (Optional[Node]): The start node of the relationship. Only relevant if
-            `model` is a `Relationship`.
+                `model` is a `Relationship`.
             end_node (Optional[Node]): The end node of the relationship. Only relevant if
-            `model` is a `Relationship`.
+                `model` is a `Relationship`.
 
         Raises:
             ChangeTrackerError: If start- or end nodes are missing when a relationship model is
-            provided.
+                provided.
         """
         obj_id = id(model)
         is_relationship = isinstance(model, Relationship)
@@ -362,11 +362,11 @@ class _BaseChangeTracker(Generic[T]):
                 self._state[_TrackingOperation.INSERT]["relationships"].pop(relationship_id, None)
                 self._state[_TrackingOperation.UPDATE]["relationships"].pop(relationship_id, None)
 
-    def _compile_node_add_operations(self) -> List[Tuple[str, Dict[str, Any]]]:
+    def _build_node_add_operations(self) -> List[Tuple[str, Dict[str, Any]]]:
         from loomi.client._internal._base import _ServerType
 
         if len(self._state[_TrackingOperation.INSERT]["nodes"]) == 0:
-            _logger.debug("No added nodes to compile queries for, skipping")
+            _logger.debug("No added nodes to build queries for, skipping")
             return []
 
         groups: Dict[str, _NodeInsertBatch] = {}
@@ -426,13 +426,13 @@ class _BaseChangeTracker(Generic[T]):
 
         return queries
 
-    def _compile_relationship_add_operations(
+    def _build_relationship_add_operations(
         self, id_map: Dict[int, Union[str, int]]
     ) -> List[Tuple[str, Dict[str, Any]]]:
         from loomi.client._internal._base import _ServerType
 
         if len(self._state[_TrackingOperation.INSERT]["relationships"]) == 0:
-            _logger.debug("No added relationships to compile queries for, skipping")
+            _logger.debug("No added relationships to build queries for, skipping")
             return []
 
         groups: Dict[str, _RelationshipInsertBatch] = {}
@@ -542,11 +542,11 @@ class _BaseChangeTracker(Generic[T]):
 
         return queries
 
-    def _compile_node_update_operations(self) -> Optional[Tuple[str, Dict[str, Any]]]:
+    def _build_node_update_operations(self) -> Optional[Tuple[str, Dict[str, Any]]]:
         from loomi.client._internal._base import _ServerType
 
         if len(self._state[_TrackingOperation.UPDATE]["nodes"]) == 0:
-            _logger.debug("No updated nodes to compile queries for, skipping")
+            _logger.debug("No updated nodes to build queries for, skipping")
             return None
 
         _logger.debug("Compiling entity queries and parameters")
@@ -600,11 +600,11 @@ class _BaseChangeTracker(Generic[T]):
 
         return (node_query, {"p0": node_batches})
 
-    def _compile_relationship_update_operations(self) -> Optional[Tuple[str, Dict[str, Any]]]:
+    def _build_relationship_update_operations(self) -> Optional[Tuple[str, Dict[str, Any]]]:
         from loomi.client._internal._base import _ServerType
 
         if len(self._state[_TrackingOperation.UPDATE]["relationships"]) == 0:
-            _logger.debug("No updated relationships to compile queries for, skipping")
+            _logger.debug("No updated relationships to build queries for, skipping")
             return None
 
         _logger.debug("Compiling entity queries and parameters")
@@ -658,11 +658,11 @@ class _BaseChangeTracker(Generic[T]):
 
         return (relationship_query, {"p0": relationship_batches})
 
-    def _compile_node_delete_operations(self) -> Optional[Tuple[str, Dict[str, Any]]]:
+    def _build_node_delete_operations(self) -> Optional[Tuple[str, Dict[str, Any]]]:
         from loomi.client._internal._base import _ServerType
 
         if len(self._state[_TrackingOperation.DELETE]["nodes"]) == 0:
-            _logger.debug("No deleted nodes to compile queries for, skipping")
+            _logger.debug("No deleted nodes to build queries for, skipping")
             return None
 
         _logger.debug("Compiling entity queries and parameters")
@@ -690,11 +690,11 @@ class _BaseChangeTracker(Generic[T]):
 
         return (node_query, {"p0": node_ids})
 
-    def _compile_relationship_delete_operations(self) -> Optional[Tuple[str, Dict[str, Any]]]:
+    def _build_relationship_delete_operations(self) -> Optional[Tuple[str, Dict[str, Any]]]:
         from loomi.client._internal._base import _ServerType
 
         if len(self._state[_TrackingOperation.DELETE]["relationships"]) == 0:
-            _logger.debug("No deleted relationships to compile queries for, skipping")
+            _logger.debug("No deleted relationships to build queries for, skipping")
             return None
 
         _logger.debug("Compiling entity queries and parameters")
@@ -761,27 +761,27 @@ class ChangeTracker(_BaseChangeTracker[Union[neo4j.Session, neo4j.Transaction]])
         _logger.debug("Flush called on session, creating new transaction to run pending changes")
 
         with cast(neo4j.Session, self._session_or_tx).begin_transaction() as tx:
-            for query, parameters in self._compile_node_add_operations():
+            for query, parameters in self._build_node_add_operations():
                 result = tx.run(cast(LiteralString, query), parameters)
 
                 entity_id_map = cast(Dict[int, Union[str, int]], dict(result.values()))
                 id_map.update(entity_id_map)
 
-            queries = [*self._compile_relationship_add_operations(id_map)]
+            queries = [*self._build_relationship_add_operations(id_map)]
 
-            node_update_queries = self._compile_node_update_operations()
+            node_update_queries = self._build_node_update_operations()
             if node_update_queries is not None:
                 queries.append(node_update_queries)
 
-            relationship_update_queries = self._compile_relationship_update_operations()
+            relationship_update_queries = self._build_relationship_update_operations()
             if relationship_update_queries is not None:
                 queries.append(relationship_update_queries)
 
-            node_delete_queries = self._compile_node_delete_operations()
+            node_delete_queries = self._build_node_delete_operations()
             if node_delete_queries is not None:
                 queries.append(node_delete_queries)
 
-            relationship_delete_queries = self._compile_relationship_delete_operations()
+            relationship_delete_queries = self._build_relationship_delete_operations()
             if relationship_delete_queries is not None:
                 queries.append(relationship_delete_queries)
 
@@ -796,27 +796,27 @@ class ChangeTracker(_BaseChangeTracker[Union[neo4j.Session, neo4j.Transaction]])
             "Flush called on transaction, run pending changes directly on transaction "
             "without committing changes"
         )
-        for query, parameters in self._compile_node_add_operations():
+        for query, parameters in self._build_node_add_operations():
             result = self._session_or_tx.run(cast(LiteralString, query), parameters)
 
             entity_id_map = cast(Dict[int, Union[str, int]], dict(result.values()))
             id_map.update(entity_id_map)
 
-        queries = [*self._compile_relationship_add_operations(id_map)]
+        queries = [*self._build_relationship_add_operations(id_map)]
 
-        node_update_queries = self._compile_node_update_operations()
+        node_update_queries = self._build_node_update_operations()
         if node_update_queries is not None:
             queries.append(node_update_queries)
 
-        relationship_update_queries = self._compile_relationship_update_operations()
+        relationship_update_queries = self._build_relationship_update_operations()
         if relationship_update_queries is not None:
             queries.append(relationship_update_queries)
 
-        node_delete_queries = self._compile_node_delete_operations()
+        node_delete_queries = self._build_node_delete_operations()
         if node_delete_queries is not None:
             queries.append(node_delete_queries)
 
-        relationship_delete_queries = self._compile_relationship_delete_operations()
+        relationship_delete_queries = self._build_relationship_delete_operations()
         if relationship_delete_queries is not None:
             queries.append(relationship_delete_queries)
 
@@ -862,27 +862,27 @@ class AsyncChangeTracker(_BaseChangeTracker[Union[neo4j.AsyncSession, neo4j.Asyn
         _logger.debug("Flush called on session, creating new transaction to run pending changes")
 
         async with await cast(neo4j.AsyncSession, self._session_or_tx).begin_transaction() as tx:
-            for query, parameters in self._compile_node_add_operations():
+            for query, parameters in self._build_node_add_operations():
                 result = await tx.run(cast(LiteralString, query), parameters)
 
                 entity_id_map = cast(Dict[int, Union[str, int]], dict(await result.values()))
                 id_map.update(entity_id_map)
 
-            queries = [*self._compile_relationship_add_operations(id_map)]
+            queries = [*self._build_relationship_add_operations(id_map)]
 
-            node_update_queries = self._compile_node_update_operations()
+            node_update_queries = self._build_node_update_operations()
             if node_update_queries is not None:
                 queries.append(node_update_queries)
 
-            relationship_update_queries = self._compile_relationship_update_operations()
+            relationship_update_queries = self._build_relationship_update_operations()
             if relationship_update_queries is not None:
                 queries.append(relationship_update_queries)
 
-            node_delete_queries = self._compile_node_delete_operations()
+            node_delete_queries = self._build_node_delete_operations()
             if node_delete_queries is not None:
                 queries.append(node_delete_queries)
 
-            relationship_delete_queries = self._compile_relationship_delete_operations()
+            relationship_delete_queries = self._build_relationship_delete_operations()
             if relationship_delete_queries is not None:
                 queries.append(relationship_delete_queries)
 
@@ -897,27 +897,27 @@ class AsyncChangeTracker(_BaseChangeTracker[Union[neo4j.AsyncSession, neo4j.Asyn
             "Flush called on transaction, run pending changes directly on transaction without "
             "committing changes"
         )
-        for query, parameters in self._compile_node_add_operations():
+        for query, parameters in self._build_node_add_operations():
             result = await self._session_or_tx.run(cast(LiteralString, query), parameters)
 
             entity_id_map = cast(Dict[int, Union[str, int]], dict(await result.values()))
             id_map.update(entity_id_map)
 
-        queries = [*self._compile_relationship_add_operations(id_map)]
+        queries = [*self._build_relationship_add_operations(id_map)]
 
-        node_update_queries = self._compile_node_update_operations()
+        node_update_queries = self._build_node_update_operations()
         if node_update_queries is not None:
             queries.append(node_update_queries)
 
-        relationship_update_queries = self._compile_relationship_update_operations()
+        relationship_update_queries = self._build_relationship_update_operations()
         if relationship_update_queries is not None:
             queries.append(relationship_update_queries)
 
-        node_delete_queries = self._compile_node_delete_operations()
+        node_delete_queries = self._build_node_delete_operations()
         if node_delete_queries is not None:
             queries.append(node_delete_queries)
 
-        relationship_delete_queries = self._compile_relationship_delete_operations()
+        relationship_delete_queries = self._build_relationship_delete_operations()
         if relationship_delete_queries is not None:
             queries.append(relationship_delete_queries)
 

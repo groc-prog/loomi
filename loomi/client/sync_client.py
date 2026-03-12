@@ -17,7 +17,7 @@ class Client(_BaseClient[neo4j.Driver]):
 
         Raises:
             ClientError: If the remote server can not be reached or does not return required
-            metadata.
+                metadata.
         """
         try:
             _logger.info("Verifying connectivity to remote")
@@ -74,7 +74,7 @@ class Client(_BaseClient[neo4j.Driver]):
         Args:
             mode (Union[Literal["native"], Literal["loomi"]]): Whether to use a native session or a
             Loomi session. Defaults to `loomi`.
-            session_config: Key-word arguments passed to the session directly.
+                session_config: Key-word arguments passed to the session directly.
         """
         with _scoped_log_ctx(
             {
