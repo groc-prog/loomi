@@ -23,6 +23,8 @@ from pydantic import BaseModel, ConfigDict, PrivateAttr, computed_field
 
 from loomi._logger import _logger
 from loomi.exceptions import SerializationError
+from loomi.models._internal._types import _ModelType
+from loomi.query._internal._property_descriptor import _PropertyDescriptor
 
 if TYPE_CHECKING:
     from loomi.client._internal._base import BaseClientConfiguration, _ServerType
@@ -90,7 +92,26 @@ class _EntityConfiguration(TypedDict, total=False):
     """
 
 
-class _EntityBase(BaseModel, ABC):
+class _EntityBaseMetaclass(type(BaseModel)):
+    def __getattribute__(cls, name):
+        # To prevent any recursive __getattribute__ calls we need to skip this handler if any
+        # of the following are accessed
+        # Note that accessing model_fields also accesses __pydantic_fields__
+        if name in ["model_fields", "__pydantic_fields__", "__pydantic_complete__"]:
+            return super().__getattribute__(name)
+
+        # If we do not wait for the model building to complete, we will run into recursion issues
+        if cls.__pydantic_complete__:
+            model_fields = cls.model_fields
+            if name in model_fields:
+                return _PropertyDescriptor(
+                    name, model_fields[name].annotation, cast(_ModelType, cls)
+                )
+
+        return super().__getattribute__(name)
+
+
+class _EntityBase(BaseModel, ABC, metaclass=_EntityBaseMetaclass):
     _id: Optional[int] = PrivateAttr(None)
     _element_id: Optional[str] = PrivateAttr(None)
     _hash: Optional[str] = PrivateAttr(None)
