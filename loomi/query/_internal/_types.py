@@ -8,3 +8,4 @@ else:
     AliasedModel = object
 
 _QueryModelType = Union[_ModelType, AliasedModel]
+_NumericValue = Union[int, float]

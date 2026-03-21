@@ -5,7 +5,10 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Dict, List, Union
 
+from loomi._logger import _logger
 from loomi.exceptions import QueryError
+from loomi.models.node import Node
+from loomi.models.relationship import Relationship
 from loomi.query._internal._types import _QueryModelType
 
 if TYPE_CHECKING:
@@ -51,6 +54,7 @@ class _ExpressionContext:
         self.parameters = {}
 
     def add_parameter(self, value: Any) -> str:
+        _logger.debug("Adding new parameter to expression context")
         parameter_name = f"p{len(self.parameters.keys())}"
         self.parameters[parameter_name] = value
 
@@ -64,6 +68,11 @@ class _ExpressionContext:
 
     def register_model(self, model: _QueryModelType) -> None:
         from loomi.query.helpers import AliasedModel
+
+        _logger.debug(
+            "Registering %s with expression context",
+            (f"alias {model._alias}" if isinstance(model, AliasedModel) else model.__name__),
+        )
 
         variable = model._alias if isinstance(model, AliasedModel) else f"v{self._variable_counter}"
         if variable in set(self._models_to_vars.values()):
@@ -95,6 +104,48 @@ class _BaseQueryExpression:
 
     def __xor__(self, other: "QueryExpression") -> "CompoundQueryExpression":
         return CompoundQueryExpression(_LogicalExpressionOperator.XOR, [self, other])
+
+
+@dataclass
+class CustomQueryExpression(_BaseQueryExpression):
+    """
+    A expression containing custom Cypher query parts which can be compiled by the
+    query builder.
+    """
+
+    expression_template: str
+    template_references: Dict[str, _QueryModelType]
+    parameter_references: Dict[str, Any]
+
+    def _compile(self, ctx: _ExpressionContext) -> str:
+        from loomi.query.helpers import AliasedModel
+
+        # TODO: Check if we have a use-case for resolving property descriptors here as well
+        resolved_template_references: Dict[str, Any] = {}
+        for key, model in self.template_references.items():
+            if isinstance(model, AliasedModel):
+                variable = ctx.get_variable(model)
+                resolved_template_references[key] = variable
+                continue
+
+            if issubclass(model, (Node, Relationship)):
+                variable = ctx.get_variable(model)
+                resolved_template_references[key] = variable
+                continue
+
+            raise QueryError(
+                "Template references must be valid models or aliased models. "
+                f"Got {model} for reference {key}"
+            )
+
+        resolved_parameter_references: Dict[str, Any] = {}
+        for key, value in self.parameter_references.items():
+            parameter = ctx.add_parameter(value)
+            resolved_template_references[key] = parameter
+
+        return self.expression_template.format(
+            **resolved_template_references, **resolved_parameter_references
+        )
 
 
 @dataclass

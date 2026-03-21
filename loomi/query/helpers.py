@@ -13,8 +13,8 @@ from loomi.query._internal._expression import (
     _LogicalExpressionOperator,
     _UnaryExpressionTemplate,
 )
+from loomi.query._internal._types import _NumericValue
 
-_NumericValue = Union[int, float]
 T = TypeVar("T", bound=_ModelType)
 
 
@@ -31,11 +31,10 @@ class AliasedModel:
     def __getattribute__(self, name: str) -> Any:
         from loomi.query._internal._property_descriptor import _PropertyDescriptor
 
-        if name in ["_alias", "_model_type"]:
-            return super().__getattribute__(name)
-
         if name in self._model_type.model_fields:
             return _PropertyDescriptor(name, self._model_type.model_fields[name].annotation, self)
+
+        return super().__getattribute__(name)
 
 
 def _validate_property_descriptor(maybe_property_descriptor: Any) -> None:

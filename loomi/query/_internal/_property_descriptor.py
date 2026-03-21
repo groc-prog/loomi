@@ -4,10 +4,11 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, get_args, ge
 
 from pydantic import BaseModel
 
+from loomi._logger import _logger
 from loomi.exceptions import ModelError
-from loomi.query._internal._types import _QueryModelType
+from loomi.query._internal._types import _NumericValue, _QueryModelType
 from loomi.query.helpers import (
-    _NumericValue,
+    AliasedModel,
     equals,
     greater_than,
     greater_than_or_equal,
@@ -55,6 +56,7 @@ class _PropertyDescriptor:
 
         # Since a dict might contain any key, we allow all properties
         if origin is dict or origin is Dict:
+            # For dicts, the value is the second argument
             value_type = args[1] if len(args) > 1 else Any
             return _PropertyDescriptor(f"{base_path}.{name}", value_type, self._model_type)
 
@@ -78,17 +80,32 @@ class _PropertyDescriptor:
         # Determine the inner type to pass to the next descriptor
         inner_type = Any
         if origin in (list, List, Union):
-            # Find the first non-None type in the Union or List
             inner_type = next((a for a in args if a is not type(None)), Any)
         elif origin in (dict, Dict) and len(args) > 1:
-            # For dicts, the value is the second argument: Dict[Key, Value]
-            inner_type = args[1]
+            # For dicts, the value is the second argument
+            inner_type = args[1] if len(args) > 1 else Any
 
         return _PropertyDescriptor(f"{self._full_path}[{index}]", inner_type, self._model_type)
 
     def _compile_path(
         self, ctx: _ExpressionContext, expression_template: str, value: Optional[Any]
     ) -> str:
+        _logger.debug(
+            "Compiling path %s for %s",
+            self._full_path,
+            (
+                f"alias {self._model_type._alias}"
+                if isinstance(self._model_type, AliasedModel)
+                else self._model_type.__name__
+            ),
+        )
+        # TODO: This currently generates 2 loops when filtering 2 list expressions which are
+        # combined by any logical operator. Check if combining them into a single loop improves
+        # performance
+        # Current:
+        # `ANY(v1 IN v0.tags WHERE v1.name = "t1") OR ANY(v1 IN v0.tags WHERE v1.name = "t2")`
+        # To check:
+        # `ANY(v1 IN v0.tags WHERE v1.name = "t1" OR v1.name = "t2")`
         variable = ctx.get_variable(self._model_type)
         parameter = ctx.add_parameter(value) if value else None
 
