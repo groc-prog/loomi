@@ -1,11 +1,12 @@
 import re
 from dataclasses import dataclass
-from typing import Any, List, TypeVar, Union, cast
+from typing import Any, Dict, List, TypeVar, Union, cast
 
+from loomi._internal._types import _ModelType, _NumericValue, _QueryModelType
 from loomi.exceptions import QueryError
-from loomi.models._internal._types import _ModelType
-from loomi.query._internal._expression import (
+from loomi.query.expressions import (
     CompoundQueryExpression,
+    CustomQueryExpression,
     QueryExpression,
     UnaryQueryExpression,
     _BaseQueryExpression,
@@ -13,7 +14,6 @@ from loomi.query._internal._expression import (
     _LogicalExpressionOperator,
     _UnaryExpressionTemplate,
 )
-from loomi.query._internal._types import _NumericValue
 
 T = TypeVar("T", bound=_ModelType)
 
@@ -29,20 +29,20 @@ class AliasedModel:
     _model_type: _ModelType
 
     def __getattribute__(self, name: str) -> Any:
-        from loomi.query._internal._property_descriptor import _PropertyDescriptor
+        from loomi.query.property_descriptor import PropertyDescriptor
 
         if name in self._model_type.model_fields:
-            return _PropertyDescriptor(name, self._model_type.model_fields[name].annotation, self)
+            return PropertyDescriptor(name, self._model_type.model_fields[name].annotation, self)
 
         return super().__getattribute__(name)
 
 
 def _validate_property_descriptor(maybe_property_descriptor: Any) -> None:
-    from loomi.query._internal._property_descriptor import _PropertyDescriptor
+    from loomi.query.property_descriptor import PropertyDescriptor
 
-    if not isinstance(maybe_property_descriptor, _PropertyDescriptor):
+    if not isinstance(maybe_property_descriptor, PropertyDescriptor):
         raise QueryError(
-            f"Expected {_PropertyDescriptor.__class__.__name__}, got {maybe_property_descriptor}"
+            f"Expected {PropertyDescriptor.__class__.__name__}, got {maybe_property_descriptor}"
         )
 
 
@@ -73,7 +73,7 @@ def equals(property_descriptor: Any, value: Any) -> QueryExpression:
     Builds a `=` expression for a query builder.
 
     Args:
-        property_descriptor (_PropertyDescriptor): The descriptor to build the expression for.
+        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
         value (Any): The value used in the expression.
 
     Returns:
@@ -89,7 +89,7 @@ def not_equals(property_descriptor: Any, value: Any) -> QueryExpression:
     Builds a `<>` expression for a query builder.
 
     Args:
-        property_descriptor (_PropertyDescriptor): The descriptor to build the expression for.
+        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
         value (Any): The value used in the expression.
 
     Returns:
@@ -105,7 +105,7 @@ def greater_than(property_descriptor: Any, value: _NumericValue) -> QueryExpress
     Builds a `>` expression for a query builder.
 
     Args:
-        property_descriptor (_PropertyDescriptor): The descriptor to build the expression for.
+        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
         value (Union[int, float]): The (numeric) value used in the expression.
 
     Returns:
@@ -126,7 +126,7 @@ def greater_than_or_equal(property_descriptor: Any, value: _NumericValue) -> Que
     Builds a `>=` expression for a query builder.
 
     Args:
-        property_descriptor (_PropertyDescriptor): The descriptor to build the expression for.
+        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
         value (Union[int, float]): The (numeric) value used in the expression.
 
     Returns:
@@ -147,7 +147,7 @@ def less_than(property_descriptor: Any, value: _NumericValue) -> QueryExpression
     Builds a `<` expression for a query builder.
 
     Args:
-        property_descriptor (_PropertyDescriptor): The descriptor to build the expression for.
+        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
         value (Union[int, float]): The (numeric) value used in the expression.
 
     Returns:
@@ -168,7 +168,7 @@ def less_than_or_equal(property_descriptor: Any, value: _NumericValue) -> QueryE
     Builds a `<=` expression for a query builder.
 
     Args:
-        property_descriptor (_PropertyDescriptor): The descriptor to build the expression for.
+        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
         value (Union[int, float]): The (numeric) value used in the expression.
 
     Returns:
@@ -191,7 +191,7 @@ def not_(
     Builds a `NOT(...)` expression for a query builder.
 
     Args:
-        property_descriptor (_PropertyDescriptor): The descriptor to build the expression for.
+        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
 
     Returns:
         CompoundQueryExpression: A expression which can be compiled by a query builder.
@@ -204,7 +204,7 @@ def is_null(property_descriptor: Any) -> UnaryQueryExpression:
     Builds a `IS NULL` expression for a query builder.
 
     Args:
-        property_descriptor (_PropertyDescriptor): The descriptor to build the expression for.
+        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
 
     Returns:
         UnaryQueryExpression: A expression which can be compiled by a query builder.
@@ -222,7 +222,7 @@ def is_not_null(property_descriptor: Any) -> UnaryQueryExpression:
     Builds a `IS NOT NULL` expression for a query builder.
 
     Args:
-        property_descriptor (_PropertyDescriptor): The descriptor to build the expression for.
+        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
 
     Returns:
         UnaryQueryExpression: A expression which can be compiled by a query builder.
@@ -240,7 +240,7 @@ def in_(property_descriptor: Any, value: List[Any]) -> QueryExpression:
     Builds a `IN` expression for a query builder.
 
     Args:
-        property_descriptor (_PropertyDescriptor): The descriptor to build the expression for.
+        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
         value (List[Any]): The (list) value used in the expression.
 
     Returns:
@@ -261,7 +261,7 @@ def starts_with(property_descriptor: Any, value: str) -> QueryExpression:
     Builds a `STARTS WITH` expression for a query builder.
 
     Args:
-        property_descriptor (_PropertyDescriptor): The descriptor to build the expression for.
+        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
         value (str): The (string) value used in the expression.
 
     Returns:
@@ -282,7 +282,7 @@ def ends_with(property_descriptor: Any, value: str) -> QueryExpression:
     Builds a `ENDS WITH` expression for a query builder.
 
     Args:
-        property_descriptor (_PropertyDescriptor): The descriptor to build the expression for.
+        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
         value (str): The (string) value used in the expression.
 
     Returns:
@@ -303,7 +303,7 @@ def contains(property_descriptor: Any, value: str) -> QueryExpression:
     Builds a `CONTAINS` expression for a query builder.
 
     Args:
-        property_descriptor (_PropertyDescriptor): The descriptor to build the expression for.
+        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
         value (str): The (string) value used in the expression.
 
     Returns:
@@ -324,7 +324,7 @@ def regex(property_descriptor: Any, value: str) -> QueryExpression:
     Builds a `=~` expression for a query builder.
 
     Args:
-        property_descriptor (_PropertyDescriptor): The descriptor to build the expression for.
+        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
         value (str): The (string) value used in the expression.
 
     Returns:
@@ -338,3 +338,23 @@ def regex(property_descriptor: Any, value: str) -> QueryExpression:
         )
 
     return QueryExpression(property_descriptor, _ExpressionTemplate.REGEX, value)
+
+
+def cypher(
+    template: str, model_references: Dict[str, _QueryModelType], parameters: Dict[str, Any]
+) -> CustomQueryExpression:
+    """
+    Builds a custom Cypher query by injecting the corresponding model variables and parameters into
+    the provided template.
+
+    Args:
+        template (str): The Cypher query to build. The template can contain placeholders which need
+        to correspond to keys from either `model_references` or `parameters`.
+        model_references (Dict[str, _QueryModelType]): A dict which maps placeholders to their
+        models.
+        parameters (Dict[str, Any]): A dict which maps placeholders to their parameter values.
+
+    Returns:
+        CustomQueryExpression: A expression which can be compiled by a query builder.
+    """
+    return CustomQueryExpression(template, model_references, parameters)

@@ -37,6 +37,7 @@ python_functions = ["test_*"]
 asyncio_mode = "auto"
 addopts = "--cov=loomi --cov-report=term-missing"
 env_files = [".env.test"]
+markers = ["integration"]
 
 [tool.coverage.run]
 omit = ["tests/*"]
