@@ -1,6 +1,6 @@
 import re
 from dataclasses import dataclass
-from typing import Any, Dict, List, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Dict, List, TypeVar, Union, cast, get_args, get_origin
 
 from loomi._internal._types import _ModelType, _NumericValue, _QueryModelType
 from loomi.exceptions import QueryError
@@ -15,7 +15,14 @@ from loomi.query.expressions import (
     _UnaryExpressionTemplate,
 )
 
+if TYPE_CHECKING:
+    from loomi.query.descriptor import EntityIdDescriptor, PropertyDescriptor
+else:
+    PropertyDescriptor = object
+    EntityIdDescriptor = object
+
 T = TypeVar("T", bound=_ModelType)
+P = TypeVar("P")
 
 
 @dataclass(frozen=True)
@@ -29,16 +36,18 @@ class AliasedModel:
     _model_type: _ModelType
 
     def __getattribute__(self, name: str) -> Any:
-        from loomi.query.property_descriptor import PropertyDescriptor
+        from loomi.query.descriptor import PropertyDescriptor
 
         if name in self._model_type.model_fields:
-            return PropertyDescriptor(name, self._model_type.model_fields[name].annotation, self)
+            return PropertyDescriptor(
+                name, cast(Any, self._model_type.model_fields[name].annotation), self
+            )
 
         return super().__getattribute__(name)
 
 
 def _validate_property_descriptor(maybe_property_descriptor: Any) -> None:
-    from loomi.query.property_descriptor import PropertyDescriptor
+    from loomi.query.descriptor import PropertyDescriptor
 
     if not isinstance(maybe_property_descriptor, PropertyDescriptor):
         raise QueryError(
@@ -52,7 +61,7 @@ def create_alias(model_type: T, alias: str) -> T:
     multiple times under different variables in the same query.
 
     Args:
-        model_type: (Union[Type[Node], Type[Relationship]]): The model to create a alias for.
+        model_type: (_ModelType): The model to create a alias for.
         alias (str): The alias which will be used in queries. Can be any string which does
         **not match** the format **v<any number>**.
 
@@ -358,3 +367,96 @@ def cypher(
         CustomQueryExpression: A expression which can be compiled by a query builder.
     """
     return CustomQueryExpression(template, model_references, parameters)
+
+
+def all_(property_descriptor: List[P]) -> P:
+    """
+    Marks this list property to use `ALL` when a query builder encounters it.
+
+    Returns:
+        PropertyDescriptor: A property descriptor which can be used to further define paths.
+    """
+    from loomi.query.descriptor import PropertyDescriptor
+
+    _validate_property_descriptor(property_descriptor)
+    descriptor = cast(PropertyDescriptor, property_descriptor)
+
+    current_type = descriptor._annotation
+    origin = get_origin(current_type)
+    args = get_args(current_type)
+
+    inferred_type = Any
+    if origin in (list, List, Union):
+        inferred_type = next((a for a in args if a is not type(None)), Any)
+
+    return cast(
+        P,
+        PropertyDescriptor(
+            f"{descriptor._full_path}.$all",
+            inferred_type,
+            descriptor._model_type,
+        ),
+    )
+
+
+def any_(property_descriptor: List[P]) -> P:
+    """
+    Marks this list property to use `ANY` when a query builder encounters it. This is also
+    the default which will be used if nothing is defined for a list property.local
+
+    Returns:
+        PropertyDescriptor: A property descriptor which can be used to further define paths.
+    """
+    from loomi.query.descriptor import PropertyDescriptor
+
+    _validate_property_descriptor(property_descriptor)
+    descriptor = cast(PropertyDescriptor, property_descriptor)
+
+    current_type = descriptor._annotation
+    origin = get_origin(current_type)
+    args = get_args(current_type)
+
+    inferred_type = Any
+    if origin in (list, List, Union):
+        inferred_type = next((a for a in args if a is not type(None)), Any)
+
+    return cast(
+        P,
+        PropertyDescriptor(
+            f"{descriptor._full_path}.$any",
+            inferred_type,
+            descriptor._model_type,
+        ),
+    )
+
+
+def element_id(model_type: _QueryModelType) -> EntityIdDescriptor:
+    """
+    Builds a descriptor which will be resolved to an `elementId` expression when used by a
+    query builder.
+
+    Args:
+        model_type: (_QueryModelType): The model to create a `elementId` expression for.
+
+    Returns:
+        EntityIdDescriptor: A entity id descriptor which can be used by a query builder.
+    """
+    from loomi.query.descriptor import EntityIdDescriptor, _EntityIdOperator
+
+    return EntityIdDescriptor(_EntityIdOperator.ELEMENT_ID, model_type)
+
+
+def id_(model_type: _QueryModelType) -> EntityIdDescriptor:
+    """
+    Builds a descriptor which will be resolved to an `id` expression when used by a
+    query builder.
+
+    Args:
+        model_type: (_QueryModelType): The model to create a `id` expression for.
+
+    Returns:
+        EntityIdDescriptor: A entity id descriptor which can be used by a query builder.
+    """
+    from loomi.query.descriptor import EntityIdDescriptor, _EntityIdOperator
+
+    return EntityIdDescriptor(_EntityIdOperator.ID, model_type)

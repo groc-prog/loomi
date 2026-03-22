@@ -87,7 +87,7 @@ class _BaseClient(Generic[T], ABC):
         resolved from query results.
 
         Args:
-            *models (Union[Type[Node], Type[Relationship]]): The models to register.
+            *models (_ModelType): The models to register.
         """
         with _scoped_log_ctx(
             {

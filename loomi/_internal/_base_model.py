@@ -24,7 +24,7 @@ from pydantic import BaseModel, ConfigDict, PrivateAttr, computed_field
 from loomi._internal._types import _ModelType
 from loomi._logger import _logger
 from loomi.exceptions import SerializationError
-from loomi.query.property_descriptor import PropertyDescriptor
+from loomi.query.descriptor import PropertyDescriptor
 
 if TYPE_CHECKING:
     from loomi._internal._base_client import ClientConfiguration, _ServerType
