@@ -1,11 +1,11 @@
-# pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, missing-function-docstring
+# pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, missing-function-docstring, unused-argument, line-too-long, unused-variable
 
 from os import environ
 
 import pytest
 from neo4j import GraphDatabase
 
-from loomi._internal._change_tracker import _TrackingOperation
+from loomi._internal._change_tracker import TrackingOperation
 from loomi._sync.change_tracker import ChangeTracker
 from loomi._sync.client import Client
 from loomi.exceptions import ChangeTrackerError
@@ -49,12 +49,12 @@ class TestAdd:
         human = Human(name="John", age=21)
         change_tracker.add(human)
 
-        assert len(change_tracker._state[_TrackingOperation.UPDATE]["nodes"]) == 0
-        assert len(change_tracker._state[_TrackingOperation.DELETE]["nodes"]) == 0
+        assert len(change_tracker._state[TrackingOperation.UPDATE]["nodes"]) == 0
+        assert len(change_tracker._state[TrackingOperation.DELETE]["nodes"]) == 0
 
-        assert len(change_tracker._state[_TrackingOperation.INSERT]["nodes"]) == 1
-        assert id(human) in change_tracker._state[_TrackingOperation.INSERT]["nodes"]
-        assert change_tracker._state[_TrackingOperation.INSERT]["nodes"][id(human)][0] == human
+        assert len(change_tracker._state[TrackingOperation.INSERT]["nodes"]) == 1
+        assert id(human) in change_tracker._state[TrackingOperation.INSERT]["nodes"]
+        assert change_tracker._state[TrackingOperation.INSERT]["nodes"][id(human)][0] == human
 
     @pytest.mark.integration
     def test_add_starts_tracking_unsaved_relationship_as_added(self, change_tracker: ChangeTracker):
@@ -66,19 +66,19 @@ class TestAdd:
         likes = Likes(scale=9.5)
         change_tracker.add(likes, human1, human2)
 
-        assert len(change_tracker._state[_TrackingOperation.UPDATE]["nodes"]) == 0
-        assert len(change_tracker._state[_TrackingOperation.DELETE]["nodes"]) == 0
+        assert len(change_tracker._state[TrackingOperation.UPDATE]["nodes"]) == 0
+        assert len(change_tracker._state[TrackingOperation.DELETE]["nodes"]) == 0
 
-        assert len(change_tracker._state[_TrackingOperation.INSERT]["nodes"]) == 2
-        assert id(human1) in change_tracker._state[_TrackingOperation.INSERT]["nodes"]
-        assert change_tracker._state[_TrackingOperation.INSERT]["nodes"][id(human1)][0] == human1
-        assert id(human2) in change_tracker._state[_TrackingOperation.INSERT]["nodes"]
-        assert change_tracker._state[_TrackingOperation.INSERT]["nodes"][id(human2)][0] == human2
+        assert len(change_tracker._state[TrackingOperation.INSERT]["nodes"]) == 2
+        assert id(human1) in change_tracker._state[TrackingOperation.INSERT]["nodes"]
+        assert change_tracker._state[TrackingOperation.INSERT]["nodes"][id(human1)][0] == human1
+        assert id(human2) in change_tracker._state[TrackingOperation.INSERT]["nodes"]
+        assert change_tracker._state[TrackingOperation.INSERT]["nodes"][id(human2)][0] == human2
 
-        assert len(change_tracker._state[_TrackingOperation.INSERT]["relationships"]) == 1
-        assert id(likes) in change_tracker._state[_TrackingOperation.INSERT]["relationships"]
+        assert len(change_tracker._state[TrackingOperation.INSERT]["relationships"]) == 1
+        assert id(likes) in change_tracker._state[TrackingOperation.INSERT]["relationships"]
         assert (
-            change_tracker._state[_TrackingOperation.INSERT]["relationships"][id(likes)][0] == likes
+            change_tracker._state[TrackingOperation.INSERT]["relationships"][id(likes)][0] == likes
         )
 
         assert len(change_tracker._grouping_map) == 1
@@ -97,11 +97,11 @@ class TestAdd:
         human1._element_id = "element_id_1"
         change_tracker.add(likes, human1, human2)
 
-        assert id(human1) in change_tracker._state[_TrackingOperation.UPDATE]["nodes"]
-        assert change_tracker._state[_TrackingOperation.UPDATE]["nodes"][id(human1)][0] == human1
+        assert id(human1) in change_tracker._state[TrackingOperation.UPDATE]["nodes"]
+        assert change_tracker._state[TrackingOperation.UPDATE]["nodes"][id(human1)][0] == human1
 
-        assert id(human2) in change_tracker._state[_TrackingOperation.INSERT]["nodes"]
-        assert change_tracker._state[_TrackingOperation.INSERT]["nodes"][id(human2)][0] == human2
+        assert id(human2) in change_tracker._state[TrackingOperation.INSERT]["nodes"]
+        assert change_tracker._state[TrackingOperation.INSERT]["nodes"][id(human2)][0] == human2
 
     @pytest.mark.integration
     def test_tracks_end_node_as_update_if_already_saved(self, change_tracker: ChangeTracker):
@@ -115,11 +115,11 @@ class TestAdd:
         human2._element_id = "element_id_2"
         change_tracker.add(likes, human1, human2)
 
-        assert id(human1) in change_tracker._state[_TrackingOperation.INSERT]["nodes"]
-        assert change_tracker._state[_TrackingOperation.INSERT]["nodes"][id(human1)][0] == human1
+        assert id(human1) in change_tracker._state[TrackingOperation.INSERT]["nodes"]
+        assert change_tracker._state[TrackingOperation.INSERT]["nodes"][id(human1)][0] == human1
 
-        assert id(human2) in change_tracker._state[_TrackingOperation.UPDATE]["nodes"]
-        assert change_tracker._state[_TrackingOperation.UPDATE]["nodes"][id(human2)][0] == human2
+        assert id(human2) in change_tracker._state[TrackingOperation.UPDATE]["nodes"]
+        assert change_tracker._state[TrackingOperation.UPDATE]["nodes"][id(human2)][0] == human2
 
     @pytest.mark.integration
     def test_raises_if_start_or_end_node_not_defined(self, change_tracker: ChangeTracker):
@@ -141,10 +141,10 @@ class TestAdd:
         likes._element_id = "element_id_1"
         change_tracker.add(likes)
 
-        assert len(change_tracker._state[_TrackingOperation.UPDATE]["relationships"]) == 1
-        assert id(likes) in change_tracker._state[_TrackingOperation.UPDATE]["relationships"]
+        assert len(change_tracker._state[TrackingOperation.UPDATE]["relationships"]) == 1
+        assert id(likes) in change_tracker._state[TrackingOperation.UPDATE]["relationships"]
         assert (
-            change_tracker._state[_TrackingOperation.UPDATE]["relationships"][id(likes)][0] == likes
+            change_tracker._state[TrackingOperation.UPDATE]["relationships"][id(likes)][0] == likes
         )
 
     @pytest.mark.integration
@@ -153,18 +153,18 @@ class TestAdd:
         Verify that nothing is changed if the entity is already being tracked.
         """
         human = Human(name="John", age=21)
-        change_tracker._state[_TrackingOperation.INSERT]["nodes"][id(human)] = (
+        change_tracker._state[TrackingOperation.INSERT]["nodes"][id(human)] = (
             human,
             human._compute_checksums(),
         )
 
         change_tracker.add(human)
 
-        assert len(change_tracker._state[_TrackingOperation.UPDATE]["nodes"]) == 0
-        assert len(change_tracker._state[_TrackingOperation.DELETE]["nodes"]) == 0
-        assert len(change_tracker._state[_TrackingOperation.INSERT]["nodes"]) == 1
-        assert id(human) in change_tracker._state[_TrackingOperation.INSERT]["nodes"]
-        assert change_tracker._state[_TrackingOperation.INSERT]["nodes"][id(human)][0] == human
+        assert len(change_tracker._state[TrackingOperation.UPDATE]["nodes"]) == 0
+        assert len(change_tracker._state[TrackingOperation.DELETE]["nodes"]) == 0
+        assert len(change_tracker._state[TrackingOperation.INSERT]["nodes"]) == 1
+        assert id(human) in change_tracker._state[TrackingOperation.INSERT]["nodes"]
+        assert change_tracker._state[TrackingOperation.INSERT]["nodes"][id(human)][0] == human
 
     @pytest.mark.integration
     def test_removes_node_if_previously_tracked_as_remove(self, change_tracker: ChangeTracker):
@@ -173,16 +173,16 @@ class TestAdd:
         DELETE operation.
         """
         human = Human(name="John", age=21)
-        change_tracker._state[_TrackingOperation.DELETE]["nodes"][id(human)] = (
+        change_tracker._state[TrackingOperation.DELETE]["nodes"][id(human)] = (
             human,
             human._compute_checksums(),
         )
 
         change_tracker.add(human)
 
-        assert len(change_tracker._state[_TrackingOperation.INSERT]["nodes"]) == 0
-        assert len(change_tracker._state[_TrackingOperation.UPDATE]["nodes"]) == 0
-        assert len(change_tracker._state[_TrackingOperation.DELETE]["nodes"]) == 0
+        assert len(change_tracker._state[TrackingOperation.INSERT]["nodes"]) == 0
+        assert len(change_tracker._state[TrackingOperation.UPDATE]["nodes"]) == 0
+        assert len(change_tracker._state[TrackingOperation.DELETE]["nodes"]) == 0
 
     @pytest.mark.integration
     def test_promotes_node_to_update_if_previously_tracked_as_remove(
@@ -194,19 +194,19 @@ class TestAdd:
         """
         human = Human(name="John", age=21)
         human._element_id = "element_id_1"
-        change_tracker._state[_TrackingOperation.DELETE]["nodes"][id(human)] = (
+        change_tracker._state[TrackingOperation.DELETE]["nodes"][id(human)] = (
             human,
             human._compute_checksums(),
         )
 
         change_tracker.add(human)
 
-        assert len(change_tracker._state[_TrackingOperation.INSERT]["nodes"]) == 0
-        assert len(change_tracker._state[_TrackingOperation.DELETE]["nodes"]) == 0
+        assert len(change_tracker._state[TrackingOperation.INSERT]["nodes"]) == 0
+        assert len(change_tracker._state[TrackingOperation.DELETE]["nodes"]) == 0
 
-        assert len(change_tracker._state[_TrackingOperation.UPDATE]["nodes"]) == 1
-        assert id(human) in change_tracker._state[_TrackingOperation.UPDATE]["nodes"]
-        assert change_tracker._state[_TrackingOperation.UPDATE]["nodes"][id(human)][0] == human
+        assert len(change_tracker._state[TrackingOperation.UPDATE]["nodes"]) == 1
+        assert id(human) in change_tracker._state[TrackingOperation.UPDATE]["nodes"]
+        assert change_tracker._state[TrackingOperation.UPDATE]["nodes"][id(human)][0] == human
 
     @pytest.mark.integration
     def test_removes_relationship_if_previously_tracked_as_remove(
@@ -219,16 +219,16 @@ class TestAdd:
         human1 = Human(name="John", age=21)
         human2 = Human(name="Jane", age=20)
         likes = Likes(scale=2.1)
-        change_tracker._state[_TrackingOperation.DELETE]["relationships"][id(likes)] = (
+        change_tracker._state[TrackingOperation.DELETE]["relationships"][id(likes)] = (
             likes,
             likes._compute_checksums(),
         )
 
         change_tracker.add(likes, human1, human2)
 
-        assert len(change_tracker._state[_TrackingOperation.INSERT]["relationships"]) == 0
-        assert len(change_tracker._state[_TrackingOperation.UPDATE]["relationships"]) == 0
-        assert len(change_tracker._state[_TrackingOperation.DELETE]["relationships"]) == 0
+        assert len(change_tracker._state[TrackingOperation.INSERT]["relationships"]) == 0
+        assert len(change_tracker._state[TrackingOperation.UPDATE]["relationships"]) == 0
+        assert len(change_tracker._state[TrackingOperation.DELETE]["relationships"]) == 0
 
     @pytest.mark.integration
     def test_promotes_relationship_to_update_if_previously_tracked_as_remove(
@@ -242,20 +242,20 @@ class TestAdd:
         human2 = Human(name="Jane", age=20)
         likes = Likes(scale=2.1)
         likes._element_id = "element_id_1"
-        change_tracker._state[_TrackingOperation.DELETE]["relationships"][id(likes)] = (
+        change_tracker._state[TrackingOperation.DELETE]["relationships"][id(likes)] = (
             likes,
             likes._compute_checksums(),
         )
 
         change_tracker.add(likes, human1, human2)
 
-        assert len(change_tracker._state[_TrackingOperation.INSERT]["relationships"]) == 0
-        assert len(change_tracker._state[_TrackingOperation.DELETE]["relationships"]) == 0
+        assert len(change_tracker._state[TrackingOperation.INSERT]["relationships"]) == 0
+        assert len(change_tracker._state[TrackingOperation.DELETE]["relationships"]) == 0
 
-        assert len(change_tracker._state[_TrackingOperation.UPDATE]["relationships"]) == 1
-        assert id(likes) in change_tracker._state[_TrackingOperation.UPDATE]["relationships"]
+        assert len(change_tracker._state[TrackingOperation.UPDATE]["relationships"]) == 1
+        assert id(likes) in change_tracker._state[TrackingOperation.UPDATE]["relationships"]
         assert (
-            change_tracker._state[_TrackingOperation.UPDATE]["relationships"][id(likes)][0] == likes
+            change_tracker._state[TrackingOperation.UPDATE]["relationships"][id(likes)][0] == likes
         )
 
 
@@ -279,13 +279,13 @@ class TestRemove:
         """
         human = Human(name="John", age=21)
 
-        change_tracker._state[_TrackingOperation.INSERT]["nodes"][id(human)] = (
+        change_tracker._state[TrackingOperation.INSERT]["nodes"][id(human)] = (
             human,
             human._compute_checksums(),
         )
         change_tracker.remove(human)
 
-        assert len(change_tracker._state[_TrackingOperation.DELETE]["nodes"]) == 0
+        assert len(change_tracker._state[TrackingOperation.DELETE]["nodes"]) == 0
 
     @pytest.mark.integration
     def test_removes_relationship_from_tracker_if_not_saved(self, change_tracker: ChangeTracker):
@@ -295,13 +295,13 @@ class TestRemove:
         """
         likes = Likes(scale=2.1)
 
-        change_tracker._state[_TrackingOperation.INSERT]["relationships"][id(likes)] = (
+        change_tracker._state[TrackingOperation.INSERT]["relationships"][id(likes)] = (
             likes,
             likes._compute_checksums(),
         )
         change_tracker.remove(likes)
 
-        assert len(change_tracker._state[_TrackingOperation.DELETE]["relationships"]) == 0
+        assert len(change_tracker._state[TrackingOperation.DELETE]["relationships"]) == 0
 
     @pytest.mark.integration
     def test_node_is_tracked_as_delete(self, change_tracker: ChangeTracker):
@@ -313,9 +313,9 @@ class TestRemove:
 
         change_tracker.remove(human)
 
-        assert len(change_tracker._state[_TrackingOperation.DELETE]["nodes"]) == 1
-        assert id(human) in change_tracker._state[_TrackingOperation.DELETE]["nodes"]
-        assert change_tracker._state[_TrackingOperation.DELETE]["nodes"][id(human)][0] == human
+        assert len(change_tracker._state[TrackingOperation.DELETE]["nodes"]) == 1
+        assert id(human) in change_tracker._state[TrackingOperation.DELETE]["nodes"]
+        assert change_tracker._state[TrackingOperation.DELETE]["nodes"][id(human)][0] == human
 
     @pytest.mark.integration
     def test_relationship_is_tracked_as_delete(self, change_tracker: ChangeTracker):
@@ -328,10 +328,10 @@ class TestRemove:
 
         change_tracker.remove(likes)
 
-        assert len(change_tracker._state[_TrackingOperation.DELETE]["relationships"]) == 1
-        assert id(likes) in change_tracker._state[_TrackingOperation.DELETE]["relationships"]
+        assert len(change_tracker._state[TrackingOperation.DELETE]["relationships"]) == 1
+        assert id(likes) in change_tracker._state[TrackingOperation.DELETE]["relationships"]
         assert (
-            change_tracker._state[_TrackingOperation.DELETE]["relationships"][id(likes)][0] == likes
+            change_tracker._state[TrackingOperation.DELETE]["relationships"][id(likes)][0] == likes
         )
 
     @pytest.mark.integration
@@ -342,15 +342,15 @@ class TestRemove:
         human = Human(name="John", age=21)
         human._element_id = "element_id_1"
 
-        change_tracker._state[_TrackingOperation.UPDATE]["nodes"][id(human)] = (
+        change_tracker._state[TrackingOperation.UPDATE]["nodes"][id(human)] = (
             human,
             human._compute_checksums(),
         )
         change_tracker.remove(human)
 
-        assert len(change_tracker._state[_TrackingOperation.DELETE]["nodes"]) == 1
-        assert id(human) in change_tracker._state[_TrackingOperation.DELETE]["nodes"]
-        assert change_tracker._state[_TrackingOperation.DELETE]["nodes"][id(human)][0] == human
+        assert len(change_tracker._state[TrackingOperation.DELETE]["nodes"]) == 1
+        assert id(human) in change_tracker._state[TrackingOperation.DELETE]["nodes"]
+        assert change_tracker._state[TrackingOperation.DELETE]["nodes"][id(human)][0] == human
 
     @pytest.mark.integration
     def test_relationship_is_promoted_to_delete_if_already_tracked(
@@ -362,16 +362,16 @@ class TestRemove:
         likes = Likes(scale=2.1)
         likes._element_id = "element_id_1"
 
-        change_tracker._state[_TrackingOperation.UPDATE]["relationships"][id(likes)] = (
+        change_tracker._state[TrackingOperation.UPDATE]["relationships"][id(likes)] = (
             likes,
             likes._compute_checksums(),
         )
         change_tracker.remove(likes)
 
-        assert len(change_tracker._state[_TrackingOperation.DELETE]["relationships"]) == 1
-        assert id(likes) in change_tracker._state[_TrackingOperation.DELETE]["relationships"]
+        assert len(change_tracker._state[TrackingOperation.DELETE]["relationships"]) == 1
+        assert id(likes) in change_tracker._state[TrackingOperation.DELETE]["relationships"]
         assert (
-            change_tracker._state[_TrackingOperation.DELETE]["relationships"][id(likes)][0] == likes
+            change_tracker._state[TrackingOperation.DELETE]["relationships"][id(likes)][0] == likes
         )
 
 
@@ -384,38 +384,38 @@ class TestClear:
         human = Human(name="John", age=21)
         likes = Likes(scale=2.1)
 
-        change_tracker._state[_TrackingOperation.INSERT]["nodes"][id(human)] = (
+        change_tracker._state[TrackingOperation.INSERT]["nodes"][id(human)] = (
             human,
             human._compute_checksums(),
         )
-        change_tracker._state[_TrackingOperation.UPDATE]["nodes"][id(human)] = (
+        change_tracker._state[TrackingOperation.UPDATE]["nodes"][id(human)] = (
             human,
             human._compute_checksums(),
         )
-        change_tracker._state[_TrackingOperation.DELETE]["nodes"][id(human)] = (
+        change_tracker._state[TrackingOperation.DELETE]["nodes"][id(human)] = (
             human,
             human._compute_checksums(),
         )
 
-        change_tracker._state[_TrackingOperation.INSERT]["relationships"][id(likes)] = (
+        change_tracker._state[TrackingOperation.INSERT]["relationships"][id(likes)] = (
             likes,
             likes._compute_checksums(),
         )
-        change_tracker._state[_TrackingOperation.UPDATE]["relationships"][id(likes)] = (
+        change_tracker._state[TrackingOperation.UPDATE]["relationships"][id(likes)] = (
             likes,
             likes._compute_checksums(),
         )
-        change_tracker._state[_TrackingOperation.DELETE]["relationships"][id(likes)] = (
+        change_tracker._state[TrackingOperation.DELETE]["relationships"][id(likes)] = (
             likes,
             likes._compute_checksums(),
         )
 
         change_tracker.clear()
 
-        assert len(change_tracker._state[_TrackingOperation.INSERT]["nodes"]) == 0
-        assert len(change_tracker._state[_TrackingOperation.UPDATE]["nodes"]) == 0
-        assert len(change_tracker._state[_TrackingOperation.DELETE]["nodes"]) == 0
+        assert len(change_tracker._state[TrackingOperation.INSERT]["nodes"]) == 0
+        assert len(change_tracker._state[TrackingOperation.UPDATE]["nodes"]) == 0
+        assert len(change_tracker._state[TrackingOperation.DELETE]["nodes"]) == 0
 
-        assert len(change_tracker._state[_TrackingOperation.INSERT]["relationships"]) == 0
-        assert len(change_tracker._state[_TrackingOperation.UPDATE]["relationships"]) == 0
-        assert len(change_tracker._state[_TrackingOperation.DELETE]["relationships"]) == 0
+        assert len(change_tracker._state[TrackingOperation.INSERT]["relationships"]) == 0
+        assert len(change_tracker._state[TrackingOperation.UPDATE]["relationships"]) == 0
+        assert len(change_tracker._state[TrackingOperation.DELETE]["relationships"]) == 0

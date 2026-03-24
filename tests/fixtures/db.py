@@ -1,69 +1,46 @@
-# pylint: disable=missing-class-docstring, line-too-long, redefined-outer-name
+# pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, missing-function-docstring, unused-argument, line-too-long, unused-variable
 
 from dataclasses import dataclass
-from enum import StrEnum
 from os import environ
 from typing import Optional, cast
 
+import neo4j
 import pytest
-from neo4j import AsyncGraphDatabase, GraphDatabase
 
+from loomi.constants import ServerType
 from loomi.graph.constraints import _MEMGRAPH_DATA_TYPE_MAPPING, MemgraphConstraintType
 from loomi.graph.indexes import MemgraphIndexType
 
 
-class ServerName(StrEnum):
-    NEO4J = "neo4j"
-    MEMGRAPH = "memgraph"
-
-
 @dataclass
 class DriverSpec:
-    name: str
+    name: ServerType
     uri: Optional[str]
     user: Optional[str]
     pwd: Optional[str]
 
 
-@pytest.fixture(
-    params=[
-        DriverSpec(
-            name=ServerName.NEO4J,
-            uri=environ.get("NEO4J_URI", None),
-            user=environ.get("NEO4J_USER", None),
-            pwd=environ.get("NEO4J_PWD", None),
-        ),
-        DriverSpec(
-            name=ServerName.MEMGRAPH,
-            uri=environ.get("MEMGRAPH_URI", None),
-            user=environ.get("MEMGRAPH_USER", None),
-            pwd=environ.get("MEMGRAPH_PWD", None),
-        ),
-    ],
-    ids=[ServerName.NEO4J, ServerName.MEMGRAPH],
+NEO4J_DRIVER_SPEC = DriverSpec(
+    name=ServerType.NEO4J,
+    uri=environ.get("NEO4J_URI", None),
+    user=environ.get("NEO4J_USER", None),
+    pwd=environ.get("NEO4J_PWD", None),
 )
-def driver_spec(request) -> DriverSpec:
-    """The Source of Truth for driver configuration."""
-    spec = cast(DriverSpec, request.param)
-    if not spec.uri or not spec.user or not spec.pwd:
-        pytest.skip(f"Missing environment variables for {spec.name} connection.")
-    return spec
+MEMGRAPH_DRIVER_SPEC = DriverSpec(
+    name=ServerType.MEMGRAPH,
+    uri=environ.get("MEMGRAPH_URI", None),
+    user=environ.get("MEMGRAPH_USER", None),
+    pwd=environ.get("MEMGRAPH_PWD", None),
+)
 
 
-@pytest.fixture
-def sync_driver(driver_spec: DriverSpec):
-    """Provides a synchronous driver and cleans the database."""
-    driver = GraphDatabase.driver(
-        cast(str, driver_spec.uri), auth=(cast(str, driver_spec.user), cast(str, driver_spec.pwd))
-    )
-
-    # Clear all existing entities, indexes and constraints
+def sync_cleanup(driver: neo4j.Driver, server_type: ServerType):
     with driver.session() as session:
         result = session.run("MATCH (n) DETACH DELETE n")
         result.consume()
 
-        match driver_spec.name:
-            case ServerName.NEO4J:
+        match server_type:
+            case ServerType.NEO4J:
                 constraints = session.run("SHOW CONSTRAINTS")
                 for constraint in constraints.values():
                     session.run(f"DROP CONSTRAINT {constraint[1]}")  # type: ignore
@@ -71,7 +48,7 @@ def sync_driver(driver_spec: DriverSpec):
                 indexes = session.run("SHOW INDEXES")
                 for index in indexes.values():
                     session.run(f"DROP INDEX {index[1]}")  # type: ignore
-            case ServerName.MEMGRAPH:
+            case ServerType.MEMGRAPH:
                 constraints = session.run("SHOW CONSTRAINT INFO")
                 for constraint in constraints.values():
                     match constraint[0]:
@@ -102,27 +79,16 @@ def sync_driver(driver_spec: DriverSpec):
                         case MemgraphIndexType.POINT.value:
                             session.run(f"DROP POINT INDEX ON :{index[1]}({index[2]})")  # type: ignore
             case _:
-                pytest.skip(f"Unknown spec {driver_spec.name} found")
-
-    yield driver
-
-    driver.close()
+                pytest.skip(f"Unknown spec {server_type} found")
 
 
-@pytest.fixture
-async def async_driver(driver_spec: DriverSpec):
-    """Provides an asynchronous driver and cleans the database."""
-    driver = AsyncGraphDatabase.driver(
-        cast(str, driver_spec.uri), auth=(cast(str, driver_spec.user), cast(str, driver_spec.pwd))
-    )
-
-    # Clear all existing entities, indexes and constraints
+async def async_cleanup(driver: neo4j.AsyncDriver, server_type: ServerType):
     async with driver.session() as session:
         result = await session.run("MATCH (n) DETACH DELETE n")
         await result.consume()
 
-        match driver_spec.name:
-            case ServerName.NEO4J:
+        match server_type:
+            case ServerType.NEO4J:
                 constraints = await session.run("SHOW CONSTRAINTS")
                 for constraint in await constraints.values():
                     await session.run(f"DROP CONSTRAINT {constraint[1]}")  # type: ignore
@@ -130,7 +96,7 @@ async def async_driver(driver_spec: DriverSpec):
                 indexes = await session.run("SHOW INDEXES")
                 for index in await indexes.values():
                     session.run(f"DROP INDEX {index[1]}")  # type: ignore
-            case ServerName.MEMGRAPH:
+            case ServerType.MEMGRAPH:
                 constraints = await session.run("SHOW CONSTRAINT INFO")
                 for constraint in await constraints.values():
                     match constraint[0]:
@@ -161,8 +127,43 @@ async def async_driver(driver_spec: DriverSpec):
                         case MemgraphIndexType.POINT.value:
                             await session.run(f"DROP POINT INDEX ON :{index[1]}({index[2]})")  # type: ignore
             case _:
-                pytest.skip(f"Unknown spec {driver_spec.name} found")
+                pytest.skip(f"Unknown spec {server_type} found")
 
+
+@pytest.fixture(
+    params=[
+        NEO4J_DRIVER_SPEC,
+        MEMGRAPH_DRIVER_SPEC,
+    ],
+    ids=[ServerType.NEO4J, ServerType.MEMGRAPH],
+)
+def driver_spec(request) -> DriverSpec:
+    """The Source of Truth for driver configuration."""
+    spec = cast(DriverSpec, request.param)
+    if not spec.uri or not spec.user or not spec.pwd:
+        pytest.skip(f"Missing environment variables for {spec.name} connection.")
+    return spec
+
+
+@pytest.fixture
+def sync_driver(driver_spec: DriverSpec):
+    """Provides a synchronous driver and cleans the database."""
+    driver = neo4j.GraphDatabase.driver(
+        cast(str, driver_spec.uri), auth=(cast(str, driver_spec.user), cast(str, driver_spec.pwd))
+    )
+
+    sync_cleanup(driver, driver_spec.name)
     yield driver
+    driver.close()
 
+
+@pytest.fixture
+async def async_driver(driver_spec: DriverSpec):
+    """Provides an asynchronous driver and cleans the database."""
+    driver = neo4j.AsyncGraphDatabase.driver(
+        cast(str, driver_spec.uri), auth=(cast(str, driver_spec.user), cast(str, driver_spec.pwd))
+    )
+
+    await async_cleanup(driver, driver_spec.name)
+    yield driver
     await driver.close()

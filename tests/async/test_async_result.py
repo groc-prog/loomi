@@ -1,11 +1,11 @@
-# pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, line-too-long, unused-argument
+# pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, missing-function-docstring, unused-argument, line-too-long, unused-variable
 
 import neo4j
 import neo4j.graph
 import pytest
 
 from loomi._async.client import AsyncClient
-from loomi._internal._change_tracker import _TrackingOperation
+from loomi._internal._change_tracker import TrackingOperation
 from loomi.graph.graph import Graph
 from loomi.graph.node import Node
 from loomi.graph.relationship import Relationship
@@ -269,9 +269,7 @@ class TestAsyncResult:
             result = await session.run("MATCH (n:Human) RETURN n", tracking=True)
 
             await result.peek()
-            assert (
-                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
-            )
+            assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
     @pytest.mark.integration
     async def test_transforms_records_from_fetch(
@@ -317,9 +315,7 @@ class TestAsyncResult:
             result = await session.run("MATCH (n:Human) RETURN n", tracking=True)
 
             await result.fetch(1)
-            assert (
-                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
-            )
+            assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
     @pytest.mark.integration
     async def test_transforms_records_from_to_eager_result(
@@ -366,9 +362,7 @@ class TestAsyncResult:
             result = await session.run("MATCH (n:Human) RETURN n", tracking=True)
 
             await result.to_eager_result()
-            assert (
-                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
-            )
+            assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
     @pytest.mark.integration
     async def test_transforms_records_from_single(
@@ -438,9 +432,7 @@ class TestAsyncResult:
             result = await session.run("MATCH (n:Human) RETURN n", tracking=True)
 
             await result.single()
-            assert (
-                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
-            )
+            assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
     @pytest.mark.integration
     async def test_transforms_records_from_values(
@@ -487,9 +479,7 @@ class TestAsyncResult:
             result = await session.run("MATCH (n:Human) RETURN n", tracking=True)
 
             await result.values()
-            assert (
-                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
-            )
+            assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
     @pytest.mark.integration
     async def test_transforms_records_from_value(
@@ -535,9 +525,7 @@ class TestAsyncResult:
             result = await session.run("MATCH (n:Human) RETURN n", tracking=True)
 
             await result.value()
-            assert (
-                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
-            )
+            assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
     @pytest.mark.integration
     async def test_transforms_records_from_graph(
@@ -588,13 +576,9 @@ class TestAsyncResult:
             )
 
             await result.graph()
+            assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 2
             assert (
-                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 2
-            )
-            assert (
-                len(
-                    session.change_tracker._state[_TrackingOperation.UPDATE]["relationships"].keys()
-                )
+                len(session.change_tracker._state[TrackingOperation.UPDATE]["relationships"].keys())
                 == 1
             )
 
@@ -641,9 +625,7 @@ class TestAsyncResult:
             result = await session.run("MATCH (n:Human) RETURN n", tracking=True)
 
             await anext(result)
-            assert (
-                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
-            )
+            assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
     @pytest.mark.integration
     async def test_transforms_records_from_iter(
@@ -690,9 +672,7 @@ class TestAsyncResult:
             async for _ in result:
                 pass
 
-            assert (
-                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
-            )
+            assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
     @pytest.mark.integration
     async def test_exposes_original_result_for_non_transformed_methods(

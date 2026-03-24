@@ -1,13 +1,14 @@
-# pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, missing-function-docstring, unused-argument, line-too-long
+# pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, missing-function-docstring, unused-argument, line-too-long, unused-variable
 
 import pytest
 from neo4j import Driver
 
 from loomi._sync.client import Client
+from loomi.constants import ServerType
 from loomi.exceptions import ChangeTrackerError, ModelError
 from loomi.graph.node import Node
 from loomi.graph.relationship import Relationship
-from tests.fixtures.db import DriverSpec, ServerName, driver_spec, sync_driver
+from tests.fixtures.db import DriverSpec, driver_spec, sync_driver
 
 
 class Human(Node):
@@ -60,7 +61,7 @@ class TestFlushSession:
             result = session.run(
                 "CREATE (n1:Human) SET n1 = $human1 "
                 "CREATE (n2:Human) SET n2 = $human2 "
-                f"RETURN {'elementId(n1), id(n1), elementId(n2), id(n2)' if driver_spec.name == ServerName.NEO4J else 'id(n1), id(n2)'}",
+                f"RETURN {'elementId(n1), id(n1), elementId(n2), id(n2)' if driver_spec.name == ServerType.NEO4J else 'id(n1), id(n2)'}",
                 {
                     "human1": human1.model_dump(),
                     "human2": human2.model_dump(),
@@ -68,7 +69,7 @@ class TestFlushSession:
             )
             ids = result.values()
 
-            if driver_spec.name == ServerName.NEO4J:
+            if driver_spec.name == ServerType.NEO4J:
                 human1._element_id = ids[0][0]
                 human1._id = ids[0][1]
                 human2._element_id = ids[0][2]
@@ -186,7 +187,7 @@ class TestFlushSession:
             result = session.run(
                 "CREATE (n1:Human) SET n1 = $human1 "
                 "CREATE (n2:Human) SET n2 = $human2 "
-                f"RETURN {'elementId(n1), id(n1), elementId(n2), id(n2)' if driver_spec.name == ServerName.NEO4J else 'id(n1), id(n2)'}",
+                f"RETURN {'elementId(n1), id(n1), elementId(n2), id(n2)' if driver_spec.name == ServerType.NEO4J else 'id(n1), id(n2)'}",
                 {
                     "human1": human1.model_dump(),
                     "human2": human2.model_dump(),
@@ -194,7 +195,7 @@ class TestFlushSession:
             )
             ids = result.values()
 
-            if driver_spec.name == ServerName.NEO4J:
+            if driver_spec.name == ServerType.NEO4J:
                 human1._element_id = ids[0][0]
                 human1._id = ids[0][1]
                 human2._element_id = ids[0][2]
@@ -367,7 +368,7 @@ class TestFlushSession:
             result = session.run(
                 "CREATE (n1:Human) SET n1 = $human1 "
                 "CREATE (n2:Human) SET n2 = $human2 "
-                f"RETURN {'elementId(n1), id(n1), elementId(n2), id(n2)' if driver_spec.name == ServerName.NEO4J else 'id(n1), id(n2)'}",
+                f"RETURN {'elementId(n1), id(n1), elementId(n2), id(n2)' if driver_spec.name == ServerType.NEO4J else 'id(n1), id(n2)'}",
                 {
                     "human1": human1.model_dump(),
                     "human2": human2.model_dump(),
@@ -375,7 +376,7 @@ class TestFlushSession:
             )
             ids = result.values()
 
-            if driver_spec.name == ServerName.NEO4J:
+            if driver_spec.name == ServerType.NEO4J:
                 human1._element_id = ids[0][0]
                 human1._id = ids[0][1]
                 human2._element_id = ids[0][2]
@@ -414,7 +415,7 @@ class TestFlushSession:
             result = session.run(
                 "CREATE (n1:Human) SET n1 = $human1 "
                 "CREATE (n2:Human) SET n2 = $human2 "
-                f"RETURN {'elementId(n1), id(n1), elementId(n2), id(n2)' if driver_spec.name == ServerName.NEO4J else 'id(n1), id(n2)'}",
+                f"RETURN {'elementId(n1), id(n1), elementId(n2), id(n2)' if driver_spec.name == ServerType.NEO4J else 'id(n1), id(n2)'}",
                 {
                     "human1": human1.model_dump(),
                     "human2": human2.model_dump(),
@@ -422,7 +423,7 @@ class TestFlushSession:
             )
             ids = result.values()
 
-            if driver_spec.name == ServerName.NEO4J:
+            if driver_spec.name == ServerType.NEO4J:
                 human1._element_id = ids[0][0]
                 human1._id = ids[0][1]
                 human2._element_id = ids[0][2]
@@ -462,7 +463,7 @@ class TestFlushSession:
                 "CREATE (n2:Human) SET n2 = $human2 "
                 "CREATE (n1)-[r1:LIKES]->(n2) SET r1 = $likes1 "
                 "CREATE (n2)-[r2:LIKES]->(n1) SET r2 = $likes2 "
-                f"RETURN {'elementId(n1), id(n1), elementId(n2), id(n2), elementId(r1), id(r1), elementId(r2), id(r2)' if driver_spec.name == ServerName.NEO4J else 'id(n1), id(n2), id(r1), id(r2)'}",
+                f"RETURN {'elementId(n1), id(n1), elementId(n2), id(n2), elementId(r1), id(r1), elementId(r2), id(r2)' if driver_spec.name == ServerType.NEO4J else 'id(n1), id(n2), id(r1), id(r2)'}",
                 {
                     "human1": human1.model_dump(),
                     "human2": human2.model_dump(),
@@ -472,7 +473,7 @@ class TestFlushSession:
             )
             ids = result.values()
 
-            if driver_spec.name == ServerName.NEO4J:
+            if driver_spec.name == ServerType.NEO4J:
                 human1._element_id = ids[0][0]
                 human1._id = ids[0][1]
                 human2._element_id = ids[0][2]
@@ -528,7 +529,7 @@ class TestFlushSession:
                 "CREATE (n1:Human) SET n1 = $human1 "
                 "CREATE (n2:Human) SET n2 = $human2 "
                 "CREATE (n1)-[r1:LIKES]->(n2) SET r1 = $likes "
-                f"RETURN {'elementId(n1), id(n1), elementId(n2), id(n2), elementId(r1), id(r1)' if driver_spec.name == ServerName.NEO4J else 'id(n1), id(n2), id(r1)'}",
+                f"RETURN {'elementId(n1), id(n1), elementId(n2), id(n2), elementId(r1), id(r1)' if driver_spec.name == ServerType.NEO4J else 'id(n1), id(n2), id(r1)'}",
                 {
                     "human1": human1.model_dump(),
                     "human2": human2.model_dump(),
@@ -537,7 +538,7 @@ class TestFlushSession:
             )
             ids = result.values()
 
-            if driver_spec.name == ServerName.NEO4J:
+            if driver_spec.name == ServerType.NEO4J:
                 human1._element_id = ids[0][0]
                 human1._id = ids[0][1]
                 human2._element_id = ids[0][2]
@@ -581,7 +582,7 @@ class TestFlushSession:
                 "CREATE (n2:Human) SET n2 = $human2 "
                 "CREATE (n1)-[r1:LIKES]->(n2) SET r1 = $likes1 "
                 "CREATE (n2)-[r2:LIKES]->(n1) SET r2 = $likes2 "
-                f"RETURN {'elementId(n1), id(n1), elementId(n2), id(n2), elementId(r1), id(r1), elementId(r2), id(r2)' if driver_spec.name == ServerName.NEO4J else 'id(n1), id(n2), id(r1), id(r2)'}",
+                f"RETURN {'elementId(n1), id(n1), elementId(n2), id(n2), elementId(r1), id(r1), elementId(r2), id(r2)' if driver_spec.name == ServerType.NEO4J else 'id(n1), id(n2), id(r1), id(r2)'}",
                 {
                     "human1": human1.model_dump(),
                     "human2": human2.model_dump(),
@@ -591,7 +592,7 @@ class TestFlushSession:
             )
             ids = result.values()
 
-            if driver_spec.name == ServerName.NEO4J:
+            if driver_spec.name == ServerType.NEO4J:
                 human1._element_id = ids[0][0]
                 human1._id = ids[0][1]
                 human2._element_id = ids[0][2]
@@ -642,7 +643,7 @@ class TestFlushSession:
                 "CREATE (n1:Human) SET n1 = $human1 "
                 "CREATE (n2:Human) SET n2 = $human2 "
                 "CREATE (n1)-[r1:LIKES]->(n2) SET r1 = $likes1 "
-                f"RETURN {'elementId(n1), id(n1), elementId(n2), id(n2), elementId(r1), id(r1)' if driver_spec.name == ServerName.NEO4J else 'id(n1), id(n2), id(r1)'}",
+                f"RETURN {'elementId(n1), id(n1), elementId(n2), id(n2), elementId(r1), id(r1)' if driver_spec.name == ServerType.NEO4J else 'id(n1), id(n2), id(r1)'}",
                 {
                     "human1": human1.model_dump(),
                     "human2": human2.model_dump(),
@@ -651,7 +652,7 @@ class TestFlushSession:
             )
             ids = result.values()
 
-            if driver_spec.name == ServerName.NEO4J:
+            if driver_spec.name == ServerType.NEO4J:
                 human1._element_id = ids[0][0]
                 human1._id = ids[0][1]
                 human2._element_id = ids[0][2]
@@ -696,7 +697,7 @@ class TestFlushTransaction:
                 "CREATE (n1:Human) SET n1 = $human1 "
                 "CREATE (n2:Human) SET n2 = $human2 "
                 "CREATE (n1)-[r1:LIKES]->(n2) SET r1 = $likes1 "
-                f"RETURN {'elementId(n1), id(n1), elementId(n2), id(n2), elementId(r1), id(r1)' if driver_spec.name == ServerName.NEO4J else 'id(n1), id(n2), id(r1)'}",
+                f"RETURN {'elementId(n1), id(n1), elementId(n2), id(n2), elementId(r1), id(r1)' if driver_spec.name == ServerType.NEO4J else 'id(n1), id(n2), id(r1)'}",
                 {
                     "human1": human1.model_dump(),
                     "human2": human2.model_dump(),
@@ -705,7 +706,7 @@ class TestFlushTransaction:
             )
             ids = result.values()
 
-            if driver_spec.name == ServerName.NEO4J:
+            if driver_spec.name == ServerType.NEO4J:
                 human1._element_id = ids[0][0]
                 human1._id = ids[0][1]
                 human2._element_id = ids[0][2]

@@ -1,10 +1,10 @@
-# pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, line-too-long, unused-argument
+# pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, missing-function-docstring, unused-argument, line-too-long, unused-variable
 
 import neo4j
 import neo4j.graph
 import pytest
 
-from loomi._internal._change_tracker import _TrackingOperation
+from loomi._internal._change_tracker import TrackingOperation
 from loomi._sync.client import Client
 from loomi.graph.graph import Graph
 from loomi.graph.node import Node
@@ -265,9 +265,7 @@ class TestResult:
             result = session.run("MATCH (n:Human) RETURN n", tracking=True)
 
             result.peek()
-            assert (
-                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
-            )
+            assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
     @pytest.mark.integration
     def test_transforms_records_from_fetch(
@@ -313,9 +311,7 @@ class TestResult:
             result = session.run("MATCH (n:Human) RETURN n", tracking=True)
 
             result.fetch(1)
-            assert (
-                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
-            )
+            assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
     @pytest.mark.integration
     def test_transforms_records_from_to_eager_result(
@@ -362,9 +358,7 @@ class TestResult:
             result = session.run("MATCH (n:Human) RETURN n", tracking=True)
 
             result.to_eager_result()
-            assert (
-                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
-            )
+            assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
     @pytest.mark.integration
     def test_transforms_records_from_single(
@@ -432,9 +426,7 @@ class TestResult:
             result = session.run("MATCH (n:Human) RETURN n", tracking=True)
 
             result.single()
-            assert (
-                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
-            )
+            assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
     @pytest.mark.integration
     def test_transforms_records_from_values(
@@ -481,9 +473,7 @@ class TestResult:
             result = session.run("MATCH (n:Human) RETURN n", tracking=True)
 
             result.values()
-            assert (
-                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
-            )
+            assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
     @pytest.mark.integration
     def test_transforms_records_from_value(
@@ -529,9 +519,7 @@ class TestResult:
             result = session.run("MATCH (n:Human) RETURN n", tracking=True)
 
             result.value()
-            assert (
-                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
-            )
+            assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
     @pytest.mark.integration
     def test_transforms_records_from_graph(
@@ -582,13 +570,9 @@ class TestResult:
             )
 
             result.graph()
+            assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 2
             assert (
-                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 2
-            )
-            assert (
-                len(
-                    session.change_tracker._state[_TrackingOperation.UPDATE]["relationships"].keys()
-                )
+                len(session.change_tracker._state[TrackingOperation.UPDATE]["relationships"].keys())
                 == 1
             )
 
@@ -633,9 +617,7 @@ class TestResult:
             result = session.run("MATCH (n:Human) RETURN n", tracking=True)
 
             next(result)
-            assert (
-                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
-            )
+            assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
     @pytest.mark.integration
     def test_transforms_records_from_iter(self, sync_driver: neo4j.Driver, driver_spec: DriverSpec):
@@ -680,9 +662,7 @@ class TestResult:
             for _ in result:
                 pass
 
-            assert (
-                len(session.change_tracker._state[_TrackingOperation.UPDATE]["nodes"].keys()) == 1
-            )
+            assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
     @pytest.mark.integration
     def test_exposes_original_result_for_non_transformed_methods(

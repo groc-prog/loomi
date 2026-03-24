@@ -1,4 +1,4 @@
-# pylint: disable=missing-class-docstring
+# pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, missing-function-docstring, unused-argument, line-too-long, unused-variable
 
 import json
 from typing import List, Optional, Set
@@ -7,7 +7,7 @@ from uuid import UUID, uuid4
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from loomi._internal._base_client import _ServerType
+from loomi.constants import ServerType
 from loomi.exceptions import SerializationError
 from loomi.graph.node import Node
 from loomi.graph.relationship import Relationship
@@ -85,7 +85,7 @@ class TestSerialize:
             alive: bool
 
         human = Human(name="John", age=21, jobs=["Developer", "Engineer", "Farmer"], alive=True)
-        serialized = human._serialize(_ServerType.NEO4J, {})
+        serialized = human._serialize(ServerType.NEO4J, {})
 
         assert "name" in serialized
         assert serialized["name"] == "John"
@@ -111,7 +111,7 @@ class TestSerialize:
             metadata: Metadata = Metadata()
 
         human = Human()
-        serialized = human._serialize(_ServerType.NEO4J, {"serialize_nested": True})
+        serialized = human._serialize(ServerType.NEO4J, {"serialize_nested": True})
 
         assert "metadata" in serialized
         assert isinstance(serialized["metadata"], str)
@@ -129,7 +129,7 @@ class TestSerialize:
             metadata: List[Metadata] = [Metadata()]
 
         human = Human()
-        serialized = human._serialize(_ServerType.NEO4J, {"serialize_nested": True})
+        serialized = human._serialize(ServerType.NEO4J, {"serialize_nested": True})
 
         assert "metadata" in serialized
         assert isinstance(serialized["metadata"], list)
@@ -145,7 +145,7 @@ class TestSerialize:
 
         human = Human()
         with pytest.raises(SerializationError):
-            human._serialize(_ServerType.NEO4J, {})
+            human._serialize(ServerType.NEO4J, {})
 
     def test_raises_if_non_supported_datatype_is_found(self):
         """
@@ -157,7 +157,7 @@ class TestSerialize:
 
         human = Human(values=uuid4())
         with pytest.raises(SerializationError):
-            human._serialize(_ServerType.NEO4J, {})
+            human._serialize(ServerType.NEO4J, {})
 
     def test_raises_if_non_supported_list_datatype_is_found(self):
         """
@@ -169,7 +169,7 @@ class TestSerialize:
 
         human = Human(values=[set(["a", "b"])])
         with pytest.raises(SerializationError):
-            human._serialize(_ServerType.NEO4J, {})
+            human._serialize(ServerType.NEO4J, {})
 
     def test_raises_if_nested_dict_is_found_with_missing_setting(self):
         """
@@ -185,7 +185,7 @@ class TestSerialize:
 
         human = Human()
         with pytest.raises(SerializationError):
-            human._serialize(_ServerType.NEO4J, {})
+            human._serialize(ServerType.NEO4J, {})
 
     def test_raises_if_nested_list_is_found_with_missing_setting(self):
         """
@@ -201,7 +201,7 @@ class TestSerialize:
 
         human = Human()
         with pytest.raises(SerializationError):
-            human._serialize(_ServerType.NEO4J, {})
+            human._serialize(ServerType.NEO4J, {})
 
     def test_raises_if_custom_serialization_function_raises(self):
         """
@@ -226,11 +226,11 @@ class TestSerialize:
 
         with pytest.raises(SerializationError):
             human = HumanNestedDict()
-            human._serialize(_ServerType.NEO4J, {"serialize_nested": True})
+            human._serialize(ServerType.NEO4J, {"serialize_nested": True})
 
         with pytest.raises(SerializationError):
             human = HumanNestedList()
-            human._serialize(_ServerType.NEO4J, {"serialize_nested": True})
+            human._serialize(ServerType.NEO4J, {"serialize_nested": True})
 
 
 class TestDeserialize:
@@ -247,7 +247,7 @@ class TestDeserialize:
 
         human = Human._deserialize(
             {"name": "John", "age": 21, "jobs": ["Developer", "Engineer", "Farmer"], "alive": True},
-            _ServerType.NEO4J,
+            ServerType.NEO4J,
             {},
         )
 
@@ -269,7 +269,7 @@ class TestDeserialize:
 
         human = Human._deserialize(
             {"metadata": json.dumps({"field": "value"})},
-            _ServerType.NEO4J,
+            ServerType.NEO4J,
             {"serialize_nested": True},
         )
 
@@ -288,7 +288,7 @@ class TestDeserialize:
 
         human = Human._deserialize(
             {"metadata": [json.dumps({"field": "value"})]},
-            _ServerType.NEO4J,
+            ServerType.NEO4J,
             {"serialize_nested": True},
         )
 
@@ -302,7 +302,7 @@ class TestDeserialize:
         Human.loomi_config.pop("deserializer_fn")
 
         with pytest.raises(SerializationError):
-            Human._deserialize({}, _ServerType.NEO4J, {})
+            Human._deserialize({}, ServerType.NEO4J, {})
 
     def test_skips_unknown_fields(self):
         """
@@ -319,7 +319,7 @@ class TestDeserialize:
                 "age": 21,
                 "jobs": ["Developer", "Engineer", "Farmer"],
             },
-            _ServerType.NEO4J,
+            ServerType.NEO4J,
             {},
         )
 
@@ -339,7 +339,7 @@ class TestDeserialize:
             metadata: Metadata
 
         with pytest.raises(ValidationError):
-            Human._deserialize({"metadata": json.dumps({"field": "value"})}, _ServerType.NEO4J, {})
+            Human._deserialize({"metadata": json.dumps({"field": "value"})}, ServerType.NEO4J, {})
 
     def test_raises_if_stringified_nested_list_is_found_with_missing_setting(self):
         """
@@ -354,9 +354,7 @@ class TestDeserialize:
             metadata: List[Metadata]
 
         with pytest.raises(ValidationError):
-            Human._deserialize(
-                {"metadata": [json.dumps({"field": "value"})]}, _ServerType.NEO4J, {}
-            )
+            Human._deserialize({"metadata": [json.dumps({"field": "value"})]}, ServerType.NEO4J, {})
 
     def test_raises_if_custom_deserialization_function_raises(self):
         """
@@ -382,13 +380,13 @@ class TestDeserialize:
         with pytest.raises(SerializationError):
             HumanNestedDict._deserialize(
                 {"metadata": json.dumps({"field": "value"})},
-                _ServerType.NEO4J,
+                ServerType.NEO4J,
                 {"serialize_nested": True},
             )
 
         with pytest.raises(SerializationError):
             HumanNestedList._deserialize(
                 {"metadata": [json.dumps({"field": "value"})]},
-                _ServerType.NEO4J,
+                ServerType.NEO4J,
                 {"serialize_nested": True},
             )

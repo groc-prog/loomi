@@ -1,4 +1,4 @@
-# pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, line-too-long, unused-argument
+# pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, missing-function-docstring, unused-argument, line-too-long, unused-variable
 
 import pickle
 
