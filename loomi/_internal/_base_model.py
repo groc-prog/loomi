@@ -1,6 +1,5 @@
-# pylint: disable=arguments-differ
+# pylint: disable=arguments-differ, missing-class-docstring
 
-import datetime
 import json
 from abc import ABC
 from typing import (
@@ -16,63 +15,22 @@ from typing import (
     cast,
 )
 
-import neo4j.spatial
-import neo4j.time
 import xxhash
 from pydantic import BaseModel, ConfigDict, PrivateAttr, computed_field
 
-from loomi._internal._types import _ModelType
-from loomi._logger import _logger
+from loomi._internal._types import ModelType
+from loomi._logger import logger
+from loomi.constants import SUPPORTED_DATA_TYPES, SUPPORTED_LIST_DATA_TYPES, ServerType
 from loomi.exceptions import SerializationError
 from loomi.query.descriptor import PropertyDescriptor
 
 if TYPE_CHECKING:
-    from loomi._internal._base_client import ClientConfiguration, _ServerType
+    from loomi._internal._base_client import ClientConfiguration
 else:
-    _ServerType = object
     ClientConfiguration = object
 
-SUPPORTED_DATA_TYPES = (
-    bool,
-    int,
-    float,
-    str,
-    bytes,
-    bytearray,
-    list,
-    dict,
-    type(None),
-    neo4j.time.Date,
-    neo4j.time.Time,
-    neo4j.time.DateTime,
-    neo4j.time.Duration,
-    neo4j.spatial.Point,
-    datetime.date,
-    datetime.time,
-    datetime.datetime,
-    datetime.timedelta,
-)
 
-SUPPORTED_LIST_DATA_TYPES = (
-    bool,
-    int,
-    float,
-    str,
-    bytes,
-    bytearray,
-    neo4j.time.Date,
-    neo4j.time.Time,
-    neo4j.time.DateTime,
-    neo4j.time.Duration,
-    neo4j.spatial.Point,
-    datetime.date,
-    datetime.time,
-    datetime.datetime,
-    datetime.timedelta,
-)
-
-
-class _EntityConfiguration(TypedDict, total=False):
+class EntityConfiguration(TypedDict, total=False):
     serializer_fn: Callable[[Any], Any]
     """
     A custom function used when serializing nested objects before storing the model to the
@@ -92,7 +50,7 @@ class _EntityConfiguration(TypedDict, total=False):
     """
 
 
-class _EntityBaseMetaclass(type(BaseModel)):
+class EntityBaseMetaclass(type(BaseModel)):
     def __getattribute__(cls, name):
         # To prevent any recursive __getattribute__ calls we need to skip this handler if any
         # of the following are accessed
@@ -104,14 +62,12 @@ class _EntityBaseMetaclass(type(BaseModel)):
         if cls.__pydantic_complete__:
             model_fields = cls.model_fields
             if name in model_fields:
-                return PropertyDescriptor(
-                    name, model_fields[name].annotation, cast(_ModelType, cls)
-                )
+                return PropertyDescriptor(name, model_fields[name].annotation, cast(ModelType, cls))
 
         return super().__getattribute__(name)
 
 
-class _EntityBase(BaseModel, ABC, metaclass=_EntityBaseMetaclass):
+class EntityBase(BaseModel, ABC, metaclass=EntityBaseMetaclass):
     _id: Optional[int] = PrivateAttr(None)
     _element_id: Optional[str] = PrivateAttr(None)
     _hash: Optional[str] = PrivateAttr(None)
@@ -172,15 +128,13 @@ class _EntityBase(BaseModel, ABC, metaclass=_EntityBaseMetaclass):
         return checksums
 
     def _serialize(
-        self, mode: _ServerType, client_config: ClientConfiguration, **kwargs
+        self, mode: ServerType, client_config: ClientConfiguration, **kwargs
     ) -> Dict[str, Any]:
-        from loomi._internal._base_client import _ServerType
-
         model_dump = self.model_dump(by_alias=True, exclude={"element_id", "id"}, **kwargs)
         serialized: Dict[str, Any] = {}
 
-        _logger.debug("Serializing model %s to a storable format", self)
-        model_config = cast(_EntityConfiguration, getattr(self, "loomi_config", {}))
+        logger.debug("Serializing model %s to a storable format", self)
+        model_config = cast(EntityConfiguration, getattr(self, "loomi_config", {}))
 
         serialize_nested = client_config.get("serialize_nested", False)
         serializer_fn = model_config.get("serializer_fn")
@@ -196,7 +150,7 @@ class _EntityBase(BaseModel, ABC, metaclass=_EntityBaseMetaclass):
 
             # If mode is Neo4j and we encounter nested values, we either need to raise a exception
             # or serialize the value if configured
-            if mode == _ServerType.NEO4J:
+            if mode == ServerType.NEO4J:
                 if isinstance(value, dict):
                     serialized[field_name] = self._serialize_neo4j_dict(
                         field_name, value, serializer_fn, serialize_nested
@@ -228,7 +182,7 @@ class _EntityBase(BaseModel, ABC, metaclass=_EntityBaseMetaclass):
             )
 
         try:
-            _logger.debug("Serializing nested property %s", field_name)
+            logger.debug("Serializing nested property %s", field_name)
             return serializer_fn(value)
         except Exception as exc:
             raise SerializationError(f"Property {field_name} is not serializable") from exc
@@ -242,7 +196,7 @@ class _EntityBase(BaseModel, ABC, metaclass=_EntityBaseMetaclass):
     ) -> List[Any]:
         serialized_list = []
 
-        _logger.debug("Serializing list items for property %s", field_name)
+        logger.debug("Serializing list items for property %s", field_name)
         for index, item in enumerate(value):
             if not isinstance(item, SUPPORTED_LIST_DATA_TYPES):
                 if not serialize_nested:
@@ -253,7 +207,7 @@ class _EntityBase(BaseModel, ABC, metaclass=_EntityBaseMetaclass):
                     )
 
                 try:
-                    _logger.debug("Serializing nested property %s", f"{field_name}[{index}]")
+                    logger.debug("Serializing nested property %s", f"{field_name}[{index}]")
                     serialized_list.append(serializer_fn(item))
                     continue
                 except Exception as exc:
@@ -267,14 +221,12 @@ class _EntityBase(BaseModel, ABC, metaclass=_EntityBaseMetaclass):
 
     @classmethod
     def _deserialize(
-        cls, obj: Dict[str, Any], mode: _ServerType, client_config: ClientConfiguration
+        cls, obj: Dict[str, Any], mode: ServerType, client_config: ClientConfiguration
     ) -> Self:
-        from loomi._internal._base_client import _ServerType
-
         deserialized: Dict[str, Any] = {}
 
-        _logger.debug("Deserializing object to model instance")
-        model_config = cast(_EntityConfiguration, getattr(cls, "loomi_config", {}))
+        logger.debug("Deserializing object to model instance")
+        model_config = cast(EntityConfiguration, getattr(cls, "loomi_config", {}))
 
         serialize_nested = client_config.get("serialize_nested", False)
         deserializer_fn = model_config.get("deserializer_fn")
@@ -289,16 +241,16 @@ class _EntityBase(BaseModel, ABC, metaclass=_EntityBaseMetaclass):
             field_info = cls.model_fields.get(resolved_field_name)
 
             if field_info is None:
-                _logger.warning("Encountered unknown property %s, skipping", field_name)
+                logger.warning("Encountered unknown property %s, skipping", field_name)
                 continue
 
             # Some values might have been stringified previously, so we need to check each of
             # them and deserialize them back to a dictionary so Pydantic can handle the rest of
             # the validation correctly
-            if mode == _ServerType.NEO4J and serialize_nested and isinstance(value, (str, list)):
+            if mode == ServerType.NEO4J and serialize_nested and isinstance(value, (str, list)):
                 if isinstance(value, str) and field_info.annotation is not str:
                     try:
-                        _logger.debug("Deserializing property %s", field_name)
+                        logger.debug("Deserializing property %s", field_name)
                         deserialized[field_name] = deserializer_fn(value)
                         continue
                     except Exception as exc:
@@ -308,7 +260,7 @@ class _EntityBase(BaseModel, ABC, metaclass=_EntityBaseMetaclass):
 
                 if isinstance(value, list):
                     try:
-                        _logger.debug(
+                        logger.debug(
                             "Deserializing list items at property %s",
                             field_name,
                         )

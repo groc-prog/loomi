@@ -10,7 +10,8 @@ else:
     Relationship = object
 
 
-_ModelType = Union[Type[Node], Type[Relationship]]
-_QueryModelType = Union[_ModelType, AliasedModel]
+ModelType = Union[Type[Node], Type[Relationship]]
+QueryModelType = Union[ModelType, AliasedModel]
 
-_NumericValue = Union[int, float]
+NumericValue = Union[int, float]
+TResultKey = int | str

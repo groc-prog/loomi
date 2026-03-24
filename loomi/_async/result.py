@@ -6,6 +6,7 @@ import neo4j
 import neo4j.graph
 
 from loomi._async.change_tracker import AsyncChangeTracker
+from loomi._internal._types import TResultKey
 from loomi.graph.graph import Graph
 from loomi.graph.node import Node
 from loomi.graph.relationship import Relationship
@@ -16,9 +17,6 @@ if TYPE_CHECKING:
 else:
     AsyncClient = object
     _Base = object
-
-
-TResultKey = int | str
 
 
 class AsyncResult(_Base):
@@ -50,10 +48,7 @@ class AsyncResult(_Base):
                 transformed = self.__client._transform_entity(record)
                 transformed_record.append((key, transformed))
 
-                if self.__change_tracker is not None and isinstance(
-                    transformed, (Node, Relationship)
-                ):
-                    self.__change_tracker.add(transformed)
+                self.__add_to_change_tracker(transformed)
 
             yield neo4j.Record(transformed_record)
 
@@ -64,8 +59,7 @@ class AsyncResult(_Base):
             transformed = self.__client._transform_entity(record)
             transformed_result.append((key, transformed))
 
-            if self.__change_tracker is not None and isinstance(transformed, (Node, Relationship)):
-                self.__change_tracker.add(transformed)
+            self.__add_to_change_tracker(transformed)
 
         return neo4j.Record(transformed_result)
 
@@ -86,8 +80,7 @@ class AsyncResult(_Base):
             transformed = self.__client._transform_entity(record)
             transformed_result.append((key, transformed))
 
-            if self.__change_tracker is not None and isinstance(transformed, (Node, Relationship)):
-                self.__change_tracker.add(transformed)
+            self.__add_to_change_tracker(transformed)
 
         return neo4j.Record(transformed_result)
 
@@ -109,10 +102,7 @@ class AsyncResult(_Base):
                 transformed = self.__client._transform_entity(record)
                 transformed_record.append((key, transformed))
 
-                if self.__change_tracker is not None and isinstance(
-                    transformed, (Node, Relationship)
-                ):
-                    self.__change_tracker.add(transformed)
+                self.__add_to_change_tracker(transformed)
 
             transformed_result.append(neo4j.Record(transformed_record))
 
@@ -136,10 +126,7 @@ class AsyncResult(_Base):
                 transformed = self.__client._transform_entity(record)
                 transformed_record.append((key, transformed))
 
-                if self.__change_tracker is not None and isinstance(
-                    transformed, (Node, Relationship)
-                ):
-                    self.__change_tracker.add(transformed)
+                self.__add_to_change_tracker(transformed)
 
             transformed_result.append(neo4j.Record(transformed_record))
 
@@ -169,8 +156,7 @@ class AsyncResult(_Base):
             transformed = self.__client._transform_entity(record)
             transformed_result.append((key, transformed))
 
-            if self.__change_tracker is not None and isinstance(transformed, (Node, Relationship)):
-                self.__change_tracker.add(transformed)
+            self.__add_to_change_tracker(transformed)
 
         return neo4j.Record(transformed_result)
 
@@ -192,10 +178,7 @@ class AsyncResult(_Base):
                 transformed = self.__client._transform_entity(result)
                 transformed_list.append(transformed)
 
-                if self.__change_tracker is not None and isinstance(
-                    transformed, (Node, Relationship)
-                ):
-                    self.__change_tracker.add(transformed)
+                self.__add_to_change_tracker(transformed)
 
             transformed_result.append(transformed_list)
 
@@ -216,8 +199,7 @@ class AsyncResult(_Base):
             transformed = self.__client._transform_entity(result)
             transformed_result.append(transformed)
 
-            if self.__change_tracker is not None and isinstance(transformed, (Node, Relationship)):
-                self.__change_tracker.add(transformed)
+            self.__add_to_change_tracker(transformed)
 
         return transformed_result
 
@@ -238,15 +220,13 @@ class AsyncResult(_Base):
             transformed = self.__client._transform_entity(node)
             graph._nodes[element_id] = transformed
 
-            if self.__change_tracker is not None and isinstance(transformed, Node):
-                self.__change_tracker.add(transformed)
+            self.__add_to_change_tracker(transformed)
 
         for element_id, relationship in original_result._relationships.items():
             transformed = self.__client._transform_entity(relationship)
             graph._relationships[element_id] = transformed
 
-            if self.__change_tracker is not None and isinstance(transformed, Relationship):
-                self.__change_tracker.add(transformed)
+            self.__add_to_change_tracker(transformed)
 
         graph._relationship_types = {
             type_: self.__client._relationship_type_to_model(type_) or relationship
@@ -256,3 +236,7 @@ class AsyncResult(_Base):
         graph._relationship_set_view = neo4j.graph.EntitySetView(graph._relationships)
 
         return graph
+
+    def __add_to_change_tracker(self, value: Any) -> None:
+        if self.__change_tracker is not None and isinstance(value, (Node, Relationship)):
+            self.__change_tracker.add(value)

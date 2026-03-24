@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, List, Literal, Optional, overload
 import neo4j
 import neo4j.graph
 
+from loomi._internal._types import TResultKey
 from loomi._sync.change_tracker import ChangeTracker
 from loomi.graph.graph import Graph
 from loomi.graph.node import Node
@@ -17,9 +18,6 @@ if TYPE_CHECKING:
 else:
     Client = object
     _Base = object
-
-
-TResultKey = int | str
 
 
 class Result(_Base):
@@ -48,10 +46,7 @@ class Result(_Base):
                 transformed = self.__client._transform_entity(record)
                 transformed_record.append((key, transformed))
 
-                if self.__change_tracker is not None and isinstance(
-                    transformed, (Node, Relationship)
-                ):
-                    self.__change_tracker.add(transformed)
+                self.__add_to_change_tracker(transformed)
 
             yield neo4j.Record(transformed_record)
 
@@ -62,8 +57,7 @@ class Result(_Base):
             transformed = self.__client._transform_entity(record)
             transformed_result.append((key, transformed))
 
-            if self.__change_tracker is not None and isinstance(transformed, (Node, Relationship)):
-                self.__change_tracker.add(transformed)
+            self.__add_to_change_tracker(transformed)
 
         return neo4j.Record(transformed_result)
 
@@ -84,8 +78,7 @@ class Result(_Base):
             transformed = self.__client._transform_entity(record)
             transformed_result.append((key, transformed))
 
-            if self.__change_tracker is not None and isinstance(transformed, (Node, Relationship)):
-                self.__change_tracker.add(transformed)
+            self.__add_to_change_tracker(transformed)
 
         return neo4j.Record(transformed_result)
 
@@ -107,10 +100,7 @@ class Result(_Base):
                 transformed = self.__client._transform_entity(record)
                 transformed_record.append((key, transformed))
 
-                if self.__change_tracker is not None and isinstance(
-                    transformed, (Node, Relationship)
-                ):
-                    self.__change_tracker.add(transformed)
+                self.__add_to_change_tracker(transformed)
 
             transformed_result.append(neo4j.Record(transformed_record))
 
@@ -134,10 +124,7 @@ class Result(_Base):
                 transformed = self.__client._transform_entity(record)
                 transformed_record.append((key, transformed))
 
-                if self.__change_tracker is not None and isinstance(
-                    transformed, (Node, Relationship)
-                ):
-                    self.__change_tracker.add(transformed)
+                self.__add_to_change_tracker(transformed)
 
             transformed_result.append(neo4j.Record(transformed_record))
 
@@ -167,8 +154,7 @@ class Result(_Base):
             transformed = self.__client._transform_entity(record)
             transformed_result.append((key, transformed))
 
-            if self.__change_tracker is not None and isinstance(transformed, (Node, Relationship)):
-                self.__change_tracker.add(transformed)
+            self.__add_to_change_tracker(transformed)
 
         return neo4j.Record(transformed_result)
 
@@ -190,10 +176,7 @@ class Result(_Base):
                 transformed = self.__client._transform_entity(result)
                 transformed_list.append(transformed)
 
-                if self.__change_tracker is not None and isinstance(
-                    transformed, (Node, Relationship)
-                ):
-                    self.__change_tracker.add(transformed)
+                self.__add_to_change_tracker(transformed)
 
             transformed_result.append(transformed_list)
 
@@ -214,8 +197,7 @@ class Result(_Base):
             transformed = self.__client._transform_entity(result)
             transformed_result.append(transformed)
 
-            if self.__change_tracker is not None and isinstance(transformed, (Node, Relationship)):
-                self.__change_tracker.add(transformed)
+            self.__add_to_change_tracker(transformed)
 
         return transformed_result
 
@@ -234,15 +216,13 @@ class Result(_Base):
             transformed = self.__client._transform_entity(node)
             graph._nodes[element_id] = transformed
 
-            if self.__change_tracker is not None and isinstance(transformed, Node):
-                self.__change_tracker.add(transformed)
+            self.__add_to_change_tracker(transformed)
 
         for element_id, relationship in original_result._relationships.items():
             transformed = self.__client._transform_entity(relationship)
             graph._relationships[element_id] = transformed
 
-            if self.__change_tracker is not None and isinstance(transformed, Relationship):
-                self.__change_tracker.add(transformed)
+            self.__add_to_change_tracker(transformed)
 
         graph._relationship_types = {
             type_: self.__client._relationship_type_to_model(type_) or relationship
@@ -252,3 +232,7 @@ class Result(_Base):
         graph._relationship_set_view = neo4j.graph.EntitySetView(graph._relationships)
 
         return graph
+
+    def __add_to_change_tracker(self, value: Any) -> None:
+        if self.__change_tracker is not None and isinstance(value, (Node, Relationship)):
+            self.__change_tracker.add(value)

@@ -2,11 +2,11 @@ from typing import Dict, LiteralString, Union, cast
 
 import neo4j
 
-from loomi._internal._change_tracker import _BaseChangeTracker
-from loomi._logger import _LogContextKey, _logger, _scoped_log_ctx
+from loomi._internal._change_tracker import BaseChangeTracker
+from loomi._logger import LogContextKey, logger, scoped_log_ctx
 
 
-class ChangeTracker(_BaseChangeTracker[Union[neo4j.Session, neo4j.Transaction]]):
+class ChangeTracker(BaseChangeTracker[Union[neo4j.Session, neo4j.Transaction]]):
     """Manages state synchronization between local entities and the database state."""
 
     def flush(self) -> None:
@@ -18,10 +18,10 @@ class ChangeTracker(_BaseChangeTracker[Union[neo4j.Session, neo4j.Transaction]])
         on a `Transaction`, the flushed queries will be `part of that transaction` and
         will only be committed once `tx.commit()` is called.
         """
-        with _scoped_log_ctx(
+        with scoped_log_ctx(
             {
-                _LogContextKey.DRIVER: self._client.__class__.__name__,
-                _LogContextKey.SERVER_TYPE: self._client._server_type,
+                LogContextKey.DRIVER: self._client.__class__.__name__,
+                LogContextKey.SERVER_TYPE: self._client._server_type,
             }
         ):
             self._omit_redundant_relationship_operations()
@@ -39,7 +39,7 @@ class ChangeTracker(_BaseChangeTracker[Union[neo4j.Session, neo4j.Transaction]])
 
     def __flush_with_session(self) -> None:
         id_map: Dict[int, Union[str, int]] = {}
-        _logger.debug("Flush called on session, creating new transaction to run pending changes")
+        logger.debug("Flush called on session, creating new transaction to run pending changes")
 
         with cast(neo4j.Session, self._session_or_tx).begin_transaction() as tx:
             for query, parameters in self._build_node_add_operations():
@@ -73,7 +73,7 @@ class ChangeTracker(_BaseChangeTracker[Union[neo4j.Session, neo4j.Transaction]])
 
     def __flush_with_transaction(self) -> None:
         id_map: Dict[int, Union[str, int]] = {}
-        _logger.debug(
+        logger.debug(
             "Flush called on transaction, run pending changes directly on transaction "
             "without committing changes"
         )

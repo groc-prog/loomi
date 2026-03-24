@@ -1,17 +1,17 @@
 import re
 from typing import ClassVar
 
-from loomi._internal._base_model import _EntityBase, _EntityConfiguration
+from loomi._internal._base_model import EntityBase, EntityConfiguration
 from loomi.exceptions import ModelError
 
 
-class RelationshipConfiguration(_EntityConfiguration, total=False):
+class RelationshipConfiguration(EntityConfiguration, total=False):
     """TypedDict for configuring Loomi relationship behavior."""
 
     type: str
 
 
-class Relationship(_EntityBase):
+class Relationship(EntityBase):
     """A base class for Loomi relationships."""
 
     loomi_config: ClassVar[RelationshipConfiguration]

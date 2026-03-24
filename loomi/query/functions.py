@@ -2,13 +2,15 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, TypeVar, Union, cast, get_args, get_origin
 
-from loomi._internal._types import _ModelType, _NumericValue, _QueryModelType
-from loomi.exceptions import QueryError
+from loomi._internal._types import ModelType, NumericValue, QueryModelType
+from loomi.constants import ServerType
+from loomi.exceptions import ModelError, QueryError
 from loomi.query.expressions import (
     CompoundQueryExpression,
     CustomQueryExpression,
+    InvertQueryExpression,
+    NullQueryExpression,
     QueryExpression,
-    UnaryQueryExpression,
     _BaseQueryExpression,
     _ExpressionTemplate,
     _LogicalExpressionOperator,
@@ -16,12 +18,11 @@ from loomi.query.expressions import (
 )
 
 if TYPE_CHECKING:
-    from loomi.query.descriptor import EntityIdDescriptor, PropertyDescriptor
+    from loomi.query.descriptor import EntityIdDescriptor
 else:
-    PropertyDescriptor = object
     EntityIdDescriptor = object
 
-T = TypeVar("T", bound=_ModelType)
+T = TypeVar("T", bound=ModelType)
 P = TypeVar("P")
 
 
@@ -33,25 +34,29 @@ class AliasedModel:
     """
 
     _alias: str
-    _model_type: _ModelType
+    _model_type: ModelType
 
     def __getattribute__(self, name: str) -> Any:
         from loomi.query.descriptor import PropertyDescriptor
+
+        if name in ["_model_type", "_alias"]:
+            return super().__getattribute__(name)
 
         if name in self._model_type.model_fields:
             return PropertyDescriptor(
                 name, cast(Any, self._model_type.model_fields[name].annotation), self
             )
 
-        return super().__getattribute__(name)
+        raise ModelError("Aliased models only expose property descriptors")
 
 
 def _validate_property_descriptor(maybe_property_descriptor: Any) -> None:
-    from loomi.query.descriptor import PropertyDescriptor
+    from loomi.query.descriptor import EntityIdDescriptor, PropertyDescriptor, _Descriptor
 
-    if not isinstance(maybe_property_descriptor, PropertyDescriptor):
+    if not isinstance(maybe_property_descriptor, (PropertyDescriptor, EntityIdDescriptor)):
         raise QueryError(
-            f"Expected {PropertyDescriptor.__class__.__name__}, got {maybe_property_descriptor}"
+            f"Expected instance of subclass of {_Descriptor.__class__.__name__}, "
+            f"got {maybe_property_descriptor}"
         )
 
 
@@ -61,7 +66,7 @@ def create_alias(model_type: T, alias: str) -> T:
     multiple times under different variables in the same query.
 
     Args:
-        model_type: (_ModelType): The model to create a alias for.
+        model_type: (ModelType): The model to create a alias for.
         alias (str): The alias which will be used in queries. Can be any string which does
         **not match** the format **v<any number>**.
 
@@ -109,7 +114,7 @@ def not_equals(property_descriptor: Any, value: Any) -> QueryExpression:
     return QueryExpression(property_descriptor, _ExpressionTemplate.NEQ, value)
 
 
-def greater_than(property_descriptor: Any, value: _NumericValue) -> QueryExpression:
+def greater_than(property_descriptor: Any, value: NumericValue) -> QueryExpression:
     """
     Builds a `>` expression for a query builder.
 
@@ -130,7 +135,7 @@ def greater_than(property_descriptor: Any, value: _NumericValue) -> QueryExpress
     return QueryExpression(property_descriptor, _ExpressionTemplate.GT, value)
 
 
-def greater_than_or_equal(property_descriptor: Any, value: _NumericValue) -> QueryExpression:
+def greater_than_or_equal(property_descriptor: Any, value: NumericValue) -> QueryExpression:
     """
     Builds a `>=` expression for a query builder.
 
@@ -151,7 +156,7 @@ def greater_than_or_equal(property_descriptor: Any, value: _NumericValue) -> Que
     return QueryExpression(property_descriptor, _ExpressionTemplate.GTE, value)
 
 
-def less_than(property_descriptor: Any, value: _NumericValue) -> QueryExpression:
+def less_than(property_descriptor: Any, value: NumericValue) -> QueryExpression:
     """
     Builds a `<` expression for a query builder.
 
@@ -172,7 +177,7 @@ def less_than(property_descriptor: Any, value: _NumericValue) -> QueryExpression
     return QueryExpression(property_descriptor, _ExpressionTemplate.LT, value)
 
 
-def less_than_or_equal(property_descriptor: Any, value: _NumericValue) -> QueryExpression:
+def less_than_or_equal(property_descriptor: Any, value: NumericValue) -> QueryExpression:
     """
     Builds a `<=` expression for a query builder.
 
@@ -195,20 +200,69 @@ def less_than_or_equal(property_descriptor: Any, value: _NumericValue) -> QueryE
 
 def not_(
     expression: Union[CompoundQueryExpression, _BaseQueryExpression],
-) -> CompoundQueryExpression:
+) -> InvertQueryExpression:
     """
     Builds a `NOT(...)` expression for a query builder.
 
     Args:
-        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
+        expression (Union[CompoundQueryExpression, _BaseQueryExpression]): The expression
+        to invert.
+
+    Returns:
+        InvertQueryExpression: A expression which can be compiled by a query builder.
+    """
+    return InvertQueryExpression(expression)
+
+
+def and_(
+    *expressions: Union[CompoundQueryExpression, _BaseQueryExpression],
+) -> CompoundQueryExpression:
+    """
+    Builds a `AND(...)` expression for a query builder.
+
+    Args:
+        *expressions (Union[CompoundQueryExpression, _BaseQueryExpression]): The expressions
+        to join.
 
     Returns:
         CompoundQueryExpression: A expression which can be compiled by a query builder.
     """
-    return CompoundQueryExpression(_LogicalExpressionOperator.NOT, [expression])
+    return CompoundQueryExpression(_LogicalExpressionOperator.AND, [*expressions])
 
 
-def is_null(property_descriptor: Any) -> UnaryQueryExpression:
+def or_(
+    *expressions: Union[CompoundQueryExpression, _BaseQueryExpression],
+) -> CompoundQueryExpression:
+    """
+    Builds a `OR(...)` expression for a query builder.
+
+    Args:
+        *expressions (Union[CompoundQueryExpression, _BaseQueryExpression]): The expressions
+        to join.
+
+    Returns:
+        CompoundQueryExpression: A expression which can be compiled by a query builder.
+    """
+    return CompoundQueryExpression(_LogicalExpressionOperator.OR, [*expressions])
+
+
+def xor(
+    *expressions: Union[CompoundQueryExpression, _BaseQueryExpression],
+) -> CompoundQueryExpression:
+    """
+    Builds a `XOR(...)` expression for a query builder.
+
+    Args:
+        *expressions (Union[CompoundQueryExpression, _BaseQueryExpression]): The expressions
+        to join.
+
+    Returns:
+        CompoundQueryExpression: A expression which can be compiled by a query builder.
+    """
+    return CompoundQueryExpression(_LogicalExpressionOperator.XOR, [*expressions])
+
+
+def is_null(property_descriptor: Any) -> NullQueryExpression:
     """
     Builds a `IS NULL` expression for a query builder.
 
@@ -220,13 +274,13 @@ def is_null(property_descriptor: Any) -> UnaryQueryExpression:
     """
     _validate_property_descriptor(property_descriptor)
 
-    return UnaryQueryExpression(
+    return NullQueryExpression(
         property_descriptor,
         _UnaryExpressionTemplate.IS_NULL,
     )
 
 
-def is_not_null(property_descriptor: Any) -> UnaryQueryExpression:
+def is_not_null(property_descriptor: Any) -> NullQueryExpression:
     """
     Builds a `IS NOT NULL` expression for a query builder.
 
@@ -238,7 +292,7 @@ def is_not_null(property_descriptor: Any) -> UnaryQueryExpression:
     """
     _validate_property_descriptor(property_descriptor)
 
-    return UnaryQueryExpression(
+    return NullQueryExpression(
         property_descriptor,
         _UnaryExpressionTemplate.IS_NOT_NULL,
     )
@@ -350,7 +404,7 @@ def regex(property_descriptor: Any, value: str) -> QueryExpression:
 
 
 def cypher(
-    template: str, model_references: Dict[str, _QueryModelType], parameters: Dict[str, Any]
+    template: str, model_references: Dict[str, QueryModelType], parameters: Dict[str, Any]
 ) -> CustomQueryExpression:
     """
     Builds a custom Cypher query by injecting the corresponding model variables and parameters into
@@ -359,7 +413,7 @@ def cypher(
     Args:
         template (str): The Cypher query to build. The template can contain placeholders which need
         to correspond to keys from either `model_references` or `parameters`.
-        model_references (Dict[str, _QueryModelType]): A dict which maps placeholders to their
+        model_references (Dict[str, QueryModelType]): A dict which maps placeholders to their
         models.
         parameters (Dict[str, Any]): A dict which maps placeholders to their parameter values.
 
@@ -376,7 +430,7 @@ def all_(property_descriptor: List[P]) -> P:
     Returns:
         PropertyDescriptor: A property descriptor which can be used to further define paths.
     """
-    from loomi.query.descriptor import PropertyDescriptor
+    from loomi.query.descriptor import PropertyDescriptor, _ListPathOperator
 
     _validate_property_descriptor(property_descriptor)
     descriptor = cast(PropertyDescriptor, property_descriptor)
@@ -392,7 +446,7 @@ def all_(property_descriptor: List[P]) -> P:
     return cast(
         P,
         PropertyDescriptor(
-            f"{descriptor._full_path}.$all",
+            f"{descriptor._full_path}.{_ListPathOperator.ALL.value}",
             inferred_type,
             descriptor._model_type,
         ),
@@ -402,12 +456,12 @@ def all_(property_descriptor: List[P]) -> P:
 def any_(property_descriptor: List[P]) -> P:
     """
     Marks this list property to use `ANY` when a query builder encounters it. This is also
-    the default which will be used if nothing is defined for a list property.local
+    the default which will be used if nothing is defined for a list property.
 
     Returns:
         PropertyDescriptor: A property descriptor which can be used to further define paths.
     """
-    from loomi.query.descriptor import PropertyDescriptor
+    from loomi.query.descriptor import PropertyDescriptor, _ListPathOperator
 
     _validate_property_descriptor(property_descriptor)
     descriptor = cast(PropertyDescriptor, property_descriptor)
@@ -423,40 +477,100 @@ def any_(property_descriptor: List[P]) -> P:
     return cast(
         P,
         PropertyDescriptor(
-            f"{descriptor._full_path}.$any",
+            f"{descriptor._full_path}.{_ListPathOperator.ANY.value}",
             inferred_type,
             descriptor._model_type,
         ),
     )
 
 
-def element_id(model_type: _QueryModelType) -> EntityIdDescriptor:
+def none(property_descriptor: List[P]) -> P:
+    """
+    Marks this list property to use `NONE` when a query builder encounters it.
+
+    Returns:
+        PropertyDescriptor: A property descriptor which can be used to further define paths.
+    """
+    from loomi.query.descriptor import PropertyDescriptor, _ListPathOperator
+
+    _validate_property_descriptor(property_descriptor)
+    descriptor = cast(PropertyDescriptor, property_descriptor)
+
+    current_type = descriptor._annotation
+    origin = get_origin(current_type)
+    args = get_args(current_type)
+
+    inferred_type = Any
+    if origin in (list, List, Union):
+        inferred_type = next((a for a in args if a is not type(None)), Any)
+
+    return cast(
+        P,
+        PropertyDescriptor(
+            f"{descriptor._full_path}.{_ListPathOperator.NONE.value}",
+            inferred_type,
+            descriptor._model_type,
+        ),
+    )
+
+
+def single(property_descriptor: List[P]) -> P:
+    """
+    Marks this list property to use `SINGLE` when a query builder encounters it.
+
+    Returns:
+        PropertyDescriptor: A property descriptor which can be used to further define paths.
+    """
+    from loomi.query.descriptor import PropertyDescriptor, _ListPathOperator
+
+    _validate_property_descriptor(property_descriptor)
+    descriptor = cast(PropertyDescriptor, property_descriptor)
+
+    current_type = descriptor._annotation
+    origin = get_origin(current_type)
+    args = get_args(current_type)
+
+    inferred_type = Any
+    if origin in (list, List, Union):
+        inferred_type = next((a for a in args if a is not type(None)), Any)
+
+    return cast(
+        P,
+        PropertyDescriptor(
+            f"{descriptor._full_path}.{_ListPathOperator.SINGLE.value}",
+            inferred_type,
+            descriptor._model_type,
+        ),
+    )
+
+
+def element_id(model_type: QueryModelType, server_type: ServerType) -> EntityIdDescriptor:
     """
     Builds a descriptor which will be resolved to an `elementId` expression when used by a
     query builder.
 
     Args:
-        model_type: (_QueryModelType): The model to create a `elementId` expression for.
+        model_type: (QueryModelType): The model to create a `elementId` expression for.
 
     Returns:
         EntityIdDescriptor: A entity id descriptor which can be used by a query builder.
     """
-    from loomi.query.descriptor import EntityIdDescriptor, _EntityIdOperator
+    from loomi.query.descriptor import EntityIdDescriptor, _EntityIdTemplate
 
-    return EntityIdDescriptor(_EntityIdOperator.ELEMENT_ID, model_type)
+    return EntityIdDescriptor(_EntityIdTemplate.ELEMENT_ID, model_type, server_type)
 
 
-def id_(model_type: _QueryModelType) -> EntityIdDescriptor:
+def id_(model_type: QueryModelType, server_type: ServerType) -> EntityIdDescriptor:
     """
     Builds a descriptor which will be resolved to an `id` expression when used by a
     query builder.
 
     Args:
-        model_type: (_QueryModelType): The model to create a `id` expression for.
+        model_type: (QueryModelType): The model to create a `id` expression for.
 
     Returns:
         EntityIdDescriptor: A entity id descriptor which can be used by a query builder.
     """
-    from loomi.query.descriptor import EntityIdDescriptor, _EntityIdOperator
+    from loomi.query.descriptor import EntityIdDescriptor, _EntityIdTemplate
 
-    return EntityIdDescriptor(_EntityIdOperator.ID, model_type)
+    return EntityIdDescriptor(_EntityIdTemplate.ID, model_type, server_type)

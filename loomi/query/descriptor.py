@@ -6,8 +6,9 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, get_args, ge
 
 from pydantic import BaseModel
 
-from loomi._internal._types import _NumericValue, _QueryModelType
-from loomi._logger import _logger
+from loomi._internal._types import NumericValue, QueryModelType
+from loomi._logger import logger
+from loomi.constants import ServerType
 from loomi.exceptions import ModelError, QueryError
 from loomi.query.functions import (
     AliasedModel,
@@ -25,14 +26,24 @@ else:
     _ExpressionContext = object
 
 
-class _PathOperator(StrEnum):
+class _ListPathOperator(StrEnum):
     ANY = "$any"
     ALL = "$all"
+    NONE = "$none"
+    SINGLE = "$single"
 
 
-class _EntityIdOperator(StrEnum):
-    ELEMENT_ID = "$element_id"
-    ID = "$id"
+_ListPathOperatorTemplate: Dict[str, str] = {
+    _ListPathOperator.ANY.value: "any",
+    _ListPathOperator.ALL.value: "all",
+    _ListPathOperator.NONE.value: "none",
+    _ListPathOperator.SINGLE.value: "single",
+}
+
+
+class _EntityIdTemplate(StrEnum):
+    ELEMENT_ID = "elementId({variable})"
+    ID = "id({variable})"
 
 
 class _Descriptor:
@@ -52,7 +63,7 @@ class _Descriptor:
         or `all_()` are not supported and will raise a exception.
 
         Raises:
-            QueryError: If the path contains `any_()` or `all_()`.
+            QueryError: If the path contains `any_()`, `all_()` or none().
 
         Returns:
             str: The compiled path.
@@ -65,10 +76,10 @@ class PropertyDescriptor(_Descriptor):
 
     _full_path: str
     _annotation: Any
-    _model_type: _QueryModelType
+    _model_type: QueryModelType
 
     def __getattribute__(self, name: str):
-        if name.startswith("_"):
+        if name.startswith("_") or name in ["compiled_path"]:
             return super().__getattribute__(name)
 
         current_type = self._annotation
@@ -86,8 +97,8 @@ class PropertyDescriptor(_Descriptor):
 
                 # To be able to handle this correctly later on in the query builder, we
                 # define a special $any property
-                if not base_path.endswith(tuple(member.value for member in _PathOperator)):
-                    base_path = f"{base_path}.{_PathOperator.ANY.value}"
+                if not base_path.endswith(tuple(member.value for member in _ListPathOperator)):
+                    base_path = f"{base_path}.{_ListPathOperator.ANY.value}"
 
         # Since a dict might contain any key, we allow all properties
         if origin is dict or origin is Dict:
@@ -125,7 +136,7 @@ class PropertyDescriptor(_Descriptor):
     def _compile_path(
         self, ctx: _ExpressionContext, expression_template: str, value: Optional[Any]
     ) -> str:
-        _logger.debug(
+        logger.debug(
             "Compiling path %s for %s",
             self._full_path,
             (
@@ -134,6 +145,8 @@ class PropertyDescriptor(_Descriptor):
                 else self._model_type.__name__
             ),
         )
+        list_path_members = [member.value for member in _ListPathOperator]
+
         # TODO: This currently generates 2 loops when filtering 2 list expressions which are
         # combined by any logical operator. Check if combining them into a single loop improves
         # performance
@@ -144,38 +157,42 @@ class PropertyDescriptor(_Descriptor):
         variable = ctx.get_variable(self._model_type)
         parameter = ctx.add_parameter(value) if value else None
 
-        parts = re.split(r"(\$all|\$any)", self._full_path)
+        parts = re.split(r"(\$all|\$any|\$none|\$single)", self._full_path)
         normalized_parts = [part.strip(".") for part in parts if part.strip()]
 
         # If we don't have any list operators, we can return the compiled template directly
-        if not any(part in normalized_parts for part in [member.value for member in _PathOperator]):
+        if not any(part in normalized_parts for part in list_path_members):
             path_str = ".".join(normalized_parts)
             return expression_template.format(
-                variable=f"{variable}.{path_str}", parameter=parameter
+                variable=f"{variable}.{path_str}", parameter=f"${parameter}"
             )
 
         # Each nested level needs it's own loop variables, which should also not clash
         # with any other variables defined
-        operators = [
-            (i, p)
-            for i, p in enumerate(normalized_parts)
-            if p in (member.value for member in _PathOperator)
-        ]
+        operators = [(i, p) for i, p in enumerate(normalized_parts) if p in list_path_members]
 
-        start_var_idx = ctx.__variable_counter
+        start_var_idx = ctx._variable_counter
         ctx.force_increment_variable_counter(len(operators))
 
         # Build the query from inside out, as the innermost part is the one using
         # the provided template
         inner_var_idx = start_var_idx + len(operators) - 1
         final_part = normalized_parts[-1]
-        result = expression_template.format(
-            variable=f"v{inner_var_idx}.{final_part}", parameter=parameter
-        )
+
+        # If the final part is a list operator, we need to omit it and use the innermost
+        # directly variable instead
+        if final_part in list_path_members:
+            result = expression_template.format(
+                variable=f"v{inner_var_idx}", parameter=f"${parameter}"
+            )
+        else:
+            result = expression_template.format(
+                variable=f"v{inner_var_idx}.{final_part}", parameter=f"${parameter}"
+            )
 
         for op_count in range(len(operators) - 1, -1, -1):
             part_idx, operator_str = operators[op_count]
-            operator = operator_str.lstrip("$").upper()
+            operator = _ListPathOperatorTemplate[operator_str]
             property_name = normalized_parts[part_idx - 1]
 
             iter_var = f"v{start_var_idx + op_count}"
@@ -192,10 +209,10 @@ class PropertyDescriptor(_Descriptor):
         return result
 
     def compiled_path(self) -> str:
-        if any(member.value in self._full_path for member in _PathOperator):
+        if any(member.value in self._full_path for member in _ListPathOperator):
             raise QueryError(
-                "Compiled paths with `any_()` or `all_()` are not supported. If you want to "
-                "use the compiled path with the `cypher()` helper while trying to use "
+                "Compiled paths with `any_()`, `all_() or none()` are not supported. If you want "
+                "to use the compiled path with the `cypher()` helper while trying to use "
                 "the `ALL` or `ANY` Cypher functions, you should write the path yourself."
             )
 
@@ -207,16 +224,16 @@ class PropertyDescriptor(_Descriptor):
     def __ne__(self, value: Any):  # type: ignore[override]
         return not_equals(self, value)
 
-    def __gt__(self, value: _NumericValue):
+    def __gt__(self, value: NumericValue):
         return greater_than(self, value)
 
-    def __ge__(self, value: _NumericValue):
+    def __ge__(self, value: NumericValue):
         return greater_than_or_equal(self, value)
 
-    def __lt__(self, value: _NumericValue):
+    def __lt__(self, value: NumericValue):
         return less_than(self, value)
 
-    def __le__(self, value: _NumericValue):
+    def __le__(self, value: NumericValue):
         return less_than_or_equal(self, value)
 
 
@@ -224,8 +241,9 @@ class PropertyDescriptor(_Descriptor):
 class EntityIdDescriptor(_Descriptor):
     """Descriptor class used for building queries for entity IDs."""
 
-    _operator: _EntityIdOperator
-    _model_type: _QueryModelType
+    _template: _EntityIdTemplate
+    _model_type: QueryModelType
+    _server_type: ServerType
 
     def _compile_path(
         self, ctx: _ExpressionContext, expression_template: str, value: Any | None
@@ -233,16 +251,17 @@ class EntityIdDescriptor(_Descriptor):
         variable = ctx.get_variable(self._model_type)
         parameter = ctx.add_parameter(value) if value else None
 
-        variable_template = (
-            f"elementId({variable})"
-            if self._operator == _EntityIdOperator.ELEMENT_ID
-            else f"id({variable})"
+        variable_template = self._get_entity_id_template().value.format(variable=variable)
+
+        return expression_template.format(
+            variable=f"{variable_template}", parameter=f"${parameter}"
         )
 
-        return expression_template.format(variable=f"{variable_template}", parameter=parameter)
+    def _get_entity_id_template(self) -> _EntityIdTemplate:
+        if self._server_type == ServerType.MEMGRAPH:
+            return _EntityIdTemplate.ID
+
+        return self._template
 
     def compiled_path(self) -> str:
-        if self._operator == _EntityIdOperator.ELEMENT_ID:
-            return "elementId({variable})"
-
-        return "id({variable})"
+        return self._get_entity_id_template().value

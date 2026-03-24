@@ -7,7 +7,9 @@ from typing import Any, Mapping, Union
 log_ctx = ContextVar("loomi_log_ctx", default={})
 
 
-class _LogContextKey(StrEnum):
+class LogContextKey(StrEnum):
+    """Commonly used log context variables."""
+
     DRIVER = "loomi.driver"
     SERVER_TYPE = "loomi.server_type"
     MODEL = "loomi.model"
@@ -15,7 +17,9 @@ class _LogContextKey(StrEnum):
     CHANGE_TRACKER_OPERATION = "loomi.change_tracker.operation"
 
 
-class _LogContextFilter(logging.Filter):
+class LogContextFilter(logging.Filter):
+    """Logging filter for adding context to the log record."""
+
     def filter(self, record):
         for key, value in log_ctx.get().items():
             setattr(record, key, value)
@@ -23,7 +27,14 @@ class _LogContextFilter(logging.Filter):
 
 
 @contextmanager
-def _scoped_log_ctx(ctx: Mapping[Union[StrEnum, str], Any]):
+def scoped_log_ctx(ctx: Mapping[Union[StrEnum, str], Any]):
+    """
+    Used to define a log scope with additional context.
+
+    Args:
+        ctx (Mapping[Union[StrEnum, str], Any]): The added context.
+    """
+
     token = log_ctx.set({**log_ctx.get(), **ctx})
     try:
         yield
@@ -31,5 +42,5 @@ def _scoped_log_ctx(ctx: Mapping[Union[StrEnum, str], Any]):
         log_ctx.reset(token)
 
 
-_logger = logging.getLogger("loomi")
-_logger.addFilter(_LogContextFilter())
+logger = logging.getLogger("loomi")
+logger.addFilter(LogContextFilter())

@@ -5,14 +5,15 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Dict, List, Union
 
-from loomi._internal._types import _QueryModelType
-from loomi._logger import _logger
+from loomi._internal._types import QueryModelType
+from loomi._logger import logger
+from loomi.constants import ServerType
 from loomi.exceptions import QueryError
 
 if TYPE_CHECKING:
-    from loomi.query.descriptor import PropertyDescriptor
+    from loomi.query.descriptor import _Descriptor
 else:
-    PropertyDescriptor = object
+    _Descriptor = object
 
 
 class _ExpressionTemplate(StrEnum):
@@ -42,50 +43,50 @@ class _LogicalExpressionOperator(StrEnum):
 
 
 class _ExpressionContext:
-    __variable_counter = 0
-    __models_to_vars: Dict[_QueryModelType, str]
-    __parameters: Dict[str, Any]
+    _server_type: ServerType
+    _variable_counter = 0
+    _models_to_vars: Dict[QueryModelType, str]
+    _parameters: Dict[str, Any]
 
-    def __init__(self) -> None:
-        self.__variable_counter = 0
-        self.__models_to_vars = {}
-        self.__parameters = {}
+    def __init__(self, server_type: ServerType) -> None:
+        self._server_type = server_type
+        self._variable_counter = 0
+        self._models_to_vars = {}
+        self._parameters = {}
 
     def force_increment_variable_counter(self, amount: int = 1) -> None:
-        self.__variable_counter = self.__variable_counter + amount
+        self._variable_counter = self._variable_counter + amount
 
     def add_parameter(self, value: Any) -> str:
-        _logger.debug("Adding new parameter to expression context")
-        parameter_name = f"p{len(self.__parameters.keys())}"
-        self.__parameters[parameter_name] = value
+        logger.debug("Adding new parameter to expression context")
+        parameter_name = f"p{len(self._parameters.keys())}"
+        self._parameters[parameter_name] = value
 
         return parameter_name
 
-    def get_variable(self, model: _QueryModelType) -> str:
-        if model not in self.__models_to_vars:
+    def get_variable(self, model: QueryModelType) -> str:
+        if model not in self._models_to_vars:
             raise QueryError(f"Model {model.__name__} is not known in the current query context")
 
-        return self.__models_to_vars[model]
+        return self._models_to_vars[model]
 
-    def register_model(self, model: _QueryModelType) -> None:
+    def add_model(self, model: QueryModelType) -> None:
         from loomi.query.functions import AliasedModel
 
-        _logger.debug(
+        logger.debug(
             "Registering %s with expression context",
             (f"alias {model._alias}" if isinstance(model, AliasedModel) else model.__name__),
         )
 
-        variable = (
-            model._alias if isinstance(model, AliasedModel) else f"v{self.__variable_counter}"
-        )
-        if variable in set(self.__models_to_vars.values()):
+        variable = model._alias if isinstance(model, AliasedModel) else f"v{self._variable_counter}"
+        if variable in set(self._models_to_vars.values()):
             raise QueryError(
                 f"Variable {variable} has already been defined. If you are using a aliased model "
                 ", make sure it's alias is unique"
             )
 
-        self.__variable_counter = self.__variable_counter + 1
-        self.__models_to_vars[model] = variable
+        self._variable_counter = self._variable_counter + 1
+        self._models_to_vars[model] = variable
 
 
 @dataclass(frozen=True)
@@ -93,26 +94,32 @@ class _BaseQueryExpression:
     @abstractmethod
     def _compile(self, ctx: "_ExpressionContext") -> str: ...
 
-    def __invert__(self) -> "CompoundQueryExpression":
+    def __invert__(self) -> "InvertQueryExpression":
         from loomi.query.functions import not_
 
         return not_(self)
 
     def __and__(self, other: "QueryExpression") -> "CompoundQueryExpression":
-        return CompoundQueryExpression(_LogicalExpressionOperator.AND, [self, other])
+        from loomi.query.functions import and_
+
+        return and_(self, other)
 
     def __or__(self, other: "QueryExpression") -> "CompoundQueryExpression":
-        return CompoundQueryExpression(_LogicalExpressionOperator.OR, [self, other])
+        from loomi.query.functions import or_
+
+        return or_(self, other)
 
     def __xor__(self, other: "QueryExpression") -> "CompoundQueryExpression":
-        return CompoundQueryExpression(_LogicalExpressionOperator.XOR, [self, other])
+        from loomi.query.functions import xor
+
+        return xor(self, other)
 
 
 @dataclass(frozen=True)
 class QueryExpression(_BaseQueryExpression):
     """A expression which can be compiled by a query builder."""
 
-    property_descriptor: PropertyDescriptor
+    property_descriptor: _Descriptor
     template: _ExpressionTemplate
     value: Any
 
@@ -121,14 +128,25 @@ class QueryExpression(_BaseQueryExpression):
 
 
 @dataclass(frozen=True)
-class UnaryQueryExpression(_BaseQueryExpression):
-    """A unary expression which can be compiled by a query builder."""
+class NullQueryExpression(_BaseQueryExpression):
+    """A null-check expression which can be compiled by a query builder."""
 
-    property_descriptor: PropertyDescriptor
+    property_descriptor: _Descriptor
     template: _UnaryExpressionTemplate
 
     def _compile(self, ctx: _ExpressionContext) -> str:
         return self.property_descriptor._compile_path(ctx, self.template.value, None)
+
+
+@dataclass(frozen=True)
+class InvertQueryExpression(_BaseQueryExpression):
+    """A invert expression which can be compiled by a query builder."""
+
+    expression: Union["CompoundQueryExpression", _BaseQueryExpression]
+
+    def _compile(self, ctx: _ExpressionContext) -> str:
+        compiled = self.expression._compile(ctx)
+        return f"NOT({compiled})"
 
 
 @dataclass(frozen=True)
@@ -141,34 +159,34 @@ class CompoundQueryExpression:
     def __and__(
         self, other: Union["CompoundQueryExpression", QueryExpression]
     ) -> "CompoundQueryExpression":
-        if self.operator == _LogicalExpressionOperator.AND:
-            return CompoundQueryExpression(
-                _LogicalExpressionOperator.AND, [*self.expressions, other]
-            )
+        from loomi.query.functions import and_
 
-        return CompoundQueryExpression(_LogicalExpressionOperator.AND, [self, other])
+        if self.operator == _LogicalExpressionOperator.AND:
+            return and_(*self.expressions, other)
+
+        return and_(self, other)
 
     def __or__(
         self, other: Union["CompoundQueryExpression", QueryExpression]
     ) -> "CompoundQueryExpression":
-        if self.operator == _LogicalExpressionOperator.OR:
-            return CompoundQueryExpression(
-                _LogicalExpressionOperator.OR, [*self.expressions, other]
-            )
+        from loomi.query.functions import or_
 
-        return CompoundQueryExpression(_LogicalExpressionOperator.OR, [self, other])
+        if self.operator == _LogicalExpressionOperator.OR:
+            return or_(*self.expressions, other)
+
+        return or_(self, other)
 
     def __xor__(
         self, other: Union["CompoundQueryExpression", QueryExpression]
     ) -> "CompoundQueryExpression":
+        from loomi.query.functions import xor
+
         if self.operator == _LogicalExpressionOperator.XOR:
-            return CompoundQueryExpression(
-                _LogicalExpressionOperator.XOR, [*self.expressions, other]
-            )
+            return xor(*self.expressions, other)
 
-        return CompoundQueryExpression(_LogicalExpressionOperator.XOR, [self, other])
+        return xor(self, other)
 
-    def __invert__(self) -> "CompoundQueryExpression":
+    def __invert__(self) -> "InvertQueryExpression":
         from loomi.query.functions import not_
 
         return not_(self)
@@ -192,7 +210,7 @@ class CustomQueryExpression(_BaseQueryExpression):
     """
 
     expression_template: str
-    template_references: Dict[str, _QueryModelType]
+    template_references: Dict[str, QueryModelType]
     parameter_references: Dict[str, Any]
 
     def _compile(self, ctx: _ExpressionContext) -> str:

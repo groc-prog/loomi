@@ -1,16 +1,16 @@
 from typing import ClassVar, List, Set, cast
 
-from loomi._internal._base_model import _EntityBase, _EntityConfiguration
+from loomi._internal._base_model import EntityBase, EntityConfiguration
 from loomi.exceptions import ModelError
 
 
-class NodeConfiguration(_EntityConfiguration, total=False):
+class NodeConfiguration(EntityConfiguration, total=False):
     """TypedDict for configuring Loomi node behavior."""
 
     labels: Set[str]
 
 
-class Node(_EntityBase):
+class Node(EntityBase):
     """A base class for Loomi nodes."""
 
     loomi_config: ClassVar[NodeConfiguration]

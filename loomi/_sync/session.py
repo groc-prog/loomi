@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Dict, LiteralString, Union
 
 import neo4j
 
-from loomi._logger import _logger
+from loomi._logger import logger
 from loomi._sync.change_tracker import ChangeTracker
 from loomi._sync.result import Result
 from loomi._sync.transaction import Transaction
@@ -76,7 +76,7 @@ class Session(_Base):
         )
         logging_query = query if isinstance(query, str) else query.text
 
-        _logger.info("Query: %s -- Parameters: [%s]", logging_query, logging_parameters)
+        logger.info("Query: %s -- Parameters: [%s]", logging_query, logging_parameters)
         original_result = self.__session.run(query, parameters, **kwargs)
         return Result(original_result, self.__client, self.__change_tracker if tracking else None)
 

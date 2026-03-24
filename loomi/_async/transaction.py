@@ -6,7 +6,7 @@ import neo4j
 
 from loomi._async.change_tracker import AsyncChangeTracker
 from loomi._async.result import AsyncResult
-from loomi._logger import _logger
+from loomi._logger import logger
 
 if TYPE_CHECKING:
     from loomi._async.client import AsyncClient
@@ -75,7 +75,7 @@ class AsyncTransaction(_Base):
             else ""
         )
 
-        _logger.info("Query: %s -- Parameters: [%s]", query, logging_parameters)
+        logger.info("Query: %s -- Parameters: [%s]", query, logging_parameters)
         original_result = await self.__transaction.run(query, parameters, **kwparameters)
         return AsyncResult(
             original_result, self.__client, self.__change_tracker if tracking else None
