@@ -274,7 +274,10 @@ class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
                     if isinstance(value, str) and field_info.annotation is not str:
                         try:
                             logger.debug(
-                                "Stringified value found at %s, parsing value with 'deserializer_fn'",
+                                (
+                                    "Stringified value found at %s, parsing value with "
+                                    "'deserializer_fn'"
+                                ),
                                 field_name,
                             )
                             deserialized[field_name] = deserializer_fn(value)
@@ -294,7 +297,7 @@ class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
                             deserialized_list = []
                             for index, item in enumerate(value):
                                 if not isinstance(item, str):
-                                    deserialized_list[index] = item
+                                    deserialized_list.append(item)
                                     continue
 
                                 logger.debug(
@@ -302,7 +305,7 @@ class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
                                     field_name,
                                     index,
                                 )
-                                deserialized_list[index] = deserializer_fn(item)
+                                deserialized_list.append(deserializer_fn(item))
 
                             deserialized[field_name] = deserialized_list
                             continue

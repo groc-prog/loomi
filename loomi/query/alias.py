@@ -21,7 +21,7 @@ class AliasedModel:
     def __getattribute__(self, name: str) -> Any:
         from loomi.query.descriptor import PropertyDescriptor
 
-        if name in ["_model_type", "_alias"]:
+        if name.startswith("_"):
             return super().__getattribute__(name)
 
         if name in self._model_type.model_fields:

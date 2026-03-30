@@ -117,7 +117,7 @@ class PropertyDescriptor(CompilableDescriptor):
     ) -> CompilationPlan:
         logger.debug(
             "Generating compilation plan for property descriptor for model %s with path %s",
-            self._model_type.__name__,
+            self._model_type,
             self._full_path,
         )
         list_path_members = [member.value for member in ListPathOperator]
