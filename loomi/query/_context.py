@@ -28,6 +28,7 @@ class ExpressionContext:
         Args:
             amount (int): The number by which the counter will be incremented. Defaults to 1.
         """
+        logger.debug("Force-incrementing internal variable counter by %d", amount)
         self._variable_counter = self._variable_counter + amount
 
     def add_parameter(self, value: Any) -> str:
@@ -40,8 +41,8 @@ class ExpressionContext:
         Returns:
             str: The auto-generated parameter name.
         """
-        logger.debug("Adding new parameter to expression context")
         parameter_name = f"p{len(self.parameters.keys())}"
+        logger.debug("Adding new parameter %s to expression context", parameter_name)
         self.parameters[parameter_name] = value
 
         return parameter_name
@@ -89,3 +90,4 @@ class ExpressionContext:
 
         self._variable_counter = self._variable_counter + 1
         self._models_to_vars[model] = variable
+        logger.debug("Model added as variable %s", variable)

@@ -133,7 +133,7 @@ class BaseChangeTracker(Generic[T]):
 
         with scoped_log_ctx(
             {
-                LogContextKey.MODEL: model.__class__.__name__,
+                LogContextKey.MODEL_NAME: model.__class__.__name__,
                 LogContextKey.MODEL_IDENTIFIER: obj_id,
                 LogContextKey.CHANGE_TRACKER_OPERATION: operation.name,
             }
@@ -193,6 +193,9 @@ class BaseChangeTracker(Generic[T]):
                     else TrackingOperation.INSERT
                 )
                 if start_node_id not in self._state[start_node_operation]["nodes"]:
+                    logger.debug(
+                        "Tracking start node of unsaved relationship as %s", start_node_operation
+                    )
                     self._state[start_node_operation]["nodes"][start_node_id] = (
                         start_node,
                         start_node._compute_checksums(),
@@ -205,6 +208,9 @@ class BaseChangeTracker(Generic[T]):
                     else TrackingOperation.INSERT
                 )
                 if end_node_id not in self._state[end_node_operation]["nodes"]:
+                    logger.debug(
+                        "Tracking end node of unsaved relationship as %s", end_node_operation
+                    )
                     self._state[end_node_operation]["nodes"][end_node_id] = (
                         end_node,
                         end_node._compute_checksums(),
@@ -259,7 +265,7 @@ class BaseChangeTracker(Generic[T]):
 
         with scoped_log_ctx(
             {
-                LogContextKey.MODEL: model.__class__.__name__,
+                LogContextKey.MODEL_NAME: model.__class__.__name__,
                 LogContextKey.MODEL_IDENTIFIER: obj_id,
                 LogContextKey.CHANGE_TRACKER_OPERATION: TrackingOperation.DELETE.name,
             }
@@ -383,7 +389,7 @@ class BaseChangeTracker(Generic[T]):
                 )
 
             if reference._hash not in groups:
-                logger.debug("Encountered new model type %s", reference._hash)
+                logger.debug("Encountered new model with hash %s", reference._hash)
                 labels = reference.loomi_config.get("labels")
                 if labels is None:
                     raise ModelError(
@@ -409,7 +415,7 @@ class BaseChangeTracker(Generic[T]):
         )
 
         for hash_, group in groups.items():
-            logger.debug("Compiling query for model %s", hash_)
+            logger.debug("Compiling query for models with hash %s", hash_)
             labels = ":".join(group["labels"])
 
             query = (
@@ -448,7 +454,7 @@ class BaseChangeTracker(Generic[T]):
             # to create them separately from the nodes so that we can reference the start and end
             # nodes with their ID's
             if reference._hash not in groups:
-                logger.debug("Encountered new model type %s", reference._hash)
+                logger.debug("Encountered new model with hash %s", reference._hash)
                 type_ = reference.loomi_config.get("type")
                 if type_ is None:
                     raise ModelError(
@@ -462,7 +468,7 @@ class BaseChangeTracker(Generic[T]):
 
             # The actual entity ID can either be in the `id_map` parameter or on the referenced
             # node model
-            logger.debug("Getting database ID for start node")
+            logger.debug("Getting database ID from mapping for start node")
             if start_node_id in id_map:
                 start_node_entity_id = id_map[start_node_id]
             else:
@@ -484,7 +490,7 @@ class BaseChangeTracker(Generic[T]):
                         f"{TrackingOperation.UPDATE.name} but is not saved to database",
                     )
 
-            logger.debug("Getting database ID for end node")
+            logger.debug("Getting database ID from mapping for end node")
             if end_node_id in id_map:
                 end_node_entity_id = id_map[end_node_id]
             else:
@@ -522,7 +528,7 @@ class BaseChangeTracker(Generic[T]):
         entity_identifier = "elementId" if self._client._server_type == ServerType.NEO4J else "id"
 
         for hash_, group in groups.items():
-            logger.debug("Compiling query for model %s", hash_)
+            logger.debug("Compiling query for models with hash %s", hash_)
             query = (
                 f"UNWIND $p0 AS r "
                 f"MATCH (n) WHERE {entity_identifier}(n) = r.start_node_id "
@@ -559,10 +565,13 @@ class BaseChangeTracker(Generic[T]):
             ]
 
             if len(changed_fields) == 0:
-                logger.debug("Entity %s has no changes, skipping")
                 continue
 
-            logger.debug("Found %d changed properties", len(changed_fields))
+            logger.debug(
+                "Found %d changed properties for model %s",
+                len(changed_fields),
+                reference._element_id,
+            )
             node_batches.append(
                 {
                     "id_": (
@@ -615,10 +624,13 @@ class BaseChangeTracker(Generic[T]):
             ]
 
             if len(changed_fields) == 0:
-                logger.debug("Entity %s has no changes, skipping")
                 continue
 
-            logger.debug("Found %d changed properties", len(changed_fields))
+            logger.debug(
+                "Found %d changed properties for model %s",
+                len(changed_fields),
+                reference._element_id,
+            )
             relationship_batches.append(
                 {
                     "id_": (

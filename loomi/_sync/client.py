@@ -20,37 +20,40 @@ class Client(BaseClient[neo4j.Driver]):
             ClientError: If the remote server can not be reached or does not return required
                 metadata.
         """
-        try:
-            logger.info("Verifying connectivity to remote")
-            self._driver.verify_connectivity()
+        with scoped_log_ctx({LogContextKey.DRIVER: self._driver.__class__.__name__}):
+            try:
+                logger.info("Verifying connectivity to remote")
+                self._driver.verify_connectivity()
 
-            logger.info("Getting remote server metadata")
-            server_info = self._driver.get_server_info()
+                logger.info("Getting remote server metadata")
+                server_info = self._driver.get_server_info()
 
-            self._server_type = (
-                ServerType.MEMGRAPH if "memgraph" in server_info.agent.lower() else ServerType.NEO4J
-            )
-
-            logger.debug("Checking server version")
-            with self._driver.session() as session:
-                query = (
-                    "SHOW VERSION"
-                    if self._server_type == ServerType.MEMGRAPH
-                    else (
-                        "CALL dbms.components() YIELD name, versions "
-                        'WHERE name = "Neo4j Kernel" '
-                        "RETURN versions[0] AS version"
-                    )
+                self._server_type = (
+                    ServerType.MEMGRAPH
+                    if "memgraph" in server_info.agent.lower()
+                    else ServerType.NEO4J
                 )
 
-                result = session.run(query)
-                version = result.value()
-                if len(version) == 0:
-                    raise ClientError("Server did not respond with a valid version")
+                logger.debug("Checking server version")
+                with self._driver.session() as session:
+                    query = (
+                        "SHOW VERSION"
+                        if self._server_type == ServerType.MEMGRAPH
+                        else (
+                            "CALL dbms.components() YIELD name, versions "
+                            'WHERE name = "Neo4j Kernel" '
+                            "RETURN versions[0] AS version"
+                        )
+                    )
 
-                self._extract_version(version[0])
-        except Exception as exc:
-            raise ClientError("Could not get required metadata from remote") from exc
+                    result = session.run(query)
+                    version = result.value()
+                    if len(version) == 0:
+                        raise ClientError("Server did not respond with a valid version")
+
+                    self._extract_version(version[0])
+            except Exception as exc:
+                raise ClientError("Could not get required metadata from remote") from exc
 
     @overload
     def session(self, mode: Literal["loomi"] = "loomi", **session_config: Any) -> Session: ...

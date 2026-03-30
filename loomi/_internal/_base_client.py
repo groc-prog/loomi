@@ -124,19 +124,27 @@ class BaseClient(Generic[T]):
         self._server_version = tuple(int(part) for part in version.split("."))
 
     def _transform_entity(self, entity: Any) -> Any:
-        if isinstance(entity, (neo4j.graph.Node, neo4j.graph.Relationship)):
-            return self._entity_to_model(entity)
-        if isinstance(entity, neo4j.graph.Path):
-            logger.debug("Transforming nodes and relationships from path %s", entity)
-            return Path(
-                self,
-                tuple(self._entity_to_model(node) for node in entity.nodes),
-                tuple(self._entity_to_model(relationship) for relationship in entity.relationships),
-                entity.graph,
-            )
+        with scoped_log_ctx(
+            {
+                LogContextKey.DRIVER: self._driver.__class__.__name__,
+                LogContextKey.SERVER_TYPE: self._server_type,
+            }
+        ):
+            if isinstance(entity, (neo4j.graph.Node, neo4j.graph.Relationship)):
+                return self._entity_to_model(entity)
+            if isinstance(entity, neo4j.graph.Path):
+                logger.debug("Transforming nodes and relationships from path %s", entity)
+                return Path(
+                    self,
+                    tuple(self._entity_to_model(node) for node in entity.nodes),
+                    tuple(
+                        self._entity_to_model(relationship) for relationship in entity.relationships
+                    ),
+                    entity.graph,
+                )
 
-        logger.debug("Entity %s is a primitive value, skipping transformation", entity)
-        return entity
+            logger.debug("Entity %s is a primitive value, skipping transformation", entity)
+            return entity
 
     @overload
     def _entity_to_model(self, entity: neo4j.graph.Node) -> Union[Node, neo4j.graph.Node]: ...
@@ -157,7 +165,7 @@ class BaseClient(Generic[T]):
 
         if model_hash not in self._models:
             logger.warning(
-                "No model with hash %s registered with client. Record will not be resolved",
+                "No model with hash %s registered with client. Record will not be transformed",
                 model_hash,
             )
             return entity
@@ -174,13 +182,19 @@ class BaseClient(Generic[T]):
         return instance
 
     def _relationship_type_to_model(self, type_: str) -> Optional[Type[Relationship]]:
-        model_hash = Relationship._generate_hash(type_)
+        with scoped_log_ctx(
+            {
+                LogContextKey.DRIVER: self._driver.__class__.__name__,
+                LogContextKey.SERVER_TYPE: self._server_type,
+            }
+        ):
+            model_hash = Relationship._generate_hash(type_)
 
-        if model_hash not in self._models:
-            logger.warning(
-                "No model with hash %s registered with client. Record will not be resolved",
-                model_hash,
-            )
-            return None
+            if model_hash not in self._models:
+                logger.warning(
+                    "No model with hash %s registered with client. Record will not be transformed",
+                    model_hash,
+                )
+                return None
 
-        return cast(Type[Relationship], self._models[model_hash])
+            return cast(Type[Relationship], self._models[model_hash])

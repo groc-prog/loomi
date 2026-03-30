@@ -12,9 +12,10 @@ class LogContextKey(StrEnum):
 
     DRIVER = "loomi.driver"
     SERVER_TYPE = "loomi.server_type"
-    MODEL = "loomi.model"
-    MODEL_IDENTIFIER = "loomi.model_identifier"
+    MODEL_NAME = "loomi.model.name"
+    MODEL_IDENTIFIER = "loomi.model.identifier"
     CHANGE_TRACKER_OPERATION = "loomi.change_tracker.operation"
+    CHANGE_TRACKER_FLUSH_SCOPE = "loomi.change_tracker.scope"
 
 
 class LogContextFilter(logging.Filter):

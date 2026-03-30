@@ -18,15 +18,20 @@ class ChangeTracker(BaseChangeTracker[Union[neo4j.Session, neo4j.Transaction]]):
         on a `Transaction`, the flushed queries will be `part of that transaction` and
         will only be committed once `tx.commit()` is called.
         """
+        is_session = isinstance(self._session_or_tx, neo4j.Session)
+
         with scoped_log_ctx(
             {
                 LogContextKey.DRIVER: self._client.__class__.__name__,
                 LogContextKey.SERVER_TYPE: self._client._server_type,
+                LogContextKey.CHANGE_TRACKER_FLUSH_SCOPE: (
+                    "session" if is_session else "transaction"
+                ),
             }
         ):
             self._omit_redundant_relationship_operations()
 
-            if isinstance(self._session_or_tx, neo4j.Session):
+            if is_session:
                 # If the change tracker is called on a session, we create a new transaction and run
                 # every operation in that transaction
                 self.__flush_with_session()

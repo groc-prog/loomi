@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Union
 
 from loomi._internal._types import QueryModelType
+from loomi._logger import logger
 from loomi.exceptions import QueryError
 from loomi.query._context import ExpressionContext
 from loomi.query._protocols import CompilableDescriptor, CompilableExpression
@@ -140,7 +141,13 @@ class CustomQueryExpression(_BaseQueryExpression):
         from loomi.graph.node import Node
         from loomi.graph.relationship import Relationship
 
+        logger.debug("Compiling custom query expression")
         resolved_template_references: Dict[str, Any] = {}
+
+        logger.debug(
+            "Resolving %d template references to their model variables",
+            len(self.template_references),
+        )
         for key, model in self.template_references.items():
             if isinstance(model, AliasedModel):
                 variable = ctx.get_variable(model)
@@ -157,6 +164,9 @@ class CustomQueryExpression(_BaseQueryExpression):
                 f"Got {model} for reference {key}"
             )
 
+        logger.debug(
+            "Transforming %d parameter references to variables", len(self.parameter_references)
+        )
         resolved_parameter_references: Dict[str, Any] = {}
         for key, value in self.parameter_references.items():
             parameter = ctx.add_parameter(value)

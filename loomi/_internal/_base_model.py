@@ -18,7 +18,7 @@ import xxhash
 from pydantic import BaseModel, ConfigDict, PrivateAttr, computed_field
 
 from loomi._internal._types import ModelType
-from loomi._logger import logger
+from loomi._logger import LogContextKey, logger, scoped_log_ctx
 from loomi.constants import SUPPORTED_DATA_TYPES, SUPPORTED_LIST_DATA_TYPES, ServerType
 from loomi.exceptions import SerializationError
 from loomi.query.descriptor import PropertyDescriptor
@@ -114,57 +114,73 @@ class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
         return self._element_id
 
     def _compute_checksums(self) -> Dict[str, Optional[str]]:
-        checksums: Dict[str, Optional[str]] = {}
+        with scoped_log_ctx(
+            {
+                LogContextKey.MODEL_NAME: self.__class__.__name__,
+                LogContextKey.MODEL_IDENTIFIER: self._hash,
+            }
+        ):
+            logger.debug("Computing checksums for model fields")
+            checksums: Dict[str, Optional[str]] = {}
 
-        for field_name in self.__class__.model_fields.keys():
-            value = getattr(self, field_name)
-            if value is None:
-                checksums[field_name] = None
-            else:
-                dump = self.model_dump_json(include={field_name})
-                checksums[field_name] = xxhash.xxh64(dump).hexdigest()
+            for field_name in self.__class__.model_fields.keys():
+                value = getattr(self, field_name)
+                if value is None:
+                    checksums[field_name] = None
+                else:
+                    dump = self.model_dump_json(include={field_name})
+                    checksums[field_name] = xxhash.xxh64(dump).hexdigest()
 
-        return checksums
+            return checksums
 
     def _serialize(
         self, mode: ServerType, client_config: ClientConfiguration, **kwargs
     ) -> Dict[str, Any]:
-        model_dump = self.model_dump(by_alias=True, exclude={"element_id", "id"}, **kwargs)
-        serialized: Dict[str, Any] = {}
+        with scoped_log_ctx(
+            {
+                LogContextKey.MODEL_NAME: self.__class__.__name__,
+                LogContextKey.MODEL_IDENTIFIER: self._hash,
+            }
+        ):
+            model_dump = self.model_dump(by_alias=True, exclude={"element_id", "id"}, **kwargs)
+            serialized: Dict[str, Any] = {}
 
-        logger.debug("Serializing model %s to a storable format", self)
-        model_config = cast(EntityConfiguration, getattr(self, "loomi_config", {}))
+            model_config = cast(EntityConfiguration, getattr(self, "loomi_config", {}))
 
-        serialize_nested = client_config.get("serialize_nested", False)
-        serializer_fn = model_config.get("serializer_fn")
-        if serializer_fn is None:
-            raise SerializationError("No `serializer_fn` available")
+            serialize_nested = client_config.get("serialize_nested", False)
+            serializer_fn = model_config.get("serializer_fn")
+            if serializer_fn is None:
+                raise SerializationError("No `serializer_fn` available")
 
-        for field_name, value in model_dump.items():
-            if not isinstance(value, SUPPORTED_DATA_TYPES):
-                raise SerializationError(
-                    f"Data type {type(value)} can not be stored. Supported data types are "
-                    f"{", ".join(data_type.__name__ for data_type in SUPPORTED_DATA_TYPES)}"
-                )
-
-            # If mode is Neo4j and we encounter nested values, we either need to raise a exception
-            # or serialize the value if configured
-            if mode == ServerType.NEO4J:
-                if isinstance(value, dict):
-                    serialized[field_name] = self._serialize_neo4j_dict(
-                        field_name, value, serializer_fn, serialize_nested
+            logger.debug(
+                "Serializing model to a storable format with 'serialize_nested' set to %s",
+                serialize_nested,
+            )
+            for field_name, value in model_dump.items():
+                if not isinstance(value, SUPPORTED_DATA_TYPES):
+                    raise SerializationError(
+                        f"Data type {type(value)} can not be stored. Supported data types are "
+                        f"{", ".join(data_type.__name__ for data_type in SUPPORTED_DATA_TYPES)}"
                     )
-                    continue
 
-                if isinstance(value, list):
-                    serialized[field_name] = self._serialize_neo4j_list(
-                        field_name, value, serializer_fn, serialize_nested
-                    )
-                    continue
+                # If mode is Neo4j and we encounter nested values, we either need to raise a exception
+                # or serialize the value if configured
+                if mode == ServerType.NEO4J:
+                    if isinstance(value, dict):
+                        serialized[field_name] = self._serialize_neo4j_dict(
+                            field_name, value, serializer_fn, serialize_nested
+                        )
+                        continue
 
-            serialized[field_name] = value
+                    if isinstance(value, list):
+                        serialized[field_name] = self._serialize_neo4j_list(
+                            field_name, value, serializer_fn, serialize_nested
+                        )
+                        continue
 
-        return serialized
+                serialized[field_name] = value
+
+            return serialized
 
     def _serialize_neo4j_dict(
         self,
@@ -206,7 +222,7 @@ class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
                     )
 
                 try:
-                    logger.debug("Serializing nested property %s", f"{field_name}[{index}]")
+                    logger.debug("Serializing nested property %s at index %d", field_name, index)
                     serialized_list.append(serializer_fn(item))
                     continue
                 except Exception as exc:
@@ -222,65 +238,96 @@ class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
     def _deserialize(
         cls, obj: Dict[str, Any], mode: ServerType, client_config: ClientConfiguration
     ) -> Self:
-        deserialized: Dict[str, Any] = {}
+        with scoped_log_ctx(
+            {
+                LogContextKey.MODEL_NAME: cls.__name__,
+                LogContextKey.MODEL_IDENTIFIER: cls._hash,
+            }
+        ):
+            deserialized: Dict[str, Any] = {}
+            model_config = cast(EntityConfiguration, getattr(cls, "loomi_config", {}))
 
-        logger.debug("Deserializing object to model instance")
-        model_config = cast(EntityConfiguration, getattr(cls, "loomi_config", {}))
+            serialize_nested = client_config.get("serialize_nested", False)
+            deserializer_fn = model_config.get("deserializer_fn")
+            if deserializer_fn is None:
+                raise SerializationError(
+                    "No `deserializer_fn` available. Maybe you forgot to "
+                    f"call {cls.model_rebuild.__name__}?"
+                )
 
-        serialize_nested = client_config.get("serialize_nested", False)
-        deserializer_fn = model_config.get("deserializer_fn")
-        if deserializer_fn is None:
-            raise SerializationError(
-                "No `deserializer_fn` available. Maybe you forgot to "
-                f"call {cls.model_rebuild.__name__}?"
+            logger.debug(
+                "Deserializing stored object into model with 'serialize_nested' set to %s",
+                serialize_nested,
             )
+            for field_name, value in obj.items():
+                resolved_field_name = cls._alias_cache.get(field_name) or field_name
+                field_info = cls.model_fields.get(resolved_field_name)
 
-        for field_name, value in obj.items():
-            resolved_field_name = cls._alias_cache.get(field_name) or field_name
-            field_info = cls.model_fields.get(resolved_field_name)
+                if field_info is None:
+                    logger.warning("Encountered unknown property %s, skipping", field_name)
+                    continue
 
-            if field_info is None:
-                logger.warning("Encountered unknown property %s, skipping", field_name)
-                continue
+                # Some values might have been stringified previously, so we need to check each of
+                # them and deserialize them back to a dictionary so Pydantic can handle the rest of
+                # the validation correctly
+                if mode == ServerType.NEO4J and serialize_nested and isinstance(value, (str, list)):
+                    if isinstance(value, str) and field_info.annotation is not str:
+                        try:
+                            logger.debug(
+                                "Stringified value found at %s, parsing value with 'deserializer_fn'",
+                                field_name,
+                            )
+                            deserialized[field_name] = deserializer_fn(value)
+                            continue
+                        except Exception as exc:
+                            raise SerializationError(
+                                f"Serialized value at {field_name} could not be deserialized"
+                            ) from exc
 
-            # Some values might have been stringified previously, so we need to check each of
-            # them and deserialize them back to a dictionary so Pydantic can handle the rest of
-            # the validation correctly
-            if mode == ServerType.NEO4J and serialize_nested and isinstance(value, (str, list)):
-                if isinstance(value, str) and field_info.annotation is not str:
-                    try:
-                        logger.debug("Deserializing property %s", field_name)
-                        deserialized[field_name] = deserializer_fn(value)
-                        continue
-                    except Exception as exc:
-                        raise SerializationError(
-                            f"Serialized value at {field_name} could not be deserialized"
-                        ) from exc
+                    if isinstance(value, list):
+                        try:
+                            logger.debug(
+                                "Deserializing list items at property %s",
+                                field_name,
+                            )
 
-                if isinstance(value, list):
-                    try:
-                        logger.debug(
-                            "Deserializing list items at property %s",
-                            field_name,
-                        )
-                        deserialized[field_name] = [
-                            deserializer_fn(item) for item in value if isinstance(item, str)
-                        ]
-                        continue
-                    except Exception as exc:
-                        raise SerializationError(
-                            f"Serialized value at {field_name} could not be deserialized"
-                        ) from exc
+                            deserialized_list = []
+                            for index, item in enumerate(value):
+                                if not isinstance(item, str):
+                                    deserialized_list[index] = item
+                                    continue
 
-            deserialized[field_name] = value
+                                logger.debug(
+                                    "Possibly stringified value found for property %s at index %d",
+                                    field_name,
+                                    index,
+                                )
+                                deserialized_list[index] = deserializer_fn(item)
 
-        return cls.model_validate(deserialized)
+                            deserialized[field_name] = deserialized_list
+                            continue
+                        except Exception as exc:
+                            raise SerializationError(
+                                f"Serialized value at {field_name} could not be deserialized"
+                            ) from exc
+
+                deserialized[field_name] = value
+
+            return cls.model_validate(deserialized)
 
     @classmethod
     def _init_config_defaults(cls) -> None:
-        # `loomi_config` is defined per model class to prevent having to cast the type each time
-        if "serializer_fn" not in cls.loomi_config:  # type: ignore
-            cls.loomi_config["serializer_fn"] = json.dumps  # type: ignore
+        with scoped_log_ctx(
+            {
+                LogContextKey.MODEL_NAME: cls.__name__,
+                LogContextKey.MODEL_IDENTIFIER: cls._hash,
+            }
+        ):
+            # `loomi_config` is defined per model class to prevent having to cast the type each time
+            if "serializer_fn" not in cls.loomi_config:  # type: ignore
+                logger.debug("No 'serializer_fn' defined, falling back to 'json.dumps'")
+                cls.loomi_config["serializer_fn"] = json.dumps  # type: ignore
 
-        if "deserializer_fn" not in cls.loomi_config:  # type: ignore
-            cls.loomi_config["deserializer_fn"] = json.loads  # type: ignore
+            if "deserializer_fn" not in cls.loomi_config:  # type: ignore
+                logger.debug("No 'deserializer_fn' defined, falling back to 'json.loads'")
+                cls.loomi_config["deserializer_fn"] = json.loads  # type: ignore

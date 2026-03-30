@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Union, get_args, get_origin
 from pydantic import BaseModel
 
 from loomi._internal._types import NumericValue, QueryModelType
+from loomi._logger import logger
 from loomi.constants import ServerType
 from loomi.exceptions import ModelError
 from loomi.query._context import ExpressionContext
@@ -55,6 +56,9 @@ class PropertyDescriptor(CompilableDescriptor):
         if name.startswith("_"):
             return super().__getattribute__(name)
 
+        logger.debug(
+            "Getting property descriptor for property %s at path %s", name, self._full_path
+        )
         current_type = self._annotation
         origin = get_origin(current_type)
         args = get_args(current_type)
@@ -71,6 +75,10 @@ class PropertyDescriptor(CompilableDescriptor):
                 # To be able to handle this correctly later on in the query builder, we
                 # define a special $any property
                 if not base_path.endswith(tuple(member.value for member in ListPathOperator)):
+                    logger.debug(
+                        "List property accessed without defining a list path operator, falling back to %s",
+                        ListPathOperator.ANY.value,
+                    )
                     base_path = f"{base_path}.{ListPathOperator.ANY.value}"
 
         # Since a dict might contain any key, we allow all properties
@@ -107,6 +115,11 @@ class PropertyDescriptor(CompilableDescriptor):
     def _compilation_plan(
         self, ctx: ExpressionContext, expression_template: str, value: Optional[Any]
     ) -> CompilationPlan:
+        logger.debug(
+            "Generating compilation plan for property descriptor for model %s with path %s",
+            self._model_type.__name__,
+            self._full_path,
+        )
         list_path_members = [member.value for member in ListPathOperator]
 
         # TODO: This currently generates 2 loops when filtering 2 list expressions which are
@@ -133,6 +146,7 @@ class PropertyDescriptor(CompilableDescriptor):
 
         # Each nested level needs it's own loop variables, which should also not clash
         # with any other variables defined
+        logger.debug("Found list path operators in property descriptor path")
         operators = [(i, p) for i, p in enumerate(normalized_parts) if p in list_path_members]
 
         start_var_idx = ctx._variable_counter
@@ -145,6 +159,7 @@ class PropertyDescriptor(CompilableDescriptor):
 
         # If the final part is a list operator, we need to omit it and use the innermost
         # directly variable instead
+        logger.debug("Compiling innermost expression")
         template_path: str
         if final_part in list_path_members:
             template_path = f"v{inner_var_idx}"
@@ -189,6 +204,10 @@ class EntityIdDescriptor(CompilableDescriptor):
     def _compilation_plan(
         self, ctx: ExpressionContext, expression_template: str, value: Optional[Any]
     ) -> CompilationPlan:
+        logger.debug(
+            "Generating compilation plan for entity ID descriptor for model %s",
+            self._model_type.__name__,
+        )
         variable = ctx.get_variable(self._model_type)
         parameter = ctx.add_parameter(value) if value else None
 
@@ -205,6 +224,7 @@ class EntityIdDescriptor(CompilableDescriptor):
 
     def _get_entity_id_template(self) -> EntityIdExpressionTemplate:
         if self._server_type == ServerType.MEMGRAPH:
+            logger.debug("Server type defined as %s, falling back to ID", self._server_type.value)
             return EntityIdExpressionTemplate.ID
 
         return self._template
@@ -220,6 +240,7 @@ class DbFunctionDescriptor(CompilableDescriptor):
     def _compilation_plan(
         self, ctx: ExpressionContext, expression_template: str, value: Optional[Any]
     ) -> CompilationPlan:
+        logger.debug("Generating compilation plan for db function descriptor")
         plan: CompilationPlan = self._descriptor._compilation_plan(ctx, expression_template, value)
         # For some reason, pylint can not correctly infer this
         template, path, parameter = plan  # pylint: disable=unpacking-non-sequence
