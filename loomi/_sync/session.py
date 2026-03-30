@@ -1,6 +1,6 @@
 # pylint: disable=super-init-not-called
 
-from typing import TYPE_CHECKING, Any, Dict, LiteralString, Union
+from typing import TYPE_CHECKING, Any, Dict, LiteralString, Optional, Union
 
 import neo4j
 
@@ -51,7 +51,7 @@ class Session(_Base):
     def run(
         self,
         query: Union[LiteralString, neo4j.Query],
-        parameters: Dict[str, Any] | None = None,
+        parameters: Optional[Dict[str, Any]] = None,
         tracking: bool = False,
         **kwargs: Any,
     ) -> Result:
@@ -81,7 +81,7 @@ class Session(_Base):
         return Result(original_result, self.__client, self.__change_tracker if tracking else None)
 
     def begin_transaction(
-        self, metadata: Dict[str, Any] | None = None, timeout: float | None = None
+        self, metadata: Optional[Dict[str, Any]] = None, timeout: Optional[float] = None
     ) -> Transaction:
         """
         Method providing the same interface as `neo4j.Session.begin_transaction`. If any entity

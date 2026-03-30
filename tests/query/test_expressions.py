@@ -6,11 +6,11 @@ import neo4j
 import pytest
 
 from loomi.graph.node import Node
-from loomi.query.expressions import QueryExpression, _ExpressionContext
+from loomi.query.alias import create_alias
+from loomi.query.expressions import ExpressionContext, QueryExpression
 from loomi.query.functions import (
     and_,
     contains,
-    create_alias,
     cypher,
     ends_with,
     equals,
@@ -47,13 +47,13 @@ class TestEqualsExpression:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(Human.name, "John")
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -66,13 +66,13 @@ class TestEqualsExpression:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(aliased_human)
             expression = equals(aliased_human.name, "John")
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -85,13 +85,13 @@ class TestEqualsExpression:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = Human.name == "John"
             compiled_expression = cast(QueryExpression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -106,13 +106,13 @@ class TestNotEqualsExpression:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = not_equals(Human.name, "Jane")
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -125,13 +125,13 @@ class TestNotEqualsExpression:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(aliased_human)
             expression = not_equals(aliased_human.name, "Jane")
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -144,13 +144,13 @@ class TestNotEqualsExpression:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = Human.name != "Jane"
             compiled_expression = cast(QueryExpression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -165,13 +165,13 @@ class TestGreaterExpression:
             session.run("CREATE (:Human $props)", {"props": {"age": 24}})
             session.run("CREATE (:Human $props)", {"props": {"age": 22}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = greater_than(Human.age, 23)
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -184,13 +184,13 @@ class TestGreaterExpression:
             session.run("CREATE (:Human $props)", {"props": {"age": 24}})
             session.run("CREATE (:Human $props)", {"props": {"age": 22}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(aliased_human)
             expression = greater_than(aliased_human.age, 23)
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -203,13 +203,13 @@ class TestGreaterExpression:
             session.run("CREATE (:Human $props)", {"props": {"age": 24}})
             session.run("CREATE (:Human $props)", {"props": {"age": 22}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = Human.age > 23
             compiled_expression = cast(QueryExpression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -224,13 +224,13 @@ class TestGreaterOrEqualsExpression:
             session.run("CREATE (:Human $props)", {"props": {"age": 24}})
             session.run("CREATE (:Human $props)", {"props": {"age": 22}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = greater_than_or_equal(Human.age, 24)
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -243,13 +243,13 @@ class TestGreaterOrEqualsExpression:
             session.run("CREATE (:Human $props)", {"props": {"age": 24}})
             session.run("CREATE (:Human $props)", {"props": {"age": 22}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(aliased_human)
             expression = greater_than_or_equal(aliased_human.age, 24)
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -262,13 +262,13 @@ class TestGreaterOrEqualsExpression:
             session.run("CREATE (:Human $props)", {"props": {"age": 24}})
             session.run("CREATE (:Human $props)", {"props": {"age": 22}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = Human.age >= 24
             compiled_expression = cast(QueryExpression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -283,13 +283,13 @@ class TestLessExpression:
             session.run("CREATE (:Human $props)", {"props": {"age": 24}})
             session.run("CREATE (:Human $props)", {"props": {"age": 22}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = less_than(Human.age, 23)
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -302,13 +302,13 @@ class TestLessExpression:
             session.run("CREATE (:Human $props)", {"props": {"age": 24}})
             session.run("CREATE (:Human $props)", {"props": {"age": 22}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(aliased_human)
             expression = less_than(aliased_human.age, 23)
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -321,13 +321,13 @@ class TestLessExpression:
             session.run("CREATE (:Human $props)", {"props": {"age": 24}})
             session.run("CREATE (:Human $props)", {"props": {"age": 22}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = Human.age < 23
             compiled_expression = cast(QueryExpression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -342,13 +342,13 @@ class TestLessOrEqualsExpression:
             session.run("CREATE (:Human $props)", {"props": {"age": 24}})
             session.run("CREATE (:Human $props)", {"props": {"age": 22}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = less_than_or_equal(Human.age, 22)
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -361,13 +361,13 @@ class TestLessOrEqualsExpression:
             session.run("CREATE (:Human $props)", {"props": {"age": 24}})
             session.run("CREATE (:Human $props)", {"props": {"age": 22}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(aliased_human)
             expression = less_than_or_equal(aliased_human.age, 22)
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -380,13 +380,13 @@ class TestLessOrEqualsExpression:
             session.run("CREATE (:Human $props)", {"props": {"age": 24}})
             session.run("CREATE (:Human $props)", {"props": {"age": 22}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = Human.age <= 22
             compiled_expression = cast(QueryExpression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -401,13 +401,13 @@ class TestNotExpression:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = not_(equals(Human.name, "Jane"))
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -420,13 +420,13 @@ class TestNotExpression:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(aliased_human)
             expression = not_(equals(aliased_human.name, "Jane"))
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -439,13 +439,13 @@ class TestNotExpression:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = ~(Human.name == "Jane")
             compiled_expression = cast(QueryExpression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -460,13 +460,13 @@ class TestIsNullExpression:
             session.run("CREATE (:Human $props)", {"props": {"name": None}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = is_null(Human.name)
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -481,13 +481,13 @@ class TestIsNullExpression:
             session.run("CREATE (:Human $props)", {"props": {"name": None}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(aliased_human)
             expression = is_null(aliased_human.name)
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -502,13 +502,13 @@ class TestIsNotNullExpression:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": None}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = is_not_null(Human.name)
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -523,13 +523,13 @@ class TestIsNotNullExpression:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": None}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(aliased_human)
             expression = is_not_null(aliased_human.name)
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -544,13 +544,13 @@ class TestInExpression:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = in_(Human.name, ["Monty", "John", "James"])
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -563,13 +563,13 @@ class TestInExpression:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(aliased_human)
             expression = in_(aliased_human.name, ["Monty", "John", "James"])
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -584,13 +584,13 @@ class TestStartsWithExpression:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = starts_with(Human.name, "Jo")
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -605,13 +605,13 @@ class TestStartsWithExpression:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(aliased_human)
             expression = starts_with(aliased_human.name, "Jo")
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -626,13 +626,13 @@ class TestEndsWithExpression:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = ends_with(Human.name, "hn")
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -647,13 +647,13 @@ class TestEndsWithExpression:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(aliased_human)
             expression = ends_with(aliased_human.name, "hn")
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -668,13 +668,13 @@ class TestContainsExpression:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = contains(Human.name, "o")
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -689,13 +689,13 @@ class TestContainsExpression:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(aliased_human)
             expression = contains(aliased_human.name, "o")
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -710,13 +710,13 @@ class TestRegexExpression:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = regex(Human.name, ".*hn")
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -731,13 +731,13 @@ class TestRegexExpression:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(aliased_human)
             expression = regex(aliased_human.name, ".*hn")
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -755,7 +755,7 @@ class TestCypherExpression:
             )
             session.run("CREATE (:Human $props)", {"props": {"name": "Jimmy"}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = cypher(
                 "EXISTS {{ MATCH ({var})-->(n:Other) WHERE n.name = ${other_name} RETURN {var} }}",
@@ -765,7 +765,7 @@ class TestCypherExpression:
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -783,7 +783,7 @@ class TestCypherExpression:
             )
             session.run("CREATE (:Human $props)", {"props": {"name": "Jimmy"}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(aliased_human)
             expression = cypher(
                 "EXISTS {{ MATCH ({var})-->(n:Other) WHERE n.name = ${other_name} RETURN {var} }}",
@@ -793,7 +793,7 @@ class TestCypherExpression:
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -808,13 +808,13 @@ class TestCompoundExpressions:
             session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 24}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = and_(equals(Human.name, "John"), equals(Human.age, 24))
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -827,13 +827,13 @@ class TestCompoundExpressions:
             session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 24}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(aliased_human)
             expression = and_(equals(aliased_human.name, "John"), equals(aliased_human.age, 24))
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -846,13 +846,13 @@ class TestCompoundExpressions:
             session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 24}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = (Human.name == "John") & (Human.age == 24)
             compiled_expression = cast(QueryExpression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -865,13 +865,13 @@ class TestCompoundExpressions:
             session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 22}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = or_(equals(Human.name, "John"), equals(Human.age, 30))
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -884,13 +884,13 @@ class TestCompoundExpressions:
             session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 22}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(aliased_human)
             expression = or_(equals(aliased_human.name, "John"), equals(aliased_human.age, 30))
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -903,13 +903,13 @@ class TestCompoundExpressions:
             session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 22}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = (Human.name == "John") | (Human.age == 30)
             compiled_expression = cast(QueryExpression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -922,13 +922,13 @@ class TestCompoundExpressions:
             session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 22}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = xor(equals(Human.name, "John"), equals(Human.age, 30))
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -941,13 +941,13 @@ class TestCompoundExpressions:
             session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 22}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(aliased_human)
             expression = xor(equals(aliased_human.name, "John"), equals(aliased_human.age, 30))
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -960,13 +960,13 @@ class TestCompoundExpressions:
             session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 22}})
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = (Human.name == "John") ^ (Human.age == 30)
             compiled_expression = cast(QueryExpression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1

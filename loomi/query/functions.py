@@ -1,10 +1,17 @@
-import re
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, TypeVar, Union, cast, get_args, get_origin
 
-from loomi._internal._types import ModelType, NumericValue, QueryModelType
+from loomi._internal._types import NumericValue, QueryModelType
 from loomi.constants import ServerType
-from loomi.exceptions import ModelError, QueryError
+from loomi.exceptions import QueryError
+from loomi.query._protocols import CompilableDescriptor
+from loomi.query._templates import (
+    DbFunctionTemplate,
+    EntityIdExpressionTemplate,
+    ExpressionTemplate,
+    ListPathOperator,
+    LogicalExpressionOperator,
+    UnaryExpressionTemplate,
+)
 from loomi.query.expressions import (
     CompoundQueryExpression,
     CustomQueryExpression,
@@ -12,74 +19,23 @@ from loomi.query.expressions import (
     NullQueryExpression,
     QueryExpression,
     _BaseQueryExpression,
-    _ExpressionTemplate,
-    _LogicalExpressionOperator,
-    _UnaryExpressionTemplate,
 )
 
 if TYPE_CHECKING:
-    from loomi.query.descriptor import EntityIdDescriptor
+    from loomi.query.descriptor import DbFunctionDescriptor, EntityIdDescriptor
 else:
     EntityIdDescriptor = object
+    DbFunctionDescriptor = object
 
-T = TypeVar("T", bound=ModelType)
 P = TypeVar("P")
 
 
-@dataclass(frozen=True)
-class AliasedModel:
-    """
-    Model proxy allowing the same model type to be referenced multiple times with different
-    variable names in queries.
-    """
-
-    _alias: str
-    _model_type: ModelType
-
-    def __getattribute__(self, name: str) -> Any:
-        from loomi.query.descriptor import PropertyDescriptor
-
-        if name in ["_model_type", "_alias"]:
-            return super().__getattribute__(name)
-
-        if name in self._model_type.model_fields:
-            return PropertyDescriptor(
-                name, cast(Any, self._model_type.model_fields[name].annotation), self
-            )
-
-        raise ModelError("Aliased models only expose property descriptors")
-
-
 def _validate_property_descriptor(maybe_property_descriptor: Any) -> None:
-    from loomi.query.descriptor import EntityIdDescriptor, PropertyDescriptor, _Descriptor
-
-    if not isinstance(maybe_property_descriptor, (PropertyDescriptor, EntityIdDescriptor)):
+    if not isinstance(maybe_property_descriptor, CompilableDescriptor):
         raise QueryError(
-            f"Expected instance of subclass of {_Descriptor.__class__.__name__}, "
+            f"Expected instance of subclass of {CompilableDescriptor.__name__}, "
             f"got {maybe_property_descriptor}"
         )
-
-
-def create_alias(model_type: T, alias: str) -> T:
-    """
-    Creates a new `AliasedModel` instance which can be used to reference the same model type
-    multiple times under different variables in the same query.
-
-    Args:
-        model_type: (ModelType): The model to create a alias for.
-        alias (str): The alias which will be used in queries. Can be any string which does
-        **not match** the format **v<any number>**.
-
-    Raises:
-        QueryError: If attempting to use the reserved format for the alias.
-
-    Returns:
-        AliasedModel: The model which can be used in queries.
-    """
-    if re.match(r"^v\d+", alias):
-        raise QueryError("Aliases with a pattern 'v<number>' are reserved for internal use")
-
-    return cast(T, AliasedModel(alias, model_type))
 
 
 def equals(property_descriptor: Any, value: Any) -> QueryExpression:
@@ -95,7 +51,7 @@ def equals(property_descriptor: Any, value: Any) -> QueryExpression:
     """
     _validate_property_descriptor(property_descriptor)
 
-    return QueryExpression(property_descriptor, _ExpressionTemplate.EQ, value)
+    return QueryExpression(property_descriptor, ExpressionTemplate.EQ, value)
 
 
 def not_equals(property_descriptor: Any, value: Any) -> QueryExpression:
@@ -111,7 +67,7 @@ def not_equals(property_descriptor: Any, value: Any) -> QueryExpression:
     """
     _validate_property_descriptor(property_descriptor)
 
-    return QueryExpression(property_descriptor, _ExpressionTemplate.NEQ, value)
+    return QueryExpression(property_descriptor, ExpressionTemplate.NEQ, value)
 
 
 def greater_than(property_descriptor: Any, value: NumericValue) -> QueryExpression:
@@ -129,10 +85,10 @@ def greater_than(property_descriptor: Any, value: NumericValue) -> QueryExpressi
 
     if not isinstance(value, (int, float)):
         raise QueryError(
-            f"Values for {_ExpressionTemplate.GT.name} expressions must be valid numbers"
+            f"Values for {ExpressionTemplate.GT.name} expressions must be valid numbers"
         )
 
-    return QueryExpression(property_descriptor, _ExpressionTemplate.GT, value)
+    return QueryExpression(property_descriptor, ExpressionTemplate.GT, value)
 
 
 def greater_than_or_equal(property_descriptor: Any, value: NumericValue) -> QueryExpression:
@@ -150,10 +106,10 @@ def greater_than_or_equal(property_descriptor: Any, value: NumericValue) -> Quer
 
     if not isinstance(value, (int, float)):
         raise QueryError(
-            f"Values for {_ExpressionTemplate.GTE.name} expressions must be valid numbers"
+            f"Values for {ExpressionTemplate.GTE.name} expressions must be valid numbers"
         )
 
-    return QueryExpression(property_descriptor, _ExpressionTemplate.GTE, value)
+    return QueryExpression(property_descriptor, ExpressionTemplate.GTE, value)
 
 
 def less_than(property_descriptor: Any, value: NumericValue) -> QueryExpression:
@@ -171,10 +127,10 @@ def less_than(property_descriptor: Any, value: NumericValue) -> QueryExpression:
 
     if not isinstance(value, (int, float)):
         raise QueryError(
-            f"Values for {_ExpressionTemplate.LT.name} expressions must be valid numbers"
+            f"Values for {ExpressionTemplate.LT.name} expressions must be valid numbers"
         )
 
-    return QueryExpression(property_descriptor, _ExpressionTemplate.LT, value)
+    return QueryExpression(property_descriptor, ExpressionTemplate.LT, value)
 
 
 def less_than_or_equal(property_descriptor: Any, value: NumericValue) -> QueryExpression:
@@ -192,10 +148,10 @@ def less_than_or_equal(property_descriptor: Any, value: NumericValue) -> QueryEx
 
     if not isinstance(value, (int, float)):
         raise QueryError(
-            f"Values for {_ExpressionTemplate.LTE.name} expressions must be valid numbers"
+            f"Values for {ExpressionTemplate.LTE.name} expressions must be valid numbers"
         )
 
-    return QueryExpression(property_descriptor, _ExpressionTemplate.LTE, value)
+    return QueryExpression(property_descriptor, ExpressionTemplate.LTE, value)
 
 
 def not_(
@@ -227,7 +183,7 @@ def and_(
     Returns:
         CompoundQueryExpression: A expression which can be compiled by a query builder.
     """
-    return CompoundQueryExpression(_LogicalExpressionOperator.AND, [*expressions])
+    return CompoundQueryExpression(LogicalExpressionOperator.AND, [*expressions])
 
 
 def or_(
@@ -243,7 +199,7 @@ def or_(
     Returns:
         CompoundQueryExpression: A expression which can be compiled by a query builder.
     """
-    return CompoundQueryExpression(_LogicalExpressionOperator.OR, [*expressions])
+    return CompoundQueryExpression(LogicalExpressionOperator.OR, [*expressions])
 
 
 def xor(
@@ -259,7 +215,7 @@ def xor(
     Returns:
         CompoundQueryExpression: A expression which can be compiled by a query builder.
     """
-    return CompoundQueryExpression(_LogicalExpressionOperator.XOR, [*expressions])
+    return CompoundQueryExpression(LogicalExpressionOperator.XOR, [*expressions])
 
 
 def is_null(property_descriptor: Any) -> NullQueryExpression:
@@ -276,7 +232,7 @@ def is_null(property_descriptor: Any) -> NullQueryExpression:
 
     return NullQueryExpression(
         property_descriptor,
-        _UnaryExpressionTemplate.IS_NULL,
+        UnaryExpressionTemplate.IS_NULL,
     )
 
 
@@ -294,7 +250,7 @@ def is_not_null(property_descriptor: Any) -> NullQueryExpression:
 
     return NullQueryExpression(
         property_descriptor,
-        _UnaryExpressionTemplate.IS_NOT_NULL,
+        UnaryExpressionTemplate.IS_NOT_NULL,
     )
 
 
@@ -312,11 +268,9 @@ def in_(property_descriptor: Any, value: List[Any]) -> QueryExpression:
     _validate_property_descriptor(property_descriptor)
 
     if not isinstance(value, list):
-        raise QueryError(
-            f"Values for {_ExpressionTemplate.IN.name} expressions must be valid lists"
-        )
+        raise QueryError(f"Values for {ExpressionTemplate.IN.name} expressions must be valid lists")
 
-    return QueryExpression(property_descriptor, _ExpressionTemplate.IN, value)
+    return QueryExpression(property_descriptor, ExpressionTemplate.IN, value)
 
 
 def starts_with(property_descriptor: Any, value: str) -> QueryExpression:
@@ -334,10 +288,10 @@ def starts_with(property_descriptor: Any, value: str) -> QueryExpression:
 
     if not isinstance(value, str):
         raise QueryError(
-            f"Values for {_ExpressionTemplate.STARTS_WITH.name} expressions must be valid strings"
+            f"Values for {ExpressionTemplate.STARTS_WITH.name} expressions must be valid strings"
         )
 
-    return QueryExpression(property_descriptor, _ExpressionTemplate.STARTS_WITH, value)
+    return QueryExpression(property_descriptor, ExpressionTemplate.STARTS_WITH, value)
 
 
 def ends_with(property_descriptor: Any, value: str) -> QueryExpression:
@@ -355,10 +309,10 @@ def ends_with(property_descriptor: Any, value: str) -> QueryExpression:
 
     if not isinstance(value, str):
         raise QueryError(
-            f"Values for {_ExpressionTemplate.ENDS_WITH.name} expressions must be valid strings"
+            f"Values for {ExpressionTemplate.ENDS_WITH.name} expressions must be valid strings"
         )
 
-    return QueryExpression(property_descriptor, _ExpressionTemplate.ENDS_WITH, value)
+    return QueryExpression(property_descriptor, ExpressionTemplate.ENDS_WITH, value)
 
 
 def contains(property_descriptor: Any, value: str) -> QueryExpression:
@@ -376,10 +330,10 @@ def contains(property_descriptor: Any, value: str) -> QueryExpression:
 
     if not isinstance(value, str):
         raise QueryError(
-            f"Values for {_ExpressionTemplate.CONTAINS.name} expressions must be valid strings"
+            f"Values for {ExpressionTemplate.CONTAINS.name} expressions must be valid strings"
         )
 
-    return QueryExpression(property_descriptor, _ExpressionTemplate.CONTAINS, value)
+    return QueryExpression(property_descriptor, ExpressionTemplate.CONTAINS, value)
 
 
 def regex(property_descriptor: Any, value: str) -> QueryExpression:
@@ -397,10 +351,10 @@ def regex(property_descriptor: Any, value: str) -> QueryExpression:
 
     if not isinstance(value, str):
         raise QueryError(
-            f"Values for {_ExpressionTemplate.REGEX.name} expressions must be valid strings"
+            f"Values for {ExpressionTemplate.REGEX.name} expressions must be valid strings"
         )
 
-    return QueryExpression(property_descriptor, _ExpressionTemplate.REGEX, value)
+    return QueryExpression(property_descriptor, ExpressionTemplate.REGEX, value)
 
 
 def cypher(
@@ -430,7 +384,7 @@ def all_(property_descriptor: List[P]) -> P:
     Returns:
         PropertyDescriptor: A property descriptor which can be used to further define paths.
     """
-    from loomi.query.descriptor import PropertyDescriptor, _ListPathOperator
+    from loomi.query.descriptor import PropertyDescriptor
 
     _validate_property_descriptor(property_descriptor)
     descriptor = cast(PropertyDescriptor, property_descriptor)
@@ -446,7 +400,7 @@ def all_(property_descriptor: List[P]) -> P:
     return cast(
         P,
         PropertyDescriptor(
-            f"{descriptor._full_path}.{_ListPathOperator.ALL.value}",
+            f"{descriptor._full_path}.{ListPathOperator.ALL.value}",
             inferred_type,
             descriptor._model_type,
         ),
@@ -461,7 +415,7 @@ def any_(property_descriptor: List[P]) -> P:
     Returns:
         PropertyDescriptor: A property descriptor which can be used to further define paths.
     """
-    from loomi.query.descriptor import PropertyDescriptor, _ListPathOperator
+    from loomi.query.descriptor import PropertyDescriptor
 
     _validate_property_descriptor(property_descriptor)
     descriptor = cast(PropertyDescriptor, property_descriptor)
@@ -477,7 +431,7 @@ def any_(property_descriptor: List[P]) -> P:
     return cast(
         P,
         PropertyDescriptor(
-            f"{descriptor._full_path}.{_ListPathOperator.ANY.value}",
+            f"{descriptor._full_path}.{ListPathOperator.ANY.value}",
             inferred_type,
             descriptor._model_type,
         ),
@@ -491,7 +445,7 @@ def none(property_descriptor: List[P]) -> P:
     Returns:
         PropertyDescriptor: A property descriptor which can be used to further define paths.
     """
-    from loomi.query.descriptor import PropertyDescriptor, _ListPathOperator
+    from loomi.query.descriptor import PropertyDescriptor
 
     _validate_property_descriptor(property_descriptor)
     descriptor = cast(PropertyDescriptor, property_descriptor)
@@ -507,7 +461,7 @@ def none(property_descriptor: List[P]) -> P:
     return cast(
         P,
         PropertyDescriptor(
-            f"{descriptor._full_path}.{_ListPathOperator.NONE.value}",
+            f"{descriptor._full_path}.{ListPathOperator.NONE.value}",
             inferred_type,
             descriptor._model_type,
         ),
@@ -521,7 +475,7 @@ def single(property_descriptor: List[P]) -> P:
     Returns:
         PropertyDescriptor: A property descriptor which can be used to further define paths.
     """
-    from loomi.query.descriptor import PropertyDescriptor, _ListPathOperator
+    from loomi.query.descriptor import PropertyDescriptor
 
     _validate_property_descriptor(property_descriptor)
     descriptor = cast(PropertyDescriptor, property_descriptor)
@@ -537,7 +491,7 @@ def single(property_descriptor: List[P]) -> P:
     return cast(
         P,
         PropertyDescriptor(
-            f"{descriptor._full_path}.{_ListPathOperator.SINGLE.value}",
+            f"{descriptor._full_path}.{ListPathOperator.SINGLE.value}",
             inferred_type,
             descriptor._model_type,
         ),
@@ -555,9 +509,9 @@ def element_id(model_type: QueryModelType, server_type: ServerType) -> EntityIdD
     Returns:
         EntityIdDescriptor: A entity id descriptor which can be used by a query builder.
     """
-    from loomi.query.descriptor import EntityIdDescriptor, _EntityIdTemplate
+    from loomi.query.descriptor import EntityIdDescriptor
 
-    return EntityIdDescriptor(_EntityIdTemplate.ELEMENT_ID, model_type, server_type)
+    return EntityIdDescriptor(EntityIdExpressionTemplate.ELEMENT_ID, model_type, server_type)
 
 
 def id_(model_type: QueryModelType, server_type: ServerType) -> EntityIdDescriptor:
@@ -571,6 +525,176 @@ def id_(model_type: QueryModelType, server_type: ServerType) -> EntityIdDescript
     Returns:
         EntityIdDescriptor: A entity id descriptor which can be used by a query builder.
     """
-    from loomi.query.descriptor import EntityIdDescriptor, _EntityIdTemplate
+    from loomi.query.descriptor import EntityIdDescriptor
 
-    return EntityIdDescriptor(_EntityIdTemplate.ID, model_type, server_type)
+    return EntityIdDescriptor(EntityIdExpressionTemplate.ID, model_type, server_type)
+
+
+def tail(property_descriptor: Any) -> DbFunctionDescriptor:
+    """
+    Wraps the property descriptor in a `tail()` function.
+
+    Args:
+        property_descriptor (PropertyDescriptor): The descriptor to wrap.
+
+    Returns:
+        DbFunctionDescriptor: A descriptor which can be compiled by a query builder.
+    """
+    from loomi.query.descriptor import DbFunctionDescriptor
+
+    _validate_property_descriptor(property_descriptor)
+
+    return DbFunctionDescriptor(DbFunctionTemplate.TAIL, property_descriptor)
+
+
+def abs_(property_descriptor: Any) -> DbFunctionDescriptor:
+    """
+    Wraps the property descriptor in a `abc()` function.
+
+    Args:
+        property_descriptor (PropertyDescriptor): The descriptor to wrap.
+
+    Returns:
+        DbFunctionDescriptor: A descriptor which can be compiled by a query builder.
+    """
+    from loomi.query.descriptor import DbFunctionDescriptor
+
+    _validate_property_descriptor(property_descriptor)
+
+    return DbFunctionDescriptor(DbFunctionTemplate.ABS, property_descriptor)
+
+
+def ceil(property_descriptor: Any) -> DbFunctionDescriptor:
+    """
+    Wraps the property descriptor in a `ceil()` function.
+
+    Args:
+        property_descriptor (PropertyDescriptor): The descriptor to wrap.
+
+    Returns:
+        DbFunctionDescriptor: A descriptor which can be compiled by a query builder.
+    """
+    from loomi.query.descriptor import DbFunctionDescriptor
+
+    _validate_property_descriptor(property_descriptor)
+
+    return DbFunctionDescriptor(DbFunctionTemplate.CEIL, property_descriptor)
+
+
+def floor(property_descriptor: Any) -> DbFunctionDescriptor:
+    """
+    Wraps the property descriptor in a `floor()` function.
+
+    Args:
+        property_descriptor (PropertyDescriptor): The descriptor to wrap.
+
+    Returns:
+        DbFunctionDescriptor: A descriptor which can be compiled by a query builder.
+    """
+    from loomi.query.descriptor import DbFunctionDescriptor
+
+    _validate_property_descriptor(property_descriptor)
+
+    return DbFunctionDescriptor(DbFunctionTemplate.FLOOR, property_descriptor)
+
+
+def round_(property_descriptor: Any) -> DbFunctionDescriptor:
+    """
+    Wraps the property descriptor in a `round()` function.
+
+    Args:
+        property_descriptor (PropertyDescriptor): The descriptor to wrap.
+
+    Returns:
+        DbFunctionDescriptor: A descriptor which can be compiled by a query builder.
+    """
+    from loomi.query.descriptor import DbFunctionDescriptor
+
+    _validate_property_descriptor(property_descriptor)
+
+    return DbFunctionDescriptor(DbFunctionTemplate.ROUND, property_descriptor)
+
+
+def ltrim(property_descriptor: Any) -> DbFunctionDescriptor:
+    """
+    Wraps the property descriptor in a `ltrim()` function.
+
+    Args:
+        property_descriptor (PropertyDescriptor): The descriptor to wrap.
+
+    Returns:
+        DbFunctionDescriptor: A descriptor which can be compiled by a query builder.
+    """
+    from loomi.query.descriptor import DbFunctionDescriptor
+
+    _validate_property_descriptor(property_descriptor)
+
+    return DbFunctionDescriptor(DbFunctionTemplate.LTRIM, property_descriptor)
+
+
+def rtrim(property_descriptor: Any) -> DbFunctionDescriptor:
+    """
+    Wraps the property descriptor in a `rtrim()` function.
+
+    Args:
+        property_descriptor (PropertyDescriptor): The descriptor to wrap.
+
+    Returns:
+        DbFunctionDescriptor: A descriptor which can be compiled by a query builder.
+    """
+    from loomi.query.descriptor import DbFunctionDescriptor
+
+    _validate_property_descriptor(property_descriptor)
+
+    return DbFunctionDescriptor(DbFunctionTemplate.RTRIM, property_descriptor)
+
+
+def trim(property_descriptor: Any) -> DbFunctionDescriptor:
+    """
+    Wraps the property descriptor in a `trim()` function.
+
+    Args:
+        property_descriptor (PropertyDescriptor): The descriptor to wrap.
+
+    Returns:
+        DbFunctionDescriptor: A descriptor which can be compiled by a query builder.
+    """
+    from loomi.query.descriptor import DbFunctionDescriptor
+
+    _validate_property_descriptor(property_descriptor)
+
+    return DbFunctionDescriptor(DbFunctionTemplate.TRIM, property_descriptor)
+
+
+def to_lower(property_descriptor: Any) -> DbFunctionDescriptor:
+    """
+    Wraps the property descriptor in a `toLower()` function.
+
+    Args:
+        property_descriptor (PropertyDescriptor): The descriptor to wrap.
+
+    Returns:
+        DbFunctionDescriptor: A descriptor which can be compiled by a query builder.
+    """
+    from loomi.query.descriptor import DbFunctionDescriptor
+
+    _validate_property_descriptor(property_descriptor)
+
+    return DbFunctionDescriptor(DbFunctionTemplate.TO_LOWER, property_descriptor)
+
+
+def to_upper(property_descriptor: Any) -> DbFunctionDescriptor:
+    """
+    Wraps the property descriptor in a `toUpper()` function.
+
+    Args:
+        property_descriptor (PropertyDescriptor): The descriptor to wrap.
+
+    Returns:
+        DbFunctionDescriptor: A descriptor which can be compiled by a query builder.
+    """
+    from loomi.query.descriptor import DbFunctionDescriptor
+
+    _validate_property_descriptor(property_descriptor)
+
+    return DbFunctionDescriptor(DbFunctionTemplate.TO_UPPER, property_descriptor)

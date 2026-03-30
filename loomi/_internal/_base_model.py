@@ -1,7 +1,6 @@
 # pylint: disable=arguments-differ, missing-class-docstring
 
 import json
-from abc import ABC
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -67,7 +66,7 @@ class EntityBaseMetaclass(type(BaseModel)):
         return super().__getattribute__(name)
 
 
-class EntityBase(BaseModel, ABC, metaclass=EntityBaseMetaclass):
+class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
     _id: Optional[int] = PrivateAttr(None)
     _element_id: Optional[str] = PrivateAttr(None)
     _hash: Optional[str] = PrivateAttr(None)

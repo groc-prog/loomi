@@ -9,8 +9,7 @@ from pydantic import BaseModel
 from loomi.constants import ServerType
 from loomi.exceptions import QueryError
 from loomi.graph.node import Node
-from loomi.query.descriptor import PropertyDescriptor
-from loomi.query.expressions import _ExpressionContext
+from loomi.query.expressions import ExpressionContext
 from loomi.query.functions import all_, any_, element_id, equals, id_, in_, none, single
 from tests.fixtures.db import (
     MEMGRAPH_DRIVER_SPEC,
@@ -41,33 +40,6 @@ class Human(Node):
     hobbies: List[str]
 
 
-class TestPropertyDescriptorPath:
-    def test_descriptor_returns_simple_path(self):
-        """Verify that a simple descriptor path returns the path as a string."""
-        descriptor = Human.name
-        template = cast(PropertyDescriptor, descriptor).compiled_path()
-
-        assert template == "{variable}.name"
-
-    def test_descriptor_returns_nested_path(self):
-        """Verify that a nested descriptor path returns the path as a string."""
-        descriptor = Human.job.name
-        template = cast(PropertyDescriptor, descriptor).compiled_path()
-
-        assert template == "{variable}.job.name"
-
-    def test_descriptor_raises_when_list_operator_is_used(self):
-        """Verify that the descriptor throws if any list path operator is used."""
-        with pytest.raises(QueryError):
-            cast(PropertyDescriptor, any_(Human.meta.tags).name).compiled_path()
-
-        with pytest.raises(QueryError):
-            cast(PropertyDescriptor, all_(Human.meta.tags).name).compiled_path()
-
-        with pytest.raises(QueryError):
-            cast(PropertyDescriptor, none(Human.meta.tags).name).compiled_path()
-
-
 class TestPropertyDescriptorListPaths:
     @pytest.mark.integration
     def test_any_query(self, sync_driver: neo4j.Driver, driver_spec: DriverSpec):
@@ -82,13 +54,13 @@ class TestPropertyDescriptorListPaths:
                 {"props": {"name": "Jane", "hobbies": ["Sleeping", "Working"]}},
             )
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(any_(Human.hobbies), "Coding")
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -107,13 +79,13 @@ class TestPropertyDescriptorListPaths:
                 {"props": {"name": "Jane", "hobbies": ["Sleeping", "Working"]}},
             )
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = in_(all_(Human.hobbies), ["Coding", "Chilling"])
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -132,13 +104,13 @@ class TestPropertyDescriptorListPaths:
                 {"props": {"name": "Jane", "hobbies": ["Sleeping", "Working"]}},
             )
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(none(Human.hobbies), "Working")
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -157,13 +129,13 @@ class TestPropertyDescriptorListPaths:
                 {"props": {"name": "Jane", "hobbies": ["Sleeping", "Working"]}},
             )
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = in_(single(Human.hobbies), ["Sleeping", "Working", "Chilling"])
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -182,13 +154,13 @@ class TestPropertyDescriptorListPaths:
                 {"props": {"name": "Jane", "hobbies": ["Sleeping", "Working"]}},
             )
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(Human.hobbies[0], "Coding")
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -230,13 +202,13 @@ class TestPropertyDescriptorListPaths:
                 },
             )
 
-            ctx = _ExpressionContext(MEMGRAPH_DRIVER_SPEC.name)
+            ctx = ExpressionContext(MEMGRAPH_DRIVER_SPEC.name)
             ctx.add_model(Worker)
             expression = equals(single(any_(Worker.jobs).tags), "tag3")
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Worker)}:Worker) WHERE {compiled_expression} RETURN {ctx.get_variable(Worker)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -255,13 +227,13 @@ class TestEntityIdDescriptor:
             )
             entity_id = seed_result.value()[0]
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(element_id(Human, driver_spec.name), entity_id)
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1
@@ -277,13 +249,13 @@ class TestEntityIdDescriptor:
             )
             entity_id = seed_result.value()[0]
 
-            ctx = _ExpressionContext(driver_spec.name)
+            ctx = ExpressionContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(id_(Human, driver_spec.name), entity_id)
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
-            result = session.run(cast(LiteralString, query), ctx._parameters)
+            result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
             assert len(entities) == 1

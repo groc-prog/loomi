@@ -2,7 +2,6 @@
 
 import functools
 import inspect
-from abc import ABC
 from typing import (
     Any,
     Callable,
@@ -58,7 +57,7 @@ def require_server_metadata(func: F) -> F:
     return cast(F, sync_wrapper)
 
 
-class BaseClient(Generic[T], ABC):
+class BaseClient(Generic[T]):
     _driver: T
     _server_type: Optional[ServerType]
     _server_version: Optional[Tuple[int, ...]]

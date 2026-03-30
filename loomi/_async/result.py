@@ -133,7 +133,7 @@ class AsyncResult(_Base):
         return neo4j.EagerResult(transformed_result, original_result.summary, original_result.keys)
 
     @overload
-    async def single(self, strict: Literal[False] = False) -> neo4j.Record | None: ...
+    async def single(self, strict: Literal[False] = False) -> Optional[neo4j.Record]: ...
 
     @overload
     # pylint: disable-next=signature-differs
