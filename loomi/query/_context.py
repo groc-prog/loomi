@@ -7,16 +7,16 @@ from loomi.exceptions import QueryError
 from loomi.query.alias import AliasedModel
 
 
-class ExpressionContext:
-    """Context scoped to a query builder."""
+class QueryCompilationContext:
+    """Context scoped to a query compilation."""
 
-    _server_type: ServerType
-    _variable_counter = 0
-    _models_to_vars: Dict[QueryModelType, str]
+    server_type: ServerType
     parameters: Dict[str, Any]
+    _variable_counter: int
+    _models_to_vars: Dict[QueryModelType, str]
 
     def __init__(self, server_type: ServerType) -> None:
-        self._server_type = server_type
+        self.server_type = server_type
         self._variable_counter = 0
         self._models_to_vars = {}
         self.parameters = {}

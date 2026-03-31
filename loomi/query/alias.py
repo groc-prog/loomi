@@ -19,17 +19,17 @@ class AliasedModel:
     _model_type: ModelType
 
     def __getattribute__(self, name: str) -> Any:
-        from loomi.query.descriptor import PropertyDescriptor
+        from loomi.query.descriptor import FieldDescriptor
 
         if name.startswith("_"):
             return super().__getattribute__(name)
 
         if name in self._model_type.model_fields:
-            return PropertyDescriptor(
+            return FieldDescriptor(
                 name, cast(Any, self._model_type.model_fields[name].annotation), self
             )
 
-        raise ModelError("Aliased models only expose property descriptors")
+        raise ModelError("Aliased models only expose field descriptors")
 
 
 def create_alias(model_type: T, alias: str) -> T:

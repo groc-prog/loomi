@@ -21,7 +21,7 @@ from loomi._internal._types import ModelType
 from loomi._logger import LogContextKey, logger, scoped_log_ctx
 from loomi.constants import SUPPORTED_DATA_TYPES, SUPPORTED_LIST_DATA_TYPES, ServerType
 from loomi.exceptions import SerializationError
-from loomi.query.descriptor import PropertyDescriptor
+from loomi.query.descriptor import FieldDescriptor
 
 if TYPE_CHECKING:
     from loomi._internal._base_client import ClientConfiguration
@@ -35,7 +35,7 @@ class EntityConfiguration(TypedDict, total=False):
     A custom function used when serializing nested objects before storing the model to the
     database. Defaults to `json.dumps` if not defined.
 
-    [!NOTE] This function will be called for all properties which are not included in
+    [!NOTE] This function will be called for all fields which are not included in
     `SUPPORTED_DATA_TYPES` after `model.model_dump()` has been called.
     """
 
@@ -44,7 +44,7 @@ class EntityConfiguration(TypedDict, total=False):
     A custom function used when de-serializing nested objects before passing the data to the
     Pydantic model. Defaults to `json.loads` if not defined.
 
-    [!NOTE] This function will be called for all properties which do not match their annotation as
+    [!NOTE] This function will be called for all fields which do not match their annotation as
     defined on the model. For lists, this will be called for all list items.
     """
 
@@ -61,7 +61,7 @@ class EntityBaseMetaclass(type(BaseModel)):
         if cls.__pydantic_complete__:
             model_fields = cls.model_fields
             if name in model_fields:
-                return PropertyDescriptor(name, model_fields[name].annotation, cast(ModelType, cls))
+                return FieldDescriptor(name, model_fields[name].annotation, cast(ModelType, cls))
 
         return super().__getattribute__(name)
 
@@ -192,15 +192,15 @@ class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
         if not serialize_nested:
             raise SerializationError(
                 "Nested data types are only supported if `serialize_nested` is "
-                f"enabled. The nested property was found at "
+                f"enabled. The nested field was found at "
                 f"{self.__class__.__name__}.{field_name}"
             )
 
         try:
-            logger.debug("Serializing nested property %s", field_name)
+            logger.debug("Serializing nested field %s", field_name)
             return serializer_fn(value)
         except Exception as exc:
-            raise SerializationError(f"Property {field_name} is not serializable") from exc
+            raise SerializationError(f"Field {field_name} is not serializable") from exc
 
     def _serialize_neo4j_list(
         self,
@@ -211,23 +211,23 @@ class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
     ) -> List[Any]:
         serialized_list = []
 
-        logger.debug("Serializing list items for property %s", field_name)
+        logger.debug("Serializing list items for field %s", field_name)
         for index, item in enumerate(value):
             if not isinstance(item, SUPPORTED_LIST_DATA_TYPES):
                 if not serialize_nested:
                     raise SerializationError(
                         "Nested data types are only supported if `serialize_nested` "
-                        "is enabled. The nested property was found at "
+                        "is enabled. The nested field was found at "
                         f"{self.__class__.__name__}.{field_name}[{index}]"
                     )
 
                 try:
-                    logger.debug("Serializing nested property %s at index %d", field_name, index)
+                    logger.debug("Serializing nested field %s at index %d", field_name, index)
                     serialized_list.append(serializer_fn(item))
                     continue
                 except Exception as exc:
                     raise SerializationError(
-                        f"Property {field_name}[{index}] is not serializable"
+                        f"Field {field_name}[{index}] is not serializable"
                     ) from exc
 
             serialized_list.append(item)
@@ -264,7 +264,7 @@ class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
                 field_info = cls.model_fields.get(resolved_field_name)
 
                 if field_info is None:
-                    logger.warning("Encountered unknown property %s, skipping", field_name)
+                    logger.warning("Encountered unknown field %s, skipping", field_name)
                     continue
 
                 # Some values might have been stringified previously, so we need to check each of
@@ -290,7 +290,7 @@ class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
                     if isinstance(value, list):
                         try:
                             logger.debug(
-                                "Deserializing list items at property %s",
+                                "Deserializing list items at field %s",
                                 field_name,
                             )
 
@@ -301,7 +301,7 @@ class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
                                     continue
 
                                 logger.debug(
-                                    "Possibly stringified value found for property %s at index %d",
+                                    "Possibly stringified value found for field %s at index %d",
                                     field_name,
                                     index,
                                 )

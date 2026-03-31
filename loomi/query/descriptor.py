@@ -1,6 +1,7 @@
 import re
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Union, get_args, get_origin
+from enum import StrEnum
+from typing import Any, Dict, List, Optional, Union, cast, get_args, get_origin, overload
 
 from pydantic import BaseModel
 
@@ -8,15 +9,10 @@ from loomi._internal._types import NumericValue, QueryModelType
 from loomi._logger import logger
 from loomi.constants import ServerType
 from loomi.exceptions import ModelError
-from loomi.query._context import ExpressionContext
-from loomi.query._protocols import CompilableDescriptor, CompilationPlan
-from loomi.query._templates import (
-    DbFunctionTemplate,
-    EntityIdExpressionTemplate,
-    ListPathOperator,
-    ListPathOperatorTemplate,
-)
-from loomi.query.functions import (
+from loomi.query._context import QueryCompilationContext
+from loomi.query._protocols import CompilableDescriptor, CompiledDescriptor
+from loomi.query._templates import DbFunctionTemplate, EntityIdExpressionTemplate
+from loomi.query.functions.comparison import (
     equals,
     greater_than,
     greater_than_or_equal,
@@ -26,8 +22,17 @@ from loomi.query.functions import (
 )
 
 
+class ListPathOperator(StrEnum):
+    """Operators for list paths."""
+
+    ANY = "$any"
+    ALL = "$all"
+    NONE = "$none"
+    SINGLE = "$single"
+
+
 @dataclass(frozen=True)
-class PropertyDescriptor(CompilableDescriptor):
+class FieldDescriptor(CompilableDescriptor):
     """Descriptor class used for building query paths for the a model."""
 
     _full_path: str
@@ -56,48 +61,49 @@ class PropertyDescriptor(CompilableDescriptor):
         if name.startswith("_"):
             return super().__getattribute__(name)
 
-        logger.debug(
-            "Getting property descriptor for property %s at path %s", name, self._full_path
-        )
-        current_type = self._annotation
-        origin = get_origin(current_type)
-        args = get_args(current_type)
-
+        logger.debug("Getting descriptor for field %s at path %s", name, self._full_path)
         base_path = self._full_path
+        current_annotation = self._annotation
+        origin = get_origin(current_annotation)
+        args = get_args(current_annotation)
+
         # If we encounter a list we get the first valid item type we find
         if origin is list or origin is List or origin is Union:
             inner_type = next((a for a in args if a is not type(None)), None)
             if inner_type:
-                current_type = inner_type
-                origin = get_origin(current_type)
-                args = get_args(current_type)
+                current_annotation = inner_type
+                origin = get_origin(current_annotation)
+                args = get_args(current_annotation)
 
-                # To be able to handle this correctly later on in the query builder, we
-                # define a special $any property
+                # If no list path operator is defined, we fall back to ListPathOperator.ANY
                 if not base_path.endswith(tuple(member.value for member in ListPathOperator)):
                     logger.debug(
-                        "List property accessed without defining a list path operator, falling back to %s",
+                        (
+                            "List field accessed without defining a list path operator, falling "
+                            "back to %s"
+                        ),
                         ListPathOperator.ANY.value,
                     )
                     base_path = f"{base_path}.{ListPathOperator.ANY.value}"
 
-        # Since a dict might contain any key, we allow all properties
+        # Since a dict might contain any key, we allow all fields
         if origin is dict or origin is Dict:
-            # For dicts, the value is the second argument
             value_type = args[1] if len(args) > 1 else Any
-            return PropertyDescriptor(f"{base_path}.{name}", value_type, self._model_type)
+            return FieldDescriptor(f"{base_path}.{name}", value_type, self._model_type)
 
-        # For other Pydantic models, we can validate that the property path is valid
+        # For other Pydantic models, we can validate that the field path is valid
         if (
-            isinstance(current_type, type)
-            and issubclass(current_type, BaseModel)
-            and name in current_type.model_fields
+            isinstance(current_annotation, type)
+            and issubclass(current_annotation, BaseModel)
+            and name in current_annotation.model_fields
         ):
-            return PropertyDescriptor(
-                f"{base_path}.{name}", current_type.model_fields[name].annotation, self._model_type
+            return FieldDescriptor(
+                f"{base_path}.{name}",
+                current_annotation.model_fields[name].annotation,
+                self._model_type,
             )
 
-        raise ModelError(f"{name} is not a valid property name for path {self._full_path}")
+        raise ModelError(f"{name} is not a valid field name for path {self._full_path}")
 
     def __getitem__(self, index: Union[int, str]):
         current_type = self._annotation
@@ -110,18 +116,11 @@ class PropertyDescriptor(CompilableDescriptor):
         elif origin in (dict, Dict) and len(args) > 1:
             inner_type = args[1] if len(args) > 1 else Any
 
-        return PropertyDescriptor(f"{self._full_path}[{index}]", inner_type, self._model_type)
+        return FieldDescriptor(f"{self._full_path}[{index}]", inner_type, self._model_type)
 
-    def _compilation_plan(
-        self, ctx: ExpressionContext, expression_template: str, value: Optional[Any]
-    ) -> CompilationPlan:
-        logger.debug(
-            "Generating compilation plan for property descriptor for model %s with path %s",
-            self._model_type,
-            self._full_path,
-        )
-        list_path_members = [member.value for member in ListPathOperator]
-
+    def _compile(
+        self, ctx: QueryCompilationContext, expression_template: str, value: Optional[Any]
+    ) -> CompiledDescriptor:
         # TODO: This currently generates 2 loops when filtering 2 list expressions which are
         # combined by any logical operator. Check if combining them into a single loop improves
         # performance
@@ -129,126 +128,132 @@ class PropertyDescriptor(CompilableDescriptor):
         # `ANY(v1 IN v0.tags WHERE v1.name = "t1") OR ANY(v1 IN v0.tags WHERE v1.name = "t2")`
         # To check:
         # `ANY(v1 IN v0.tags WHERE v1.name = "t1" OR v1.name = "t2")`
-        variable = ctx.get_variable(self._model_type)
-        parameter = ctx.add_parameter(value) if value else None
+        logger.debug(
+            "Generating compilation template for descriptor for model %s with path %s",
+            self._model_type,
+            self._full_path,
+        )
 
-        parts = re.split(r"(\$all|\$any|\$none|\$single)", self._full_path)
-        normalized_parts = [part.strip(".") for part in parts if part.strip()]
+        list_operators = {op.value for op in ListPathOperator}  # Set for O(1) lookup
+        model_variable = ctx.get_variable(self._model_type)
 
-        # If we don't have any list operators, we can return the compilation plan directly
-        if not any(part in normalized_parts for part in list_path_members):
-            path_str = ".".join(normalized_parts)
-            return (
-                expression_template.format(variable="{path}", parameter="${parameter}"),
-                f"{variable}.{path_str}",
-                parameter,
+        if isinstance(value, DbFunctionDescriptor):
+            parameter_name = value._compile(ctx)
+        else:
+            parameter_name = f"${ctx.add_parameter(value)}" if value else None
+
+        # Split the path to be able to handle any list operators
+        path_parts = re.split(r"(\$all|\$any|\$none|\$single)", self._full_path)
+        parts = [p.strip(".") for p in path_parts if p.strip()]
+
+        # If we don't have any list operators, we can return directly
+        if not any(p in list_operators for p in parts):
+            logger.debug("Descriptor does not contain any list paths, compiling final output")
+            template = expression_template.format(variable="{path}", parameter="{parameter}")
+            return CompiledDescriptor(
+                template, f"{model_variable}.{'.'.join(parts)}", parameter_name
             )
 
-        # Each nested level needs it's own loop variables, which should also not clash
-        # with any other variables defined
-        logger.debug("Found list path operators in property descriptor path")
-        operators = [(i, p) for i, p in enumerate(normalized_parts) if p in list_path_members]
+        # Get the path parts and their index so we can use them to build the full
+        # template in reverse order (from inner-most to outer-most)
+        operators = [(index, part) for index, part in enumerate(parts) if part in list_operators]
 
-        start_var_idx = ctx._variable_counter
+        start_var_id = ctx._variable_counter
         ctx.force_increment_variable_counter(len(operators))
 
-        # Build the query from inside out, as the innermost part is the one using
-        # the provided template
-        inner_var_idx = start_var_idx + len(operators) - 1
-        final_part = normalized_parts[-1]
+        # Build the inner-most expression first, as this will be the template part which
+        # the rest of the expression will wrap around
+        inner_var_id = start_var_id + len(operators) - 1
+        current_template = expression_template.format(variable="{path}", parameter="{parameter}")
 
-        # If the final part is a list operator, we need to omit it and use the innermost
-        # directly variable instead
-        logger.debug("Compiling innermost expression")
-        template_path: str
-        if final_part in list_path_members:
-            template_path = f"v{inner_var_idx}"
-            template = expression_template.format(variable="{path}", parameter="${parameter}")
-        else:
-            template_path = f"v{inner_var_idx}"
-            template = expression_template.format(variable="{path}", parameter="${parameter}")
+        # The inner-most variable needs to be returned so it can be used by other expressions
+        target_path = f"v{inner_var_id}"
 
-        for op_count in range(len(operators) - 1, -1, -1):
-            part_idx, operator_str = operators[op_count]
-            operator = ListPathOperatorTemplate[operator_str]
-            property_name = normalized_parts[part_idx - 1]
+        # Iterate through the remaining paths to build in reverse order, so the rest of the
+        # expression is also build from the inside-out
+        logger.debug("Compiling %d nested list operators", len(operators))
+        for operators_index, (index, operator) in reversed(list(enumerate(operators))):
+            iter_variable = f"v{start_var_id + operators_index}"
+            parent_variable = (
+                f"v{start_var_id + operators_index - 1}" if operators_index > 0 else model_variable
+            )
 
-            iter_var = f"v{start_var_idx + op_count}"
+            # Path is the part immediately preceding the operator
+            path_segment = parts[index - 1]
+            operator_name = operator.lstrip("$").upper()
 
-            # The parent variable is always either the base variable (referencing a model)
-            # or the variable from the previous iteration
-            if op_count == 0:
-                parent_var = variable
-            else:
-                parent_var = f"v{start_var_idx + op_count - 1}"
+            current_template = (
+                f"{operator_name}({iter_variable} IN {parent_variable}.{path_segment} "
+                f"WHERE {current_template})"
+            )
 
-            template = f"{operator}({iter_var} IN {parent_var}.{property_name} WHERE {template})"
-
-        return (template, template_path, parameter)
-
-    def _compile(
-        self, ctx: ExpressionContext, expression_template: str, value: Optional[Any]
-    ) -> str:
-        template, path, parameter = self._compilation_plan(ctx, expression_template, value)
-        return template.format(path=path, parameter=parameter)
+        return CompiledDescriptor(current_template, target_path, parameter_name)
 
 
 @dataclass(frozen=True)
 class EntityIdDescriptor(CompilableDescriptor):
-    """Descriptor class used for building queries for entity IDs."""
+    """Descriptor class used to apply entity ID functions."""
 
-    _template: EntityIdExpressionTemplate
-    _model_type: QueryModelType
-    _server_type: ServerType
-
-    def _compilation_plan(
-        self, ctx: ExpressionContext, expression_template: str, value: Optional[Any]
-    ) -> CompilationPlan:
-        logger.debug(
-            "Generating compilation plan for entity ID descriptor for model %s",
-            self._model_type.__name__,
-        )
-        variable = ctx.get_variable(self._model_type)
-        parameter = ctx.add_parameter(value) if value else None
-
-        variable_template = self._get_entity_id_template().value.format(variable=variable)
-        template = expression_template.format(variable="{path}", parameter="${parameter}")
-
-        return (template, variable_template, parameter)
+    model_type: QueryModelType
+    template: EntityIdExpressionTemplate
 
     def _compile(
-        self, ctx: ExpressionContext, expression_template: str, value: Optional[Any]
-    ) -> str:
-        template, path, parameter = self._compilation_plan(ctx, expression_template, value)
-        return template.format(path=path, parameter=parameter)
+        self, ctx: QueryCompilationContext, expression_template: str, value: Optional[Any]
+    ) -> CompiledDescriptor:
+        logger.debug(
+            "Generating compilation plan for entity ID descriptor for model %s",
+            self.model_type,
+        )
+        model_variable = ctx.get_variable(self.model_type)
 
-    def _get_entity_id_template(self) -> EntityIdExpressionTemplate:
-        if self._server_type == ServerType.MEMGRAPH:
-            logger.debug("Server type defined as %s, falling back to ID", self._server_type.value)
-            return EntityIdExpressionTemplate.ID
+        if ctx.server_type == ServerType.MEMGRAPH:
+            logger.debug(
+                "Server type defined as %s, falling back to %s",
+                ctx.server_type.value,
+                EntityIdExpressionTemplate.ID.name,
+            )
+            entity_id_path = EntityIdExpressionTemplate.ID.format(variable=model_variable)
+        else:
+            entity_id_path = self.template.format(variable=model_variable)
 
-        return self._template
+        if isinstance(value, DbFunctionDescriptor):
+            parameter_name = value._compile(ctx)
+        else:
+            parameter_name = ctx.add_parameter(value) if value else None
+
+        template = expression_template.format(variable="{path}", parameter="${parameter}")
+        return CompiledDescriptor(template, entity_id_path, parameter_name)
 
 
 @dataclass(frozen=True)
-class DbFunctionDescriptor(CompilableDescriptor):
-    """Descriptor class used to apply DB functions to variables when building queries."""
+class DbFunctionDescriptor:
+    """Descriptor class used to apply DB functions to fields/parameters."""
 
-    _template: DbFunctionTemplate
-    _descriptor: CompilableDescriptor
+    descriptor_or_parameter_value: Any
+    template: DbFunctionTemplate
 
-    def _compilation_plan(
-        self, ctx: ExpressionContext, expression_template: str, value: Optional[Any]
-    ) -> CompilationPlan:
-        logger.debug("Generating compilation plan for db function descriptor")
-        plan: CompilationPlan = self._descriptor._compilation_plan(ctx, expression_template, value)
-        # For some reason, pylint can not correctly infer this
-        template, path, parameter = plan  # pylint: disable=unpacking-non-sequence
+    @overload
+    def _compile(self, ctx: QueryCompilationContext) -> str: ...
 
-        return (template, self._template.value.format(variable=path), parameter)
+    @overload
+    def _compile(
+        self, ctx: QueryCompilationContext, expression_template: str, value: Optional[Any]
+    ) -> str: ...
 
     def _compile(
-        self, ctx: ExpressionContext, expression_template: str, value: Optional[Any]
+        self,
+        ctx: QueryCompilationContext,
+        expression_template: Optional[str] = None,
+        value: Optional[Any] = None,
     ) -> str:
-        template, path, parameter = self._compilation_plan(ctx, expression_template, value)
-        return template.format(path=path, parameter=parameter)
+        # If we are not dealing with a descriptor, we can compile the template with the
+        # parameter name directly
+        if not isinstance(self.descriptor_or_parameter_value, FieldDescriptor):
+            parameter_name = ctx.add_parameter(self.descriptor_or_parameter_value)
+            return self.template.format(variable_or_parameter=f"${parameter_name}")
+
+        compiled = self.descriptor_or_parameter_value._compile(
+            ctx, cast(str, expression_template), value
+        )
+        compiled_db_fn = self.template.format(variable_or_parameter=compiled.variable_path)
+        return compiled.template.format(path=compiled_db_fn, parameter=compiled.parameter_name)

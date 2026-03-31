@@ -1,5 +1,4 @@
 from enum import StrEnum
-from typing import Dict
 
 
 class ExpressionTemplate(StrEnum):
@@ -41,33 +40,16 @@ class EntityIdExpressionTemplate(StrEnum):
     ID = "id({variable})"
 
 
-class ListPathOperator(StrEnum):
-    """Operators for list paths."""
-
-    ANY = "$any"
-    ALL = "$all"
-    NONE = "$none"
-    SINGLE = "$single"
-
-
-ListPathOperatorTemplate: Dict[str, str] = {
-    ListPathOperator.ANY.value: "any",
-    ListPathOperator.ALL.value: "all",
-    ListPathOperator.NONE.value: "none",
-    ListPathOperator.SINGLE.value: "single",
-}
-
-
 class DbFunctionTemplate(StrEnum):
     """Templates for DB functions."""
 
-    TAIL = "tail({variable})"
-    ABS = "abs({variable})"
-    CEIL = "ceil({variable})"
-    FLOOR = "floor({variable})"
-    ROUND = "round({variable})"
-    LTRIM = "ltrim({variable})"
-    RTRIM = "rtrim({variable})"
-    TRIM = "trim({variable})"
-    TO_LOWER = "toLower({variable})"
-    TO_UPPER = "toUpper({variable})"
+    TAIL = "tail({variable_or_parameter})"
+    ABS = "abs({variable_or_parameter})"
+    CEIL = "ceil({variable_or_parameter})"
+    FLOOR = "floor({variable_or_parameter})"
+    ROUND = "round({variable_or_parameter})"
+    LTRIM = "ltrim({variable_or_parameter})"
+    RTRIM = "rtrim({variable_or_parameter})"
+    TRIM = "trim({variable_or_parameter})"
+    TO_LOWER = "toLower({variable_or_parameter})"
+    TO_UPPER = "toUpper({variable_or_parameter})"
