@@ -239,7 +239,7 @@ class EntityIdDescriptor(CompilableDescriptor):
                 transformed=compiled_db_function.transformed_path
             )
         else:
-            parameter_name = ctx.add_parameter(value) if value else None
+            parameter_name = f"${ctx.add_parameter(value)}" if value else None
 
-        template = expression_template.format(variable="{path}", parameter="${parameter}")
+        template = expression_template.format(variable="{path}", parameter="{parameter}")
         return CompiledDescriptor(template, entity_id_path, parameter_name)
