@@ -1,8 +1,9 @@
 # pylint: disable=missing-function-docstring
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, List, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Union
 
+from loomi._internal._types import QueryModelType
 from loomi._logger import logger
 from loomi.query._context import QueryCompilationContext
 from loomi.query._protocols import CompilableDescriptor, CompilableExpression, CompiledDescriptor
@@ -152,3 +153,24 @@ class CompoundQueryExpression(CompilableExpression):
                 compiled.append(expression._compile(ctx))
 
         return f" {self.operator.value} ".join(compiled)
+
+
+@dataclass(frozen=True)
+class CustomCypherExpression(CompilableExpression):
+    """A custom cypher expression which can be compiled by a query builder."""
+
+    template: str
+    model_map: Dict[str, QueryModelType]
+    parameter_map: Dict[str, Any]
+
+    def _compile(self, ctx: QueryCompilationContext) -> str:
+        logger.debug("Compiling models defined for custom cypher expression")
+        expression_models_map = {
+            placeholder: ctx.get_variable(model) for placeholder, model in self.model_map.items()
+        }
+        expression_parameters_map = {
+            placeholder: f"${ctx.add_parameter(parameter)}"
+            for placeholder, parameter in self.parameter_map.items()
+        }
+
+        return self.template.format(**expression_models_map, **expression_parameters_map)

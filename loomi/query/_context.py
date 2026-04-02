@@ -83,10 +83,12 @@ class QueryCompilationContext:
 
         variable = model._alias if isinstance(model, AliasedModel) else f"v{self._variable_counter}"
         if variable in set(self._models_to_vars.values()):
-            raise QueryError(
-                f"Variable {variable} has already been defined. If you are using a aliased model "
-                ", make sure it's alias is unique"
+            logger.warning(
+                "Variable %s has already been defined. If you are using a aliased model "
+                ", make sure it's alias is unique",
+                variable,
             )
+            return
 
         self._variable_counter = self._variable_counter + 1
         self._models_to_vars[model] = variable
