@@ -96,7 +96,7 @@ class TestNativeResult:
             assert properties["name"] == "John"
 
     @pytest.mark.integration
-    def test_keeps_original_records_from_single(
+    def test_keeps_original_records_from_single_without_strict(
         self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
     ):
         """Verify that the method returns the unchanged results."""
@@ -114,7 +114,34 @@ class TestNativeResult:
         with client.session("native") as session:
             result = session.run("MATCH (n:Human) RETURN n")
 
-            data = result.single()
+            data = result.single(False)
+            assert data is not None
+            assert isinstance(data[0], neo4j.graph.Node)
+
+            properties = dict(data[0])
+            assert "name" in properties
+            assert properties["name"] == "John"
+
+    @pytest.mark.integration
+    def test_keeps_original_records_from_single_with_strict(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the method returns the unchanged results."""
+
+        class Human(Node):
+            name: str
+
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human {name: $name})", {"name": "John"})
+
+        client = Client(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        with client.session("native") as session:
+            result = session.run("MATCH (n:Human) RETURN n")
+
+            data = result.single(True)
             assert data is not None
             assert isinstance(data[0], neo4j.graph.Node)
 
@@ -200,7 +227,7 @@ class TestNativeResult:
             assert isinstance(data, neo4j.graph.Graph)
 
 
-class TestResult:
+class TestResultPeek:
     @pytest.mark.integration
     def test_transforms_records_from_peek(self, sync_driver: neo4j.Driver, driver_spec: DriverSpec):
         """Verify that the method transforms results to models."""
@@ -267,6 +294,8 @@ class TestResult:
             result.peek()
             assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
+
+class TestResultFetch:
     @pytest.mark.integration
     def test_transforms_records_from_fetch(
         self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
@@ -313,6 +342,8 @@ class TestResult:
             result.fetch(1)
             assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
+
+class TestResultToEagerResult:
     @pytest.mark.integration
     def test_transforms_records_from_to_eager_result(
         self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
@@ -360,8 +391,10 @@ class TestResult:
             result.to_eager_result()
             assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
+
+class TestResultSingle:
     @pytest.mark.integration
-    def test_transforms_records_from_single(
+    def test_transforms_records_from_single_without_strict(
         self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
     ):
         """Verify that the method transforms results to models."""
@@ -379,7 +412,31 @@ class TestResult:
         with client.session("loomi") as session:
             result = session.run("MATCH (n:Human) RETURN n")
 
-            data = result.single()
+            data = result.single(False)
+            assert data is not None
+            assert isinstance(data[0], Human)
+            assert data[0].name == "John"
+
+    @pytest.mark.integration
+    def test_transforms_records_from_single_with_strict(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the method transforms results to models."""
+
+        class Human(Node):
+            name: str
+
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human {name: $name})", {"name": "John"})
+
+        client = Client(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        with client.session("loomi") as session:
+            result = session.run("MATCH (n:Human) RETURN n")
+
+            data = result.single(True)
             assert data is not None
             assert isinstance(data[0], Human)
             assert data[0].name == "John"
@@ -428,6 +485,8 @@ class TestResult:
             result.single()
             assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
+
+class TestResultValues:
     @pytest.mark.integration
     def test_transforms_records_from_values(
         self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
@@ -475,6 +534,8 @@ class TestResult:
             result.values()
             assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
+
+class TestResultValue:
     @pytest.mark.integration
     def test_transforms_records_from_value(
         self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
@@ -521,6 +582,8 @@ class TestResult:
             result.value()
             assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
+
+class TestResultGraph:
     @pytest.mark.integration
     def test_transforms_records_from_graph(
         self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
@@ -576,6 +639,8 @@ class TestResult:
                 == 1
             )
 
+
+class TestResultNextMagicMethod:
     @pytest.mark.integration
     def test_transforms_records_from_next(self, sync_driver: neo4j.Driver, driver_spec: DriverSpec):
         """Verify that the method transforms results to models."""
@@ -619,6 +684,8 @@ class TestResult:
             next(result)
             assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
+
+class TestResultIterMagicMethod:
     @pytest.mark.integration
     def test_transforms_records_from_iter(self, sync_driver: neo4j.Driver, driver_spec: DriverSpec):
         """Verify that the method transforms results to models."""
@@ -664,6 +731,8 @@ class TestResult:
 
             assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
+
+class TestResultTransformation:
     @pytest.mark.integration
     def test_exposes_original_result_for_non_transformed_methods(
         self, sync_driver: neo4j.Driver, driver_spec: DriverSpec

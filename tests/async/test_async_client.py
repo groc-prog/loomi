@@ -360,7 +360,7 @@ class TestNativeAsyncSession:
         await session.close()
 
 
-class TestLoomiAsyncSession:
+class TestAsyncSession:
     @pytest.mark.integration
     async def test_session_works_with_context_manager(
         self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
@@ -479,7 +479,7 @@ class TestLoomiAsyncSession:
             assert loves.type == "LOVES"
 
 
-class TestLoomiAsyncTransaction:
+class TestAsyncTransaction:
     @pytest.mark.integration
     async def test_transaction_works_with_context_manager(
         self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec

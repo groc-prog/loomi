@@ -96,7 +96,7 @@ class TestNativeAsyncResult:
             assert properties["name"] == "John"
 
     @pytest.mark.integration
-    async def test_keeps_original_records_from_single(
+    async def test_keeps_original_records_from_single_without_strict(
         self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method returns the unchanged results."""
@@ -114,7 +114,34 @@ class TestNativeAsyncResult:
         async with client.session("native") as session:
             result = await session.run("MATCH (n:Human) RETURN n")
 
-            data = await result.single()
+            data = await result.single(False)
+            assert data is not None
+            assert isinstance(data[0], neo4j.graph.Node)
+
+            properties = dict(data[0])
+            assert "name" in properties
+            assert properties["name"] == "John"
+
+    @pytest.mark.integration
+    async def test_keeps_original_records_from_single_with_strict(
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
+    ):
+        """Verify that the method returns the unchanged results."""
+
+        class Human(Node):
+            name: str
+
+        async with async_driver.session() as session:
+            await session.run("CREATE (:Human {name: $name})", {"name": "John"})
+
+        client = AsyncClient(async_driver)
+        client.register(Human)
+        await client.initialize()
+
+        async with client.session("native") as session:
+            result = await session.run("MATCH (n:Human) RETURN n")
+
+            data = await result.single(True)
             assert data is not None
             assert isinstance(data[0], neo4j.graph.Node)
 
@@ -200,7 +227,7 @@ class TestNativeAsyncResult:
             assert isinstance(data, neo4j.graph.Graph)
 
 
-class TestAsyncResult:
+class TestAsyncResultPeek:
     @pytest.mark.integration
     async def test_transforms_records_from_peek(
         self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
@@ -271,6 +298,8 @@ class TestAsyncResult:
             await result.peek()
             assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
+
+class TestAsyncResultFetch:
     @pytest.mark.integration
     async def test_transforms_records_from_fetch(
         self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
@@ -317,6 +346,8 @@ class TestAsyncResult:
             await result.fetch(1)
             assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
+
+class TestAsyncResultToEagerResult:
     @pytest.mark.integration
     async def test_transforms_records_from_to_eager_result(
         self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
@@ -364,8 +395,10 @@ class TestAsyncResult:
             await result.to_eager_result()
             assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
+
+class TestAsyncResultSingle:
     @pytest.mark.integration
-    async def test_transforms_records_from_single(
+    async def test_transforms_records_from_single_without_strict(
         self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
     ):
         """Verify that the method transforms results to models."""
@@ -383,7 +416,31 @@ class TestAsyncResult:
         async with client.session("loomi") as session:
             result = await session.run("MATCH (n:Human) RETURN n")
 
-            data = await result.single()
+            data = await result.single(False)
+            assert data is not None
+            assert isinstance(data[0], Human)
+            assert data[0].name == "John"
+
+    @pytest.mark.integration
+    async def test_transforms_records_from_single_with_strict(
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
+    ):
+        """Verify that the method transforms results to models."""
+
+        class Human(Node):
+            name: str
+
+        async with async_driver.session() as session:
+            await session.run("CREATE (:Human {name: $name})", {"name": "John"})
+
+        client = AsyncClient(async_driver)
+        client.register(Human)
+        await client.initialize()
+
+        async with client.session("loomi") as session:
+            result = await session.run("MATCH (n:Human) RETURN n")
+
+            data = await result.single(True)
             assert data is not None
             assert isinstance(data[0], Human)
             assert data[0].name == "John"
@@ -434,6 +491,8 @@ class TestAsyncResult:
             await result.single()
             assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
+
+class TestAsyncResultValues:
     @pytest.mark.integration
     async def test_transforms_records_from_values(
         self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
@@ -481,6 +540,8 @@ class TestAsyncResult:
             await result.values()
             assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
+
+class TestAsyncResultValue:
     @pytest.mark.integration
     async def test_transforms_records_from_value(
         self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
@@ -527,6 +588,8 @@ class TestAsyncResult:
             await result.value()
             assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
+
+class TestAsyncResultGraph:
     @pytest.mark.integration
     async def test_transforms_records_from_graph(
         self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
@@ -582,6 +645,8 @@ class TestAsyncResult:
                 == 1
             )
 
+
+class TestAsyncResultNextMagicMethod:
     @pytest.mark.integration
     async def test_transforms_records_from_next(
         self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
@@ -627,6 +692,8 @@ class TestAsyncResult:
             await anext(result)
             assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
+
+class TestAsyncResultIterMagicMethod:
     @pytest.mark.integration
     async def test_transforms_records_from_iter(
         self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
@@ -674,6 +741,8 @@ class TestAsyncResult:
 
             assert len(session.change_tracker._state[TrackingOperation.UPDATE]["nodes"].keys()) == 1
 
+
+class TestAsyncResultTransformation:
     @pytest.mark.integration
     async def test_exposes_original_result_for_non_transformed_methods(
         self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec

@@ -12,6 +12,7 @@ from loomi.query.expressions import QueryCompilationContext, QueryExpression
 from loomi.query.functions.comparison import (
     and_,
     contains,
+    cypher,
     ends_with,
     equals,
     greater_than,
@@ -914,6 +915,54 @@ class TestXorExpressions:
             compiled_expression = cast(QueryExpression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
+            result = session.run(cast(LiteralString, query), ctx.parameters)
+
+            entities = result.value()
+            assert len(entities) == 1
+            assert entities[0]["name"] == "John"
+
+
+class TestCustomExpression:
+    @pytest.mark.integration
+    def test_in_query_with_fn(self, sync_driver: neo4j.Driver, driver_spec: DriverSpec):
+        """Verify that the generated custom queries from the helper fn can be run by the driver."""
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
+
+            ctx = QueryCompilationContext(driver_spec.name)
+            ctx.add_model(Human)
+            expression = cypher(
+                "{human}.name IN {list_values}",
+                {"human": Human},
+                {"list_values": ["Monty", "John", "James"]},
+            )
+            compiled_expression = expression._compile(ctx)
+
+            query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
+            result = session.run(cast(LiteralString, query), ctx.parameters)
+
+            entities = result.value()
+            assert len(entities) == 1
+            assert entities[0]["name"] == "John"
+
+    @pytest.mark.integration
+    def test_in_query_with_aliased_model(self, sync_driver: neo4j.Driver, driver_spec: DriverSpec):
+        """Verify that the generated custom queries with aliased model can be run by the driver."""
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
+
+            ctx = QueryCompilationContext(driver_spec.name)
+            ctx.add_model(aliased_human)
+            expression = cypher(
+                "{human}.name IN {list_values}",
+                {"human": aliased_human},
+                {"list_values": ["Monty", "John", "James"]},
+            )
+            compiled_expression = expression._compile(ctx)
+
+            query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
 
             entities = result.value()
