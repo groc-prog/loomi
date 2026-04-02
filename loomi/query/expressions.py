@@ -8,14 +8,14 @@ from loomi.query._context import QueryCompilationContext
 from loomi.query._protocols import CompilableDescriptor, CompilableExpression, CompiledDescriptor
 from loomi.query._templates import (
     ExpressionTemplate,
-    LogicalExpressionOperator,
+    LogicalExpressionTemplate,
     UnaryExpressionTemplate,
 )
 
 if TYPE_CHECKING:
-    from loomi.query.descriptor import DbFunctionDescriptor
+    from loomi.query.descriptor import DbFunctionTransformer
 else:
-    DbFunctionDescriptor = object
+    DbFunctionTransformer = object
 
 
 @dataclass(frozen=True)
@@ -45,16 +45,16 @@ class _BaseQueryExpression(CompilableExpression):
 class QueryExpression(_BaseQueryExpression):
     """A expression which can be compiled by a query builder."""
 
-    descriptor: Union[CompilableDescriptor, DbFunctionDescriptor]
+    descriptor: Union[CompilableDescriptor, DbFunctionTransformer]
     template: ExpressionTemplate
     value: Any
 
     def _compile(self, ctx: QueryCompilationContext) -> str:
-        from loomi.query.descriptor import DbFunctionDescriptor
+        from loomi.query.descriptor import DbFunctionTransformer
 
         logger.debug("Compiling %s for template %s", self.__class__.__name__, self.template.name)
 
-        if isinstance(self.descriptor, DbFunctionDescriptor):
+        if isinstance(self.descriptor, DbFunctionTransformer):
             return self.descriptor._compile(ctx, self.template.value, self.value)
 
         compiled_descriptor: CompiledDescriptor = self.descriptor._compile(
@@ -95,10 +95,10 @@ class InvertQueryExpression(_BaseQueryExpression):
 
 
 @dataclass(frozen=True)
-class CompoundQueryExpression:
+class CompoundQueryExpression(CompilableExpression):
     """A compound expression which can be compiled by a query builder."""
 
-    operator: LogicalExpressionOperator
+    operator: LogicalExpressionTemplate
     expressions: List[Union["CompoundQueryExpression", _BaseQueryExpression]]
 
     def __and__(
@@ -106,7 +106,7 @@ class CompoundQueryExpression:
     ) -> "CompoundQueryExpression":
         from loomi.query.functions.comparison import and_
 
-        if self.operator == LogicalExpressionOperator.AND:
+        if self.operator == LogicalExpressionTemplate.AND:
             return and_(*self.expressions, other)
 
         return and_(self, other)
@@ -116,7 +116,7 @@ class CompoundQueryExpression:
     ) -> "CompoundQueryExpression":
         from loomi.query.functions.comparison import or_
 
-        if self.operator == LogicalExpressionOperator.OR:
+        if self.operator == LogicalExpressionTemplate.OR:
             return or_(*self.expressions, other)
 
         return or_(self, other)
@@ -126,7 +126,7 @@ class CompoundQueryExpression:
     ) -> "CompoundQueryExpression":
         from loomi.query.functions.comparison import xor
 
-        if self.operator == LogicalExpressionOperator.XOR:
+        if self.operator == LogicalExpressionTemplate.XOR:
             return xor(*self.expressions, other)
 
         return xor(self, other)

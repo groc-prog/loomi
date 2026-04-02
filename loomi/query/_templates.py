@@ -24,7 +24,7 @@ class UnaryExpressionTemplate(StrEnum):
     IS_NOT_NULL = "{variable} IS NOT NULL"
 
 
-class LogicalExpressionOperator(StrEnum):
+class LogicalExpressionTemplate(StrEnum):
     """Templates for logical query expressions."""
 
     AND = "AND"

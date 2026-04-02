@@ -4,9 +4,10 @@ from loomi._internal._types import NumericValue
 from loomi.exceptions import QueryError
 from loomi.query._templates import (
     ExpressionTemplate,
-    LogicalExpressionOperator,
+    LogicalExpressionTemplate,
     UnaryExpressionTemplate,
 )
+from loomi.query.descriptor import FieldDescriptor
 from loomi.query.expressions import (
     CompoundQueryExpression,
     InvertQueryExpression,
@@ -27,6 +28,12 @@ def equals(property_descriptor: Any, value: Any) -> QueryExpression:
     Returns:
         QueryExpression: A expression which can be compiled by a query builder.
     """
+    if not isinstance(property_descriptor, FieldDescriptor):
+        raise QueryError(
+            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
+            f", got {property_descriptor}"
+        )
+
     return QueryExpression(property_descriptor, ExpressionTemplate.EQ, value)
 
 
@@ -55,9 +62,10 @@ def greater_than(property_descriptor: Any, value: NumericValue) -> QueryExpressi
     Returns:
         QueryExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(value, (int, float)):
+    if not isinstance(property_descriptor, FieldDescriptor):
         raise QueryError(
-            f"Values for {ExpressionTemplate.GT.name} expressions must be valid numbers"
+            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
+            f", got {property_descriptor}"
         )
 
     return QueryExpression(property_descriptor, ExpressionTemplate.GT, value)
@@ -74,9 +82,10 @@ def greater_than_or_equal(property_descriptor: Any, value: NumericValue) -> Quer
     Returns:
         QueryExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(value, (int, float)):
+    if not isinstance(property_descriptor, FieldDescriptor):
         raise QueryError(
-            f"Values for {ExpressionTemplate.GTE.name} expressions must be valid numbers"
+            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
+            f", got {property_descriptor}"
         )
 
     return QueryExpression(property_descriptor, ExpressionTemplate.GTE, value)
@@ -93,9 +102,10 @@ def less_than(property_descriptor: Any, value: NumericValue) -> QueryExpression:
     Returns:
         QueryExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(value, (int, float)):
+    if not isinstance(property_descriptor, FieldDescriptor):
         raise QueryError(
-            f"Values for {ExpressionTemplate.LT.name} expressions must be valid numbers"
+            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
+            f", got {property_descriptor}"
         )
 
     return QueryExpression(property_descriptor, ExpressionTemplate.LT, value)
@@ -112,9 +122,10 @@ def less_than_or_equal(property_descriptor: Any, value: NumericValue) -> QueryEx
     Returns:
         QueryExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(value, (int, float)):
+    if not isinstance(property_descriptor, FieldDescriptor):
         raise QueryError(
-            f"Values for {ExpressionTemplate.LTE.name} expressions must be valid numbers"
+            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
+            f", got {property_descriptor}"
         )
 
     return QueryExpression(property_descriptor, ExpressionTemplate.LTE, value)
@@ -149,7 +160,7 @@ def and_(
     Returns:
         CompoundQueryExpression: A expression which can be compiled by a query builder.
     """
-    return CompoundQueryExpression(LogicalExpressionOperator.AND, [*expressions])
+    return CompoundQueryExpression(LogicalExpressionTemplate.AND, [*expressions])
 
 
 def or_(
@@ -165,7 +176,7 @@ def or_(
     Returns:
         CompoundQueryExpression: A expression which can be compiled by a query builder.
     """
-    return CompoundQueryExpression(LogicalExpressionOperator.OR, [*expressions])
+    return CompoundQueryExpression(LogicalExpressionTemplate.OR, [*expressions])
 
 
 def xor(
@@ -181,7 +192,7 @@ def xor(
     Returns:
         CompoundQueryExpression: A expression which can be compiled by a query builder.
     """
-    return CompoundQueryExpression(LogicalExpressionOperator.XOR, [*expressions])
+    return CompoundQueryExpression(LogicalExpressionTemplate.XOR, [*expressions])
 
 
 def is_null(property_descriptor: Any) -> NullQueryExpression:
@@ -194,6 +205,12 @@ def is_null(property_descriptor: Any) -> NullQueryExpression:
     Returns:
         UnaryQueryExpression: A expression which can be compiled by a query builder.
     """
+    if not isinstance(property_descriptor, FieldDescriptor):
+        raise QueryError(
+            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
+            f", got {property_descriptor}"
+        )
+
     return NullQueryExpression(
         property_descriptor,
         UnaryExpressionTemplate.IS_NULL,
@@ -210,6 +227,12 @@ def is_not_null(property_descriptor: Any) -> NullQueryExpression:
     Returns:
         UnaryQueryExpression: A expression which can be compiled by a query builder.
     """
+    if not isinstance(property_descriptor, FieldDescriptor):
+        raise QueryError(
+            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
+            f", got {property_descriptor}"
+        )
+
     return NullQueryExpression(
         property_descriptor,
         UnaryExpressionTemplate.IS_NOT_NULL,
@@ -227,8 +250,11 @@ def in_(property_descriptor: Any, value: List[Any]) -> QueryExpression:
     Returns:
         QueryExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(value, list):
-        raise QueryError(f"Values for {ExpressionTemplate.IN.name} expressions must be valid lists")
+    if not isinstance(property_descriptor, FieldDescriptor):
+        raise QueryError(
+            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
+            f", got {property_descriptor}"
+        )
 
     return QueryExpression(property_descriptor, ExpressionTemplate.IN, value)
 
@@ -244,9 +270,10 @@ def starts_with(property_descriptor: Any, value: str) -> QueryExpression:
     Returns:
         QueryExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(value, str):
+    if not isinstance(property_descriptor, FieldDescriptor):
         raise QueryError(
-            f"Values for {ExpressionTemplate.STARTS_WITH.name} expressions must be valid strings"
+            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
+            f", got {property_descriptor}"
         )
 
     return QueryExpression(property_descriptor, ExpressionTemplate.STARTS_WITH, value)
@@ -263,9 +290,10 @@ def ends_with(property_descriptor: Any, value: str) -> QueryExpression:
     Returns:
         QueryExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(value, str):
+    if not isinstance(property_descriptor, FieldDescriptor):
         raise QueryError(
-            f"Values for {ExpressionTemplate.ENDS_WITH.name} expressions must be valid strings"
+            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
+            f", got {property_descriptor}"
         )
 
     return QueryExpression(property_descriptor, ExpressionTemplate.ENDS_WITH, value)
@@ -282,9 +310,10 @@ def contains(property_descriptor: Any, value: str) -> QueryExpression:
     Returns:
         QueryExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(value, str):
+    if not isinstance(property_descriptor, FieldDescriptor):
         raise QueryError(
-            f"Values for {ExpressionTemplate.CONTAINS.name} expressions must be valid strings"
+            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
+            f", got {property_descriptor}"
         )
 
     return QueryExpression(property_descriptor, ExpressionTemplate.CONTAINS, value)
@@ -301,9 +330,10 @@ def regex(property_descriptor: Any, value: str) -> QueryExpression:
     Returns:
         QueryExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(value, str):
+    if not isinstance(property_descriptor, FieldDescriptor):
         raise QueryError(
-            f"Values for {ExpressionTemplate.REGEX.name} expressions must be valid strings"
+            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
+            f", got {property_descriptor}"
         )
 
     return QueryExpression(property_descriptor, ExpressionTemplate.REGEX, value)

@@ -1,7 +1,7 @@
 import re
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, Dict, List, Optional, Union, cast, get_args, get_origin, overload
+from typing import Any, Dict, List, Optional, Union, get_args, get_origin
 
 from pydantic import BaseModel
 
@@ -11,15 +11,8 @@ from loomi.constants import ServerType
 from loomi.exceptions import ModelError
 from loomi.query._context import QueryCompilationContext
 from loomi.query._protocols import CompilableDescriptor, CompiledDescriptor
-from loomi.query._templates import DbFunctionTemplate, EntityIdExpressionTemplate
-from loomi.query.functions.comparison import (
-    equals,
-    greater_than,
-    greater_than_or_equal,
-    less_than,
-    less_than_or_equal,
-    not_equals,
-)
+from loomi.query._templates import EntityIdExpressionTemplate
+from loomi.query.transformers import DbFunctionTransformer
 
 
 class ListPathOperator(StrEnum):
@@ -40,21 +33,33 @@ class FieldDescriptor(CompilableDescriptor):
     _model_type: QueryModelType
 
     def __eq__(self, value: Any):  # type: ignore[override]
+        from loomi.query.functions.comparison import equals
+
         return equals(self, value)
 
     def __ne__(self, value: Any):  # type: ignore[override]
+        from loomi.query.functions.comparison import not_equals
+
         return not_equals(self, value)
 
     def __gt__(self, value: NumericValue):
+        from loomi.query.functions.comparison import greater_than
+
         return greater_than(self, value)
 
     def __ge__(self, value: NumericValue):
+        from loomi.query.functions.comparison import greater_than_or_equal
+
         return greater_than_or_equal(self, value)
 
     def __lt__(self, value: NumericValue):
+        from loomi.query.functions.comparison import less_than
+
         return less_than(self, value)
 
     def __le__(self, value: NumericValue):
+        from loomi.query.functions.comparison import less_than_or_equal
+
         return less_than_or_equal(self, value)
 
     def __getattribute__(self, name: str):
@@ -137,7 +142,7 @@ class FieldDescriptor(CompilableDescriptor):
         list_operators = {op.value for op in ListPathOperator}  # Set for O(1) lookup
         model_variable = ctx.get_variable(self._model_type)
 
-        if isinstance(value, DbFunctionDescriptor):
+        if isinstance(value, DbFunctionTransformer):
             parameter_name = value._compile(ctx)
         else:
             parameter_name = f"${ctx.add_parameter(value)}" if value else None
@@ -180,7 +185,7 @@ class FieldDescriptor(CompilableDescriptor):
 
             # Path is the part immediately preceding the operator
             path_segment = parts[index - 1]
-            operator_name = operator.lstrip("$").upper()
+            operator_name = operator.lstrip("$")
 
             current_template = (
                 f"{operator_name}({iter_variable} IN {parent_variable}.{path_segment} "
@@ -216,44 +221,10 @@ class EntityIdDescriptor(CompilableDescriptor):
         else:
             entity_id_path = self.template.format(variable=model_variable)
 
-        if isinstance(value, DbFunctionDescriptor):
+        if isinstance(value, DbFunctionTransformer):
             parameter_name = value._compile(ctx)
         else:
             parameter_name = ctx.add_parameter(value) if value else None
 
         template = expression_template.format(variable="{path}", parameter="${parameter}")
         return CompiledDescriptor(template, entity_id_path, parameter_name)
-
-
-@dataclass(frozen=True)
-class DbFunctionDescriptor:
-    """Descriptor class used to apply DB functions to fields/parameters."""
-
-    descriptor_or_parameter_value: Any
-    template: DbFunctionTemplate
-
-    @overload
-    def _compile(self, ctx: QueryCompilationContext) -> str: ...
-
-    @overload
-    def _compile(
-        self, ctx: QueryCompilationContext, expression_template: str, value: Optional[Any]
-    ) -> str: ...
-
-    def _compile(
-        self,
-        ctx: QueryCompilationContext,
-        expression_template: Optional[str] = None,
-        value: Optional[Any] = None,
-    ) -> str:
-        # If we are not dealing with a descriptor, we can compile the template with the
-        # parameter name directly
-        if not isinstance(self.descriptor_or_parameter_value, FieldDescriptor):
-            parameter_name = ctx.add_parameter(self.descriptor_or_parameter_value)
-            return self.template.format(variable_or_parameter=f"${parameter_name}")
-
-        compiled = self.descriptor_or_parameter_value._compile(
-            ctx, cast(str, expression_template), value
-        )
-        compiled_db_fn = self.template.format(variable_or_parameter=compiled.variable_path)
-        return compiled.template.format(path=compiled_db_fn, parameter=compiled.parameter_name)

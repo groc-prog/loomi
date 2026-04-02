@@ -1,5 +1,8 @@
 from typing import Any, List, TypeVar, Union, cast, get_args, get_origin
 
+from loomi.exceptions import QueryError
+from loomi.query.descriptor import FieldDescriptor, ListPathOperator
+
 P = TypeVar("P")
 
 
@@ -10,11 +13,13 @@ def all_(property_descriptor: List[P]) -> P:
     Returns:
         PropertyDescriptor: A property descriptor which can be used to further define paths.
     """
-    from loomi.query.descriptor import FieldDescriptor, ListPathOperator
+    if not isinstance(property_descriptor, FieldDescriptor):
+        raise QueryError(
+            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
+            f", got {property_descriptor}"
+        )
 
-    descriptor = cast(FieldDescriptor, property_descriptor)
-
-    current_type = descriptor._annotation
+    current_type = property_descriptor._annotation
     origin = get_origin(current_type)
     args = get_args(current_type)
 
@@ -25,9 +30,9 @@ def all_(property_descriptor: List[P]) -> P:
     return cast(
         P,
         FieldDescriptor(
-            f"{descriptor._full_path}.{ListPathOperator.ALL.value}",
+            f"{property_descriptor._full_path}.{ListPathOperator.ALL.value}",
             inferred_type,
-            descriptor._model_type,
+            property_descriptor._model_type,
         ),
     )
 
@@ -40,11 +45,13 @@ def any_(property_descriptor: List[P]) -> P:
     Returns:
         PropertyDescriptor: A property descriptor which can be used to further define paths.
     """
-    from loomi.query.descriptor import FieldDescriptor, ListPathOperator
+    if not isinstance(property_descriptor, FieldDescriptor):
+        raise QueryError(
+            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
+            f", got {property_descriptor}"
+        )
 
-    descriptor = cast(FieldDescriptor, property_descriptor)
-
-    current_type = descriptor._annotation
+    current_type = property_descriptor._annotation
     origin = get_origin(current_type)
     args = get_args(current_type)
 
@@ -55,9 +62,9 @@ def any_(property_descriptor: List[P]) -> P:
     return cast(
         P,
         FieldDescriptor(
-            f"{descriptor._full_path}.{ListPathOperator.ANY.value}",
+            f"{property_descriptor._full_path}.{ListPathOperator.ANY.value}",
             inferred_type,
-            descriptor._model_type,
+            property_descriptor._model_type,
         ),
     )
 
@@ -69,11 +76,13 @@ def none(property_descriptor: List[P]) -> P:
     Returns:
         PropertyDescriptor: A property descriptor which can be used to further define paths.
     """
-    from loomi.query.descriptor import FieldDescriptor, ListPathOperator
+    if not isinstance(property_descriptor, FieldDescriptor):
+        raise QueryError(
+            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
+            f", got {property_descriptor}"
+        )
 
-    descriptor = cast(FieldDescriptor, property_descriptor)
-
-    current_type = descriptor._annotation
+    current_type = property_descriptor._annotation
     origin = get_origin(current_type)
     args = get_args(current_type)
 
@@ -84,9 +93,9 @@ def none(property_descriptor: List[P]) -> P:
     return cast(
         P,
         FieldDescriptor(
-            f"{descriptor._full_path}.{ListPathOperator.NONE.value}",
+            f"{property_descriptor._full_path}.{ListPathOperator.NONE.value}",
             inferred_type,
-            descriptor._model_type,
+            property_descriptor._model_type,
         ),
     )
 
@@ -98,11 +107,13 @@ def single(property_descriptor: List[P]) -> P:
     Returns:
         PropertyDescriptor: A property descriptor which can be used to further define paths.
     """
-    from loomi.query.descriptor import FieldDescriptor, ListPathOperator
+    if not isinstance(property_descriptor, FieldDescriptor):
+        raise QueryError(
+            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
+            f", got {property_descriptor}"
+        )
 
-    descriptor = cast(FieldDescriptor, property_descriptor)
-
-    current_type = descriptor._annotation
+    current_type = property_descriptor._annotation
     origin = get_origin(current_type)
     args = get_args(current_type)
 
@@ -113,8 +124,8 @@ def single(property_descriptor: List[P]) -> P:
     return cast(
         P,
         FieldDescriptor(
-            f"{descriptor._full_path}.{ListPathOperator.SINGLE.value}",
+            f"{property_descriptor._full_path}.{ListPathOperator.SINGLE.value}",
             inferred_type,
-            descriptor._model_type,
+            property_descriptor._model_type,
         ),
     )
