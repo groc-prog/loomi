@@ -4,12 +4,12 @@ from typing import List, LiteralString, cast
 
 import neo4j
 import pytest
-from pydantic import BaseModel
 
 from loomi.graph.node import Node
 from loomi.query.alias import create_alias
 from loomi.query.expressions import QueryCompilationContext, QueryExpression
 from loomi.query.functions.comparison import equals, in_
+from loomi.query.functions.identity import element_id
 from loomi.query.functions.transformation import (
     abs_,
     ceil,
@@ -738,6 +738,25 @@ class TestNestedDbFunctions:
             assert len(entities) == 1
 
 
+class TestDbFunctionWithEntityDescriptor:
+    @pytest.mark.integration
+    def test_db_functions_with_wrapped_entity_descriptor(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that db functions used with entity descriptors are compiled correctly."""
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
+
+            ctx = QueryCompilationContext(driver_spec.name)
+            ctx.add_model(Human)
+            expression = equals(trim(element_id(Human)), trim("element-id"))
+            compiled_expression = expression._compile(ctx)
+
+            # We only check if it can compile since I cant think of a better test case right now
+            query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
+            result = session.run(cast(LiteralString, query), ctx.parameters)
+
+
 class TestDbFunctionWithArgs:
     @pytest.mark.integration
     def test_db_function_with_args_with_variable(self):
@@ -758,6 +777,63 @@ class TestDbFunctionWithArgs:
             ctx = QueryCompilationContext(NEO4J_DRIVER_SPEC.name)
             ctx.add_model(Human)
             expression = equals(transformer, "Joh")
+            compiled_expression = expression._compile(ctx)
+
+            query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
+            result = session.run(cast(LiteralString, query), ctx.parameters)
+
+            entities = result.value()
+            assert len(entities) == 1
+
+    @pytest.mark.integration
+    def test_db_function_with_args_with_parameter(self):
+        """Verify that the DB functions can use additional arguments."""
+        driver = neo4j.GraphDatabase.driver(
+            cast(str, NEO4J_DRIVER_SPEC.uri),
+            auth=(cast(str, NEO4J_DRIVER_SPEC.user), cast(str, NEO4J_DRIVER_SPEC.pwd)),
+        )
+        sync_cleanup(driver, NEO4J_DRIVER_SPEC.name)
+
+        transformer = DbFunctionTransformer(
+            "John", "rtrim({variable_or_parameter}, {arg0})", ["'n'"]
+        )
+
+        with driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "Joh"}})
+
+            ctx = QueryCompilationContext(NEO4J_DRIVER_SPEC.name)
+            ctx.add_model(Human)
+            expression = equals(Human.name, transformer)
+            compiled_expression = expression._compile(ctx)
+
+            query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
+            result = session.run(cast(LiteralString, query), ctx.parameters)
+
+            entities = result.value()
+            assert len(entities) == 1
+
+    @pytest.mark.integration
+    def test_db_function_with_args_with_variable_and_parameter(self):
+        """Verify that the DB functions can use additional arguments."""
+        driver = neo4j.GraphDatabase.driver(
+            cast(str, NEO4J_DRIVER_SPEC.uri),
+            auth=(cast(str, NEO4J_DRIVER_SPEC.user), cast(str, NEO4J_DRIVER_SPEC.pwd)),
+        )
+        sync_cleanup(driver, NEO4J_DRIVER_SPEC.name)
+
+        transformer_parameter = DbFunctionTransformer(
+            "John", "rtrim({variable_or_parameter}, {arg0})", ["'n'"]
+        )
+        transformer_variable = DbFunctionTransformer(
+            Human.name, "rtrim({variable_or_parameter}, {arg0})", ["'n'"]
+        )
+
+        with driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
+
+            ctx = QueryCompilationContext(NEO4J_DRIVER_SPEC.name)
+            ctx.add_model(Human)
+            expression = equals(transformer_variable, transformer_parameter)
             compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"

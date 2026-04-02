@@ -804,6 +804,99 @@ class TestAndExpressions:
             assert entities[0]["name"] == "John"
 
 
+class TestNestedAndExpressions:
+    @pytest.mark.integration
+    def test_nested_and_query_with_fn(self, sync_driver: neo4j.Driver, driver_spec: DriverSpec):
+        """Verify that the generated nested AND queries from the helper fn can be run by the driver."""
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 24}})
+
+            ctx = QueryCompilationContext(driver_spec.name)
+            ctx.add_model(Human)
+            expression = and_(
+                and_(equals(Human.name, "John"), less_than(Human.age, 30)),
+                greater_than(Human.age, 20),
+            )
+            compiled_expression = expression._compile(ctx)
+
+            query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
+            result = session.run(cast(LiteralString, query), ctx.parameters)
+
+            entities = result.value()
+            assert len(entities) == 1
+            assert entities[0]["name"] == "John"
+
+    @pytest.mark.integration
+    def test_nested_and_query_with_aliased_model(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the generated nested AND queries with aliased model can be run by the driver."""
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 24}})
+
+            ctx = QueryCompilationContext(driver_spec.name)
+            ctx.add_model(aliased_human)
+            expression = and_(
+                and_(equals(aliased_human.name, "John"), less_than(aliased_human.age, 30)),
+                greater_than(aliased_human.age, 20),
+            )
+            compiled_expression = expression._compile(ctx)
+
+            query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
+            result = session.run(cast(LiteralString, query), ctx.parameters)
+
+            entities = result.value()
+            assert len(entities) == 1
+            assert entities[0]["name"] == "John"
+
+    @pytest.mark.integration
+    def test_nested_and_query_with_magic_method(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the generated nested AND queries from the magic method can be run by the driver."""
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 24}})
+
+            ctx = QueryCompilationContext(driver_spec.name)
+            ctx.add_model(Human)
+            expression = ((Human.name == "John") & (Human.age > 20)) & (Human.age < 30)
+            compiled_expression = cast(QueryExpression, expression)._compile(ctx)
+
+            query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
+            result = session.run(cast(LiteralString, query), ctx.parameters)
+
+            entities = result.value()
+            assert len(entities) == 1
+            assert entities[0]["name"] == "John"
+
+    @pytest.mark.integration
+    def test_nested_and_query_with_other_logical_expression(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the generated nested AND queries from the helper fn can be run by the driver."""
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 24}})
+
+            ctx = QueryCompilationContext(driver_spec.name)
+            ctx.add_model(Human)
+            expression = and_(
+                or_(equals(Human.name, "John"), equals(Human.age, 30)),
+                greater_than(Human.age, 20),
+            )
+            compiled_expression = expression._compile(ctx)
+
+            query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
+            result = session.run(cast(LiteralString, query), ctx.parameters)
+
+            entities = result.value()
+            assert len(entities) == 1
+            assert entities[0]["name"] == "John"
+
+
 class TestOrExpressions:
     @pytest.mark.integration
     def test_or_query_with_fn(self, sync_driver: neo4j.Driver, driver_spec: DriverSpec):
@@ -863,6 +956,98 @@ class TestOrExpressions:
             assert entities[0]["name"] == "John"
 
 
+class TestNestedOrExpressions:
+    @pytest.mark.integration
+    def test_nested_or_query_with_fn(self, sync_driver: neo4j.Driver, driver_spec: DriverSpec):
+        """Verify that the generated nested OR queries from the helper fn can be run by the driver."""
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 22}})
+
+            ctx = QueryCompilationContext(driver_spec.name)
+            ctx.add_model(Human)
+            expression = or_(
+                or_(equals(Human.name, "John"), equals(Human.age, 30)), equals(Human.age, 40)
+            )
+            compiled_expression = expression._compile(ctx)
+
+            query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
+            result = session.run(cast(LiteralString, query), ctx.parameters)
+
+            entities = result.value()
+            assert len(entities) == 1
+            assert entities[0]["name"] == "John"
+
+    @pytest.mark.integration
+    def test_nested_or_query_with_aliased_model(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the generated nested OR queries with aliased model can be run by the driver."""
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 22}})
+
+            ctx = QueryCompilationContext(driver_spec.name)
+            ctx.add_model(aliased_human)
+            expression = or_(
+                or_(equals(aliased_human.name, "John"), equals(aliased_human.age, 30)),
+                equals(aliased_human.age, 40),
+            )
+            compiled_expression = expression._compile(ctx)
+
+            query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
+            result = session.run(cast(LiteralString, query), ctx.parameters)
+
+            entities = result.value()
+            assert len(entities) == 1
+            assert entities[0]["name"] == "John"
+
+    @pytest.mark.integration
+    def test_nested_or_query_with_magic_method(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the generated nested OR queries from the magic method can be run by the driver."""
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 22}})
+
+            ctx = QueryCompilationContext(driver_spec.name)
+            ctx.add_model(Human)
+            expression = ((Human.name == "John") | (Human.age == 30)) | (Human.age == 40)
+            compiled_expression = cast(QueryExpression, expression)._compile(ctx)
+
+            query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
+            result = session.run(cast(LiteralString, query), ctx.parameters)
+
+            entities = result.value()
+            assert len(entities) == 1
+            assert entities[0]["name"] == "John"
+
+    @pytest.mark.integration
+    def test_nested_or_query_with_other_logical_expression(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the generated nested OR queries from the helper fn can be run by the driver."""
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 24}})
+
+            ctx = QueryCompilationContext(driver_spec.name)
+            ctx.add_model(Human)
+            expression = or_(
+                and_(equals(Human.name, "John"), less_than(Human.age, 30)),
+                equals(Human.age, 20),
+            )
+            compiled_expression = expression._compile(ctx)
+
+            query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
+            result = session.run(cast(LiteralString, query), ctx.parameters)
+
+            entities = result.value()
+            assert len(entities) == 1
+            assert entities[0]["name"] == "John"
+
+
 class TestXorExpressions:
     @pytest.mark.integration
     def test_xor_query_with_fn(self, sync_driver: neo4j.Driver, driver_spec: DriverSpec):
@@ -913,6 +1098,98 @@ class TestXorExpressions:
             ctx.add_model(Human)
             expression = (Human.name == "John") ^ (Human.age == 30)
             compiled_expression = cast(QueryExpression, expression)._compile(ctx)
+
+            query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
+            result = session.run(cast(LiteralString, query), ctx.parameters)
+
+            entities = result.value()
+            assert len(entities) == 1
+            assert entities[0]["name"] == "John"
+
+
+class TestNestedXorExpressions:
+    @pytest.mark.integration
+    def test_nested_xor_query_with_fn(self, sync_driver: neo4j.Driver, driver_spec: DriverSpec):
+        """Verify that the generated nested XOR queries from the helper fn can be run by the driver."""
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 22}})
+
+            ctx = QueryCompilationContext(driver_spec.name)
+            ctx.add_model(Human)
+            expression = xor(
+                xor(equals(Human.name, "John"), equals(Human.age, 30)), equals(Human.age, 40)
+            )
+            compiled_expression = expression._compile(ctx)
+
+            query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
+            result = session.run(cast(LiteralString, query), ctx.parameters)
+
+            entities = result.value()
+            assert len(entities) == 1
+            assert entities[0]["name"] == "John"
+
+    @pytest.mark.integration
+    def test_nested_xor_query_with_aliased_model(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the generated nested XOR queries with aliased model can be run by the driver."""
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 22}})
+
+            ctx = QueryCompilationContext(driver_spec.name)
+            ctx.add_model(aliased_human)
+            expression = xor(
+                xor(equals(aliased_human.name, "John"), equals(aliased_human.age, 30)),
+                equals(aliased_human.age, 40),
+            )
+            compiled_expression = expression._compile(ctx)
+
+            query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
+            result = session.run(cast(LiteralString, query), ctx.parameters)
+
+            entities = result.value()
+            assert len(entities) == 1
+            assert entities[0]["name"] == "John"
+
+    @pytest.mark.integration
+    def test_nested_xor_query_with_magic_method(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the generated nested XOR queries from the magic method can be run by the driver."""
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 22}})
+
+            ctx = QueryCompilationContext(driver_spec.name)
+            ctx.add_model(Human)
+            expression = ((Human.name == "John") ^ (Human.age == 30)) ^ (Human.age == 40)
+            compiled_expression = cast(QueryExpression, expression)._compile(ctx)
+
+            query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
+            result = session.run(cast(LiteralString, query), ctx.parameters)
+
+            entities = result.value()
+            assert len(entities) == 1
+            assert entities[0]["name"] == "John"
+
+    @pytest.mark.integration
+    def test_nested_xor_query_with_other_logical_expression(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the generated nested XOR queries from the helper fn can be run by the driver."""
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 24}})
+
+            ctx = QueryCompilationContext(driver_spec.name)
+            ctx.add_model(Human)
+            expression = xor(
+                and_(equals(Human.name, "John"), less_than(Human.age, 30)),
+                equals(Human.age, 20),
+            )
+            compiled_expression = expression._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
