@@ -1,18 +1,13 @@
 # pylint: disable=unnecessary-ellipsis
 
-from dataclasses import dataclass
-from typing import Any, Optional, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Optional, Protocol, runtime_checkable
 
 from loomi.query._context import QueryCompilationContext
 
-
-@dataclass(frozen=True)
-class CompiledDescriptor:
-    """The compiled version for a given descriptor."""
-
-    template: str
-    variable_path: str
-    parameter_name: Optional[str]
+if TYPE_CHECKING:
+    from loomi.query.descriptor import CompiledDescriptor
+else:
+    CompiledDescriptor = object
 
 
 @runtime_checkable

@@ -10,9 +10,18 @@ from loomi._logger import logger
 from loomi.constants import ServerType
 from loomi.exceptions import ModelError
 from loomi.query._context import QueryCompilationContext
-from loomi.query._protocols import CompilableDescriptor, CompiledDescriptor
+from loomi.query._protocols import CompilableDescriptor
 from loomi.query._templates import EntityIdExpressionTemplate
 from loomi.query.transformers import DbFunctionTransformer
+
+
+@dataclass(frozen=True)
+class CompiledDescriptor:
+    """The compiled version for a given descriptor."""
+
+    template: str
+    variable_path: str
+    parameter_name: Optional[str]
 
 
 class ListPathOperator(StrEnum):
@@ -143,7 +152,10 @@ class FieldDescriptor(CompilableDescriptor):
         model_variable = ctx.get_variable(self._model_type)
 
         if isinstance(value, DbFunctionTransformer):
-            parameter_name = value._compile(ctx)
+            compiled_db_function = value._compile(ctx)
+            parameter_name = compiled_db_function.template.format(
+                transformed=compiled_db_function.transformed_path
+            )
         else:
             parameter_name = f"${ctx.add_parameter(value)}" if value else None
 
@@ -222,7 +234,10 @@ class EntityIdDescriptor(CompilableDescriptor):
             entity_id_path = self.template.format(variable=model_variable)
 
         if isinstance(value, DbFunctionTransformer):
-            parameter_name = value._compile(ctx)
+            compiled_db_function = value._compile(ctx)
+            parameter_name = compiled_db_function.template.format(
+                transformed=compiled_db_function.transformed_path
+            )
         else:
             parameter_name = ctx.add_parameter(value) if value else None
 

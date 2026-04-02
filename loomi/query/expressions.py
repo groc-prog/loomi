@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Union
 from loomi._internal._types import QueryModelType
 from loomi._logger import logger
 from loomi.query._context import QueryCompilationContext
-from loomi.query._protocols import CompilableDescriptor, CompilableExpression, CompiledDescriptor
+from loomi.query._protocols import CompilableDescriptor, CompilableExpression
 from loomi.query._templates import (
     ExpressionTemplate,
     LogicalExpressionTemplate,
@@ -14,8 +14,10 @@ from loomi.query._templates import (
 )
 
 if TYPE_CHECKING:
-    from loomi.query.descriptor import DbFunctionTransformer
+    from loomi.query.descriptor import CompiledDescriptor
+    from loomi.query.transformers import DbFunctionTransformer
 else:
+    CompiledDescriptor = object
     DbFunctionTransformer = object
 
 
@@ -56,7 +58,8 @@ class QueryExpression(_BaseQueryExpression):
         logger.debug("Compiling %s for template %s", self.__class__.__name__, self.template.name)
 
         if isinstance(self.descriptor, DbFunctionTransformer):
-            return self.descriptor._compile(ctx, self.template.value, self.value)
+            compiled = self.descriptor._compile(ctx, self.template.value, self.value)
+            return compiled.template.format(transformed=compiled.transformed_path)
 
         compiled_descriptor: CompiledDescriptor = self.descriptor._compile(
             ctx, self.template.value, self.value

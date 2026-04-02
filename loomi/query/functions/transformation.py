@@ -1,8 +1,6 @@
 from typing import Any
 
-from loomi.exceptions import QueryError
 from loomi.query._templates import DbFunctionTemplate
-from loomi.query.descriptor import FieldDescriptor
 from loomi.query.transformers import DbFunctionTransformer
 
 
@@ -16,13 +14,7 @@ def tail(property_descriptor: Any) -> DbFunctionTransformer:
     Returns:
         DbFunctionTransformer: A transformer which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, FieldDescriptor):
-        raise QueryError(
-            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
-            f", got {property_descriptor}"
-        )
-
-    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.TAIL)
+    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.TAIL, [])
 
 
 def abs_(property_descriptor: Any) -> DbFunctionTransformer:
@@ -35,13 +27,7 @@ def abs_(property_descriptor: Any) -> DbFunctionTransformer:
     Returns:
         DbFunctionTransformer: A transformer which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, FieldDescriptor):
-        raise QueryError(
-            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
-            f", got {property_descriptor}"
-        )
-
-    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.ABS)
+    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.ABS, [])
 
 
 def ceil(property_descriptor: Any) -> DbFunctionTransformer:
@@ -54,13 +40,7 @@ def ceil(property_descriptor: Any) -> DbFunctionTransformer:
     Returns:
         DbFunctionTransformer: A transformer which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, FieldDescriptor):
-        raise QueryError(
-            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
-            f", got {property_descriptor}"
-        )
-
-    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.CEIL)
+    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.CEIL, [])
 
 
 def floor(property_descriptor: Any) -> DbFunctionTransformer:
@@ -73,13 +53,7 @@ def floor(property_descriptor: Any) -> DbFunctionTransformer:
     Returns:
         DbFunctionTransformer: A transformer which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, FieldDescriptor):
-        raise QueryError(
-            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
-            f", got {property_descriptor}"
-        )
-
-    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.FLOOR)
+    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.FLOOR, [])
 
 
 def round_(property_descriptor: Any) -> DbFunctionTransformer:
@@ -92,13 +66,7 @@ def round_(property_descriptor: Any) -> DbFunctionTransformer:
     Returns:
         DbFunctionTransformer: A transformer which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, FieldDescriptor):
-        raise QueryError(
-            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
-            f", got {property_descriptor}"
-        )
-
-    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.ROUND)
+    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.ROUND, [])
 
 
 def ltrim(property_descriptor: Any) -> DbFunctionTransformer:
@@ -111,13 +79,7 @@ def ltrim(property_descriptor: Any) -> DbFunctionTransformer:
     Returns:
         DbFunctionTransformer: A transformer which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, FieldDescriptor):
-        raise QueryError(
-            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
-            f", got {property_descriptor}"
-        )
-
-    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.LTRIM)
+    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.LTRIM, [])
 
 
 def rtrim(property_descriptor: Any) -> DbFunctionTransformer:
@@ -130,13 +92,7 @@ def rtrim(property_descriptor: Any) -> DbFunctionTransformer:
     Returns:
         DbFunctionTransformer: A transformer which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, FieldDescriptor):
-        raise QueryError(
-            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
-            f", got {property_descriptor}"
-        )
-
-    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.RTRIM)
+    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.RTRIM, [])
 
 
 def trim(property_descriptor: Any) -> DbFunctionTransformer:
@@ -149,13 +105,7 @@ def trim(property_descriptor: Any) -> DbFunctionTransformer:
     Returns:
         DbFunctionTransformer: A transformer which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, FieldDescriptor):
-        raise QueryError(
-            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
-            f", got {property_descriptor}"
-        )
-
-    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.TRIM)
+    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.TRIM, [])
 
 
 def to_lower(property_descriptor: Any) -> DbFunctionTransformer:
@@ -168,13 +118,7 @@ def to_lower(property_descriptor: Any) -> DbFunctionTransformer:
     Returns:
         DbFunctionTransformer: A transformer which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, FieldDescriptor):
-        raise QueryError(
-            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
-            f", got {property_descriptor}"
-        )
-
-    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.TO_LOWER)
+    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.TO_LOWER, [])
 
 
 def to_upper(property_descriptor: Any) -> DbFunctionTransformer:
@@ -187,10 +131,4 @@ def to_upper(property_descriptor: Any) -> DbFunctionTransformer:
     Returns:
         DbFunctionTransformer: A transformer which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, FieldDescriptor):
-        raise QueryError(
-            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
-            f", got {property_descriptor}"
-        )
-
-    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.TO_UPPER)
+    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.TO_UPPER, [])

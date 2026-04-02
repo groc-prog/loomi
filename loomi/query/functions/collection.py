@@ -10,6 +10,9 @@ def all_(property_descriptor: List[P]) -> P:
     """
     Marks this list property to use `ALL` when a query builder encounters it.
 
+    Raises:
+        QueryError: If the provided descriptor is not valid.
+
     Returns:
         PropertyDescriptor: A property descriptor which can be used to further define paths.
     """
@@ -42,6 +45,9 @@ def any_(property_descriptor: List[P]) -> P:
     Marks this list property to use `ANY` when a query builder encounters it. This is also
     the default which will be used if nothing is defined for a list property.
 
+    Raises:
+        QueryError: If the provided descriptor is not valid.
+
     Returns:
         PropertyDescriptor: A property descriptor which can be used to further define paths.
     """
@@ -73,6 +79,9 @@ def none(property_descriptor: List[P]) -> P:
     """
     Marks this list property to use `NONE` when a query builder encounters it.
 
+    Raises:
+        QueryError: If the provided descriptor is not valid.
+
     Returns:
         PropertyDescriptor: A property descriptor which can be used to further define paths.
     """
@@ -103,6 +112,9 @@ def none(property_descriptor: List[P]) -> P:
 def single(property_descriptor: List[P]) -> P:
     """
     Marks this list property to use `SINGLE` when a query builder encounters it.
+
+    Raises:
+        QueryError: If the provided descriptor is not valid.
 
     Returns:
         PropertyDescriptor: A property descriptor which can be used to further define paths.
