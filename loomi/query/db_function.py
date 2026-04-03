@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Union, cast, overload
 
-from loomi.query._context import QueryCompilationContext
+from loomi.query._context import CompilationContext
 from loomi.query._protocols import CompilableDescriptor
 from loomi.query._templates import DbFunctionTemplate
 
@@ -23,16 +23,16 @@ class DbFunction:
     args: List[Any]
 
     @overload
-    def _compile(self, ctx: QueryCompilationContext) -> CompiledDbFunction: ...
+    def _compile(self, ctx: CompilationContext) -> CompiledDbFunction: ...
 
     @overload
     def _compile(
-        self, ctx: QueryCompilationContext, expression_template: str, value: Optional[Any]
+        self, ctx: CompilationContext, expression_template: str, value: Optional[Any]
     ) -> CompiledDbFunction: ...
 
     def _compile(
         self,
-        ctx: QueryCompilationContext,
+        ctx: CompilationContext,
         expression_template: Optional[str] = None,
         value: Optional[Any] = None,
     ) -> CompiledDbFunction:

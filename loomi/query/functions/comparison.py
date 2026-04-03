@@ -9,11 +9,11 @@ from loomi.query._templates import (
 )
 from loomi.query.descriptors import FieldDescriptor
 from loomi.query.expressions import (
-    CompoundQueryExpression,
+    ComparisonExpression,
+    CompoundExpression,
     CustomCypherExpression,
-    InvertQueryExpression,
-    NullQueryExpression,
-    QueryExpression,
+    InvertExpression,
+    NullExpression,
     _BaseQueryExpression,
 )
 
@@ -23,7 +23,7 @@ else:
     DbFunction = object
 
 
-def equals(property_descriptor: Any, value: Any) -> QueryExpression:
+def equals(property_descriptor: Any, value: Any) -> ComparisonExpression:
     """
     Builds a `=` expression for a query builder.
 
@@ -35,7 +35,7 @@ def equals(property_descriptor: Any, value: Any) -> QueryExpression:
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        QueryExpression: A expression which can be compiled by a query builder.
+        ComparisonExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
         raise QueryError(
@@ -44,10 +44,10 @@ def equals(property_descriptor: Any, value: Any) -> QueryExpression:
             f"{property_descriptor}"
         )
 
-    return QueryExpression(property_descriptor, ExpressionTemplate.EQ, value)
+    return ComparisonExpression(property_descriptor, ExpressionTemplate.EQ, value)
 
 
-def not_equals(property_descriptor: Any, value: Any) -> QueryExpression:
+def not_equals(property_descriptor: Any, value: Any) -> ComparisonExpression:
     """
     Builds a `<>` expression for a query builder.
 
@@ -59,7 +59,7 @@ def not_equals(property_descriptor: Any, value: Any) -> QueryExpression:
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        QueryExpression: A expression which can be compiled by a query builder.
+        ComparisonExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
         raise QueryError(
@@ -68,12 +68,12 @@ def not_equals(property_descriptor: Any, value: Any) -> QueryExpression:
             f"{property_descriptor}"
         )
 
-    return QueryExpression(property_descriptor, ExpressionTemplate.NEQ, value)
+    return ComparisonExpression(property_descriptor, ExpressionTemplate.NEQ, value)
 
 
 def greater_than(
     property_descriptor: Any, value: Union[NumericValue, DbFunction]
-) -> QueryExpression:
+) -> ComparisonExpression:
     """
     Builds a `>` expression for a query builder.
 
@@ -85,7 +85,7 @@ def greater_than(
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        QueryExpression: A expression which can be compiled by a query builder.
+        ComparisonExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
         raise QueryError(
@@ -94,12 +94,12 @@ def greater_than(
             f"{property_descriptor}"
         )
 
-    return QueryExpression(property_descriptor, ExpressionTemplate.GT, value)
+    return ComparisonExpression(property_descriptor, ExpressionTemplate.GT, value)
 
 
 def greater_than_or_equal(
     property_descriptor: Any, value: Union[NumericValue, DbFunction]
-) -> QueryExpression:
+) -> ComparisonExpression:
     """
     Builds a `>=` expression for a query builder.
 
@@ -111,7 +111,7 @@ def greater_than_or_equal(
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        QueryExpression: A expression which can be compiled by a query builder.
+        ComparisonExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
         raise QueryError(
@@ -120,10 +120,12 @@ def greater_than_or_equal(
             f"{property_descriptor}"
         )
 
-    return QueryExpression(property_descriptor, ExpressionTemplate.GTE, value)
+    return ComparisonExpression(property_descriptor, ExpressionTemplate.GTE, value)
 
 
-def less_than(property_descriptor: Any, value: Union[NumericValue, DbFunction]) -> QueryExpression:
+def less_than(
+    property_descriptor: Any, value: Union[NumericValue, DbFunction]
+) -> ComparisonExpression:
     """
     Builds a `<` expression for a query builder.
 
@@ -135,7 +137,7 @@ def less_than(property_descriptor: Any, value: Union[NumericValue, DbFunction]) 
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        QueryExpression: A expression which can be compiled by a query builder.
+        ComparisonExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
         raise QueryError(
@@ -144,12 +146,12 @@ def less_than(property_descriptor: Any, value: Union[NumericValue, DbFunction]) 
             f"{property_descriptor}"
         )
 
-    return QueryExpression(property_descriptor, ExpressionTemplate.LT, value)
+    return ComparisonExpression(property_descriptor, ExpressionTemplate.LT, value)
 
 
 def less_than_or_equal(
     property_descriptor: Any, value: Union[NumericValue, DbFunction]
-) -> QueryExpression:
+) -> ComparisonExpression:
     """
     Builds a `<=` expression for a query builder.
 
@@ -161,7 +163,7 @@ def less_than_or_equal(
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        QueryExpression: A expression which can be compiled by a query builder.
+        ComparisonExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
         raise QueryError(
@@ -170,74 +172,74 @@ def less_than_or_equal(
             f"{property_descriptor}"
         )
 
-    return QueryExpression(property_descriptor, ExpressionTemplate.LTE, value)
+    return ComparisonExpression(property_descriptor, ExpressionTemplate.LTE, value)
 
 
 def not_(
-    expression: Union[CompoundQueryExpression, _BaseQueryExpression],
-) -> InvertQueryExpression:
+    expression: Union[CompoundExpression, _BaseQueryExpression],
+) -> InvertExpression:
     """
     Builds a `NOT(...)` expression for a query builder.
 
     Args:
-        expression (Union[CompoundQueryExpression, _BaseQueryExpression]): The expression
+        expression (Union[CompoundExpression, _BaseQueryExpression]): The expression
         to invert.
 
     Returns:
-        InvertQueryExpression: A expression which can be compiled by a query builder.
+        InvertExpression: A expression which can be compiled by a query builder.
     """
-    return InvertQueryExpression(expression)
+    return InvertExpression(expression)
 
 
 def and_(
-    *expressions: Union[CompoundQueryExpression, _BaseQueryExpression],
-) -> CompoundQueryExpression:
+    *expressions: Union[CompoundExpression, _BaseQueryExpression],
+) -> CompoundExpression:
     """
     Builds a `AND(...)` expression for a query builder.
 
     Args:
-        *expressions (Union[CompoundQueryExpression, _BaseQueryExpression]): The expressions
+        *expressions (Union[CompoundExpression, _BaseQueryExpression]): The expressions
         to join.
 
     Returns:
-        CompoundQueryExpression: A expression which can be compiled by a query builder.
+        CompoundExpression: A expression which can be compiled by a query builder.
     """
-    return CompoundQueryExpression(LogicalExpressionTemplate.AND, [*expressions])
+    return CompoundExpression(LogicalExpressionTemplate.AND, [*expressions])
 
 
 def or_(
-    *expressions: Union[CompoundQueryExpression, _BaseQueryExpression],
-) -> CompoundQueryExpression:
+    *expressions: Union[CompoundExpression, _BaseQueryExpression],
+) -> CompoundExpression:
     """
     Builds a `OR(...)` expression for a query builder.
 
     Args:
-        *expressions (Union[CompoundQueryExpression, _BaseQueryExpression]): The expressions
+        *expressions (Union[CompoundExpression, _BaseQueryExpression]): The expressions
         to join.
 
     Returns:
-        CompoundQueryExpression: A expression which can be compiled by a query builder.
+        CompoundExpression: A expression which can be compiled by a query builder.
     """
-    return CompoundQueryExpression(LogicalExpressionTemplate.OR, [*expressions])
+    return CompoundExpression(LogicalExpressionTemplate.OR, [*expressions])
 
 
 def xor(
-    *expressions: Union[CompoundQueryExpression, _BaseQueryExpression],
-) -> CompoundQueryExpression:
+    *expressions: Union[CompoundExpression, _BaseQueryExpression],
+) -> CompoundExpression:
     """
     Builds a `XOR(...)` expression for a query builder.
 
     Args:
-        *expressions (Union[CompoundQueryExpression, _BaseQueryExpression]): The expressions
+        *expressions (Union[CompoundExpression, _BaseQueryExpression]): The expressions
         to join.
 
     Returns:
-        CompoundQueryExpression: A expression which can be compiled by a query builder.
+        CompoundExpression: A expression which can be compiled by a query builder.
     """
-    return CompoundQueryExpression(LogicalExpressionTemplate.XOR, [*expressions])
+    return CompoundExpression(LogicalExpressionTemplate.XOR, [*expressions])
 
 
-def is_null(property_descriptor: Any) -> NullQueryExpression:
+def is_null(property_descriptor: Any) -> NullExpression:
     """
     Builds a `IS NULL` expression for a query builder.
 
@@ -256,13 +258,13 @@ def is_null(property_descriptor: Any) -> NullQueryExpression:
             f", got {property_descriptor}"
         )
 
-    return NullQueryExpression(
+    return NullExpression(
         property_descriptor,
         UnaryExpressionTemplate.IS_NULL,
     )
 
 
-def is_not_null(property_descriptor: Any) -> NullQueryExpression:
+def is_not_null(property_descriptor: Any) -> NullExpression:
     """
     Builds a `IS NOT NULL` expression for a query builder.
 
@@ -281,13 +283,13 @@ def is_not_null(property_descriptor: Any) -> NullQueryExpression:
             f", got {property_descriptor}"
         )
 
-    return NullQueryExpression(
+    return NullExpression(
         property_descriptor,
         UnaryExpressionTemplate.IS_NOT_NULL,
     )
 
 
-def in_(property_descriptor: Any, value: Union[List[Any], DbFunction]) -> QueryExpression:
+def in_(property_descriptor: Any, value: Union[List[Any], DbFunction]) -> ComparisonExpression:
     """
     Builds a `IN` expression for a query builder.
 
@@ -299,7 +301,7 @@ def in_(property_descriptor: Any, value: Union[List[Any], DbFunction]) -> QueryE
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        QueryExpression: A expression which can be compiled by a query builder.
+        ComparisonExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
         raise QueryError(
@@ -308,10 +310,10 @@ def in_(property_descriptor: Any, value: Union[List[Any], DbFunction]) -> QueryE
             f"{property_descriptor}"
         )
 
-    return QueryExpression(property_descriptor, ExpressionTemplate.IN, value)
+    return ComparisonExpression(property_descriptor, ExpressionTemplate.IN, value)
 
 
-def starts_with(property_descriptor: Any, value: Union[str, DbFunction]) -> QueryExpression:
+def starts_with(property_descriptor: Any, value: Union[str, DbFunction]) -> ComparisonExpression:
     """
     Builds a `STARTS WITH` expression for a query builder.
 
@@ -323,7 +325,7 @@ def starts_with(property_descriptor: Any, value: Union[str, DbFunction]) -> Quer
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        QueryExpression: A expression which can be compiled by a query builder.
+        ComparisonExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
         raise QueryError(
@@ -332,10 +334,10 @@ def starts_with(property_descriptor: Any, value: Union[str, DbFunction]) -> Quer
             f"{property_descriptor}"
         )
 
-    return QueryExpression(property_descriptor, ExpressionTemplate.STARTS_WITH, value)
+    return ComparisonExpression(property_descriptor, ExpressionTemplate.STARTS_WITH, value)
 
 
-def ends_with(property_descriptor: Any, value: Union[str, DbFunction]) -> QueryExpression:
+def ends_with(property_descriptor: Any, value: Union[str, DbFunction]) -> ComparisonExpression:
     """
     Builds a `ENDS WITH` expression for a query builder.
 
@@ -347,7 +349,7 @@ def ends_with(property_descriptor: Any, value: Union[str, DbFunction]) -> QueryE
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        QueryExpression: A expression which can be compiled by a query builder.
+        ComparisonExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
         raise QueryError(
@@ -356,10 +358,10 @@ def ends_with(property_descriptor: Any, value: Union[str, DbFunction]) -> QueryE
             f"{property_descriptor}"
         )
 
-    return QueryExpression(property_descriptor, ExpressionTemplate.ENDS_WITH, value)
+    return ComparisonExpression(property_descriptor, ExpressionTemplate.ENDS_WITH, value)
 
 
-def contains(property_descriptor: Any, value: Union[str, DbFunction]) -> QueryExpression:
+def contains(property_descriptor: Any, value: Union[str, DbFunction]) -> ComparisonExpression:
     """
     Builds a `CONTAINS` expression for a query builder.
 
@@ -371,7 +373,7 @@ def contains(property_descriptor: Any, value: Union[str, DbFunction]) -> QueryEx
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        QueryExpression: A expression which can be compiled by a query builder.
+        ComparisonExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
         raise QueryError(
@@ -380,10 +382,10 @@ def contains(property_descriptor: Any, value: Union[str, DbFunction]) -> QueryEx
             f"{property_descriptor}"
         )
 
-    return QueryExpression(property_descriptor, ExpressionTemplate.CONTAINS, value)
+    return ComparisonExpression(property_descriptor, ExpressionTemplate.CONTAINS, value)
 
 
-def regex(property_descriptor: Any, value: Union[str, DbFunction]) -> QueryExpression:
+def regex(property_descriptor: Any, value: Union[str, DbFunction]) -> ComparisonExpression:
     """
     Builds a `=~` expression for a query builder.
 
@@ -395,7 +397,7 @@ def regex(property_descriptor: Any, value: Union[str, DbFunction]) -> QueryExpre
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        QueryExpression: A expression which can be compiled by a query builder.
+        ComparisonExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
         raise QueryError(
@@ -404,7 +406,7 @@ def regex(property_descriptor: Any, value: Union[str, DbFunction]) -> QueryExpre
             f"{property_descriptor}"
         )
 
-    return QueryExpression(property_descriptor, ExpressionTemplate.REGEX, value)
+    return ComparisonExpression(property_descriptor, ExpressionTemplate.REGEX, value)
 
 
 def cypher(
@@ -426,6 +428,6 @@ def cypher(
         parameter names.
 
     Returns:
-        QueryExpression: A expression which can be compiled by a query builder.
+        ComparisonExpression: A expression which can be compiled by a query builder.
     """
     return CustomCypherExpression(template, model_map, parameter_map)

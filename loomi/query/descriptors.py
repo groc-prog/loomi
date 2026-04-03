@@ -9,7 +9,7 @@ from loomi._internal.types import NumericValue, QueryModelType
 from loomi._logger import logger
 from loomi.constants import ServerType
 from loomi.exceptions import ModelError
-from loomi.query._context import QueryCompilationContext
+from loomi.query._context import CompilationContext
 from loomi.query._protocols import CompilableDescriptor
 from loomi.query._templates import EntityIdExpressionTemplate
 from loomi.query.db_function import DbFunction
@@ -133,7 +133,7 @@ class FieldDescriptor(CompilableDescriptor):
         return FieldDescriptor(f"{self._full_path}[{index}]", inner_type, self._model_type)
 
     def _compile(
-        self, ctx: QueryCompilationContext, expression_template: str, value: Optional[Any]
+        self, ctx: CompilationContext, expression_template: str, value: Optional[Any]
     ) -> CompiledDescriptor:
         # TODO: This currently generates 2 loops when filtering 2 list expressions which are
         # combined by any logical operator. Check if combining them into a single loop improves
@@ -215,7 +215,7 @@ class EntityIdDescriptor(CompilableDescriptor):
     template: EntityIdExpressionTemplate
 
     def _compile(
-        self, ctx: QueryCompilationContext, expression_template: str, value: Optional[Any]
+        self, ctx: CompilationContext, expression_template: str, value: Optional[Any]
     ) -> CompiledDescriptor:
         logger.debug(
             "Generating compilation plan for entity ID descriptor for model %s",

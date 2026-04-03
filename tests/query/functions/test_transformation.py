@@ -8,7 +8,7 @@ import pytest
 from loomi.graph.node import Node
 from loomi.query.alias import create_alias
 from loomi.query.db_function import DbFunction
-from loomi.query.expressions import QueryCompilationContext, QueryExpression
+from loomi.query.expressions import ComparisonExpression, CompilationContext
 from loomi.query.functions.comparison import equals, in_
 from loomi.query.functions.identity import element_id
 from loomi.query.functions.transformation import (
@@ -51,7 +51,7 @@ class TestTailDbFunction:
                 {"props": {"name": "Jane", "hobbies": ["Running", "Reading"]}},
             )
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(tail(Human.hobbies), ["Video Games"])
             compiled_expression = expression._compile(ctx)
@@ -72,7 +72,7 @@ class TestTailDbFunction:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = in_(Human.name, tail(["Jane", "John"]))
             compiled_expression = expression._compile(ctx)
@@ -99,7 +99,7 @@ class TestTailDbFunction:
                 {"props": {"name": "Jane", "hobbies": ["Running", "Reading"]}},
             )
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(tail(Human.hobbies), tail(["Running", "Video Games"]))
             compiled_expression = expression._compile(ctx)
@@ -122,7 +122,7 @@ class TestAbsDbFunction:
             session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": -24}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": -20}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(abs_(Human.age), 24)
             compiled_expression = expression._compile(ctx)
@@ -143,7 +143,7 @@ class TestAbsDbFunction:
             session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 20}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(Human.age, abs_(-24))
             compiled_expression = expression._compile(ctx)
@@ -164,7 +164,7 @@ class TestAbsDbFunction:
             session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": -24}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": -20}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(abs_(Human.age), abs_(-24))
             compiled_expression = expression._compile(ctx)
@@ -187,7 +187,7 @@ class TestCeilDbFunction:
             session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 23.3}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 20.5}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(ceil(Human.age), 24)
             compiled_expression = expression._compile(ctx)
@@ -208,7 +208,7 @@ class TestCeilDbFunction:
             session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 20}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(Human.age, ceil(23.3))
             compiled_expression = expression._compile(ctx)
@@ -229,7 +229,7 @@ class TestCeilDbFunction:
             session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 23.3}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 20}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(ceil(Human.age), ceil(23.6))
             compiled_expression = expression._compile(ctx)
@@ -252,7 +252,7 @@ class TestFloorDbFunction:
             session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24.3}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 20.5}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(floor(Human.age), 24)
             compiled_expression = expression._compile(ctx)
@@ -273,7 +273,7 @@ class TestFloorDbFunction:
             session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 20}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(Human.age, floor(24.3))
             compiled_expression = expression._compile(ctx)
@@ -294,7 +294,7 @@ class TestFloorDbFunction:
             session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24.3}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 20}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(floor(Human.age), floor(24.6))
             compiled_expression = expression._compile(ctx)
@@ -317,7 +317,7 @@ class TestRoundDbFunction:
             session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24.3}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 20.5}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(round_(Human.age), 24)
             compiled_expression = expression._compile(ctx)
@@ -338,7 +338,7 @@ class TestRoundDbFunction:
             session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 20}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(Human.age, round_(24.3))
             compiled_expression = expression._compile(ctx)
@@ -359,7 +359,7 @@ class TestRoundDbFunction:
             session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24.3}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 20}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(round_(Human.age), round_(24.4))
             compiled_expression = expression._compile(ctx)
@@ -381,7 +381,7 @@ class TestLtrimDbFunction:
         with sync_driver.session() as session:
             session.run("CREATE (:Human $props)", {"props": {"name": "  John"}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(ltrim(Human.name), "John")
             compiled_expression = expression._compile(ctx)
@@ -400,7 +400,7 @@ class TestLtrimDbFunction:
         with sync_driver.session() as session:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(Human.name, ltrim("    John"))
             compiled_expression = expression._compile(ctx)
@@ -419,7 +419,7 @@ class TestLtrimDbFunction:
         with sync_driver.session() as session:
             session.run("CREATE (:Human $props)", {"props": {"name": "   John"}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(ltrim(Human.name), ltrim("     John"))
             compiled_expression = expression._compile(ctx)
@@ -440,7 +440,7 @@ class TestRTrimDbFunction:
         with sync_driver.session() as session:
             session.run("CREATE (:Human $props)", {"props": {"name": "John   "}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(rtrim(Human.name), "John")
             compiled_expression = expression._compile(ctx)
@@ -459,7 +459,7 @@ class TestRTrimDbFunction:
         with sync_driver.session() as session:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(Human.name, rtrim("John    "))
             compiled_expression = expression._compile(ctx)
@@ -478,7 +478,7 @@ class TestRTrimDbFunction:
         with sync_driver.session() as session:
             session.run("CREATE (:Human $props)", {"props": {"name": "John   "}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(rtrim(Human.name), rtrim("John     "))
             compiled_expression = expression._compile(ctx)
@@ -499,7 +499,7 @@ class TestTrimDbFunction:
         with sync_driver.session() as session:
             session.run("CREATE (:Human $props)", {"props": {"name": "  John   "}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(trim(Human.name), "John")
             compiled_expression = expression._compile(ctx)
@@ -518,7 +518,7 @@ class TestTrimDbFunction:
         with sync_driver.session() as session:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(Human.name, trim("      John    "))
             compiled_expression = expression._compile(ctx)
@@ -537,7 +537,7 @@ class TestTrimDbFunction:
         with sync_driver.session() as session:
             session.run("CREATE (:Human $props)", {"props": {"name": "  John   "}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(trim(Human.name), trim("   John     "))
             compiled_expression = expression._compile(ctx)
@@ -559,7 +559,7 @@ class TestToLowerDbFunction:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(to_lower(Human.name), "john")
             compiled_expression = expression._compile(ctx)
@@ -580,7 +580,7 @@ class TestToLowerDbFunction:
             session.run("CREATE (:Human $props)", {"props": {"name": "john"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "jane"}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(Human.name, to_lower("John"))
             compiled_expression = expression._compile(ctx)
@@ -601,7 +601,7 @@ class TestToLowerDbFunction:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(to_lower(Human.name), to_lower("John"))
             compiled_expression = expression._compile(ctx)
@@ -624,7 +624,7 @@ class TestToUpperDbFunction:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(to_upper(Human.name), "JOHN")
             compiled_expression = expression._compile(ctx)
@@ -645,7 +645,7 @@ class TestToUpperDbFunction:
             session.run("CREATE (:Human $props)", {"props": {"name": "JOHN"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "JANE"}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(Human.name, to_upper("John"))
             compiled_expression = expression._compile(ctx)
@@ -666,7 +666,7 @@ class TestToUpperDbFunction:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
             session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(to_upper(Human.name), to_upper("John"))
             compiled_expression = expression._compile(ctx)
@@ -688,7 +688,7 @@ class TestNestedDbFunctions:
         with sync_driver.session() as session:
             session.run("CREATE (:Human $props)", {"props": {"name": "   John "}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(trim(to_upper(Human.name)), "JOHN")
             compiled_expression = expression._compile(ctx)
@@ -707,7 +707,7 @@ class TestNestedDbFunctions:
         with sync_driver.session() as session:
             session.run("CREATE (:Human $props)", {"props": {"name": "JOHN"}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(Human.name, trim(to_upper("  John    ")))
             compiled_expression = expression._compile(ctx)
@@ -726,7 +726,7 @@ class TestNestedDbFunctions:
         with sync_driver.session() as session:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(trim(to_upper(Human.name)), trim(to_upper("   John  ")))
             compiled_expression = expression._compile(ctx)
@@ -747,7 +747,7 @@ class TestDbFunctionWithEntityDescriptor:
         with sync_driver.session() as session:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(trim(element_id(Human)), trim("element-id"))
             compiled_expression = expression._compile(ctx)
@@ -772,7 +772,7 @@ class TestDbFunctionWithArgs:
         with driver.session() as session:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
 
-            ctx = QueryCompilationContext(NEO4J_DRIVER_SPEC.name)
+            ctx = CompilationContext(NEO4J_DRIVER_SPEC.name)
             ctx.add_model(Human)
             expression = equals(transformer, "Joh")
             compiled_expression = expression._compile(ctx)
@@ -797,7 +797,7 @@ class TestDbFunctionWithArgs:
         with driver.session() as session:
             session.run("CREATE (:Human $props)", {"props": {"name": "Joh"}})
 
-            ctx = QueryCompilationContext(NEO4J_DRIVER_SPEC.name)
+            ctx = CompilationContext(NEO4J_DRIVER_SPEC.name)
             ctx.add_model(Human)
             expression = equals(Human.name, transformer)
             compiled_expression = expression._compile(ctx)
@@ -827,7 +827,7 @@ class TestDbFunctionWithArgs:
         with driver.session() as session:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
 
-            ctx = QueryCompilationContext(NEO4J_DRIVER_SPEC.name)
+            ctx = CompilationContext(NEO4J_DRIVER_SPEC.name)
             ctx.add_model(Human)
             expression = equals(transformer_variable, transformer_parameter)
             compiled_expression = expression._compile(ctx)

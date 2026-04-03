@@ -8,7 +8,7 @@ import pytest
 from loomi.constants import ServerType
 from loomi.graph.node import Node
 from loomi.query.alias import create_alias
-from loomi.query.expressions import QueryCompilationContext, QueryExpression
+from loomi.query.expressions import ComparisonExpression, CompilationContext
 from loomi.query.functions.comparison import equals
 from loomi.query.functions.identity import element_id, id_
 from tests.fixtures.db import DriverSpec, driver_spec, sync_driver
@@ -33,10 +33,10 @@ class TestElementIdExpressions:
             )
             identifier = result.value()[0]
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(element_id(Human), identifier)
-            compiled_expression = cast(QueryExpression, expression)._compile(ctx)
+            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
@@ -58,10 +58,10 @@ class TestElementIdExpressions:
             )
             identifier = result.value()[0]
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(aliased_human)
             expression = equals(element_id(aliased_human), identifier)
-            compiled_expression = cast(QueryExpression, expression)._compile(ctx)
+            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
@@ -82,10 +82,10 @@ class TestIdExpressions:
             )
             identifier = result.value()[0]
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(id_(Human), identifier)
-            compiled_expression = cast(QueryExpression, expression)._compile(ctx)
+            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
@@ -104,10 +104,10 @@ class TestIdExpressions:
             )
             identifier = result.value()[0]
 
-            ctx = QueryCompilationContext(driver_spec.name)
+            ctx = CompilationContext(driver_spec.name)
             ctx.add_model(aliased_human)
             expression = equals(id_(aliased_human), identifier)
-            compiled_expression = cast(QueryExpression, expression)._compile(ctx)
+            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)

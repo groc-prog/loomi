@@ -7,7 +7,7 @@ from loomi.exceptions import QueryError
 from loomi.query.alias import AliasedModel
 
 
-class QueryCompilationContext:
+class CompilationContext:
     """Context scoped to a query compilation."""
 
     server_type: ServerType
