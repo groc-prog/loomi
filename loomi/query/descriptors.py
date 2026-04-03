@@ -12,7 +12,7 @@ from loomi.exceptions import ModelError
 from loomi.query._context import QueryCompilationContext
 from loomi.query._protocols import CompilableDescriptor
 from loomi.query._templates import EntityIdExpressionTemplate
-from loomi.query.transformers import DbFunctionTransformer
+from loomi.query.db_function import DbFunction
 
 
 @dataclass(frozen=True)
@@ -84,7 +84,7 @@ class FieldDescriptor(CompilableDescriptor):
         # If we encounter a list we get the first valid item type we find
         if origin is list or origin is List or origin is Union:
             inner_type = next((a for a in args if a is not type(None)), None)
-            if inner_type:
+            if inner_type is not None:
                 current_annotation = inner_type
                 origin = get_origin(current_annotation)
                 args = get_args(current_annotation)
@@ -151,13 +151,13 @@ class FieldDescriptor(CompilableDescriptor):
         list_operators = {op.value for op in ListPathOperator}  # Set for O(1) lookup
         model_variable = ctx.get_variable(self._model_type)
 
-        if isinstance(value, DbFunctionTransformer):
+        if isinstance(value, DbFunction):
             compiled_db_function = value._compile(ctx)
             parameter_name = compiled_db_function.template.format(
-                transformed=compiled_db_function.transformed_path
+                wrapped=compiled_db_function.wrapped_path
             )
         else:
-            parameter_name = f"${ctx.add_parameter(value)}" if value else None
+            parameter_name = f"${ctx.add_parameter(value)}" if value is not None else None
 
         # Split the path to be able to handle any list operators
         path_parts = re.split(r"(\$all|\$any|\$none|\$single)", self._full_path)
@@ -233,13 +233,13 @@ class EntityIdDescriptor(CompilableDescriptor):
         else:
             entity_id_path = self.template.format(variable=model_variable)
 
-        if isinstance(value, DbFunctionTransformer):
+        if isinstance(value, DbFunction):
             compiled_db_function = value._compile(ctx)
             parameter_name = compiled_db_function.template.format(
-                transformed=compiled_db_function.transformed_path
+                wrapped=compiled_db_function.wrapped_path
             )
         else:
-            parameter_name = f"${ctx.add_parameter(value)}" if value else None
+            parameter_name = f"${ctx.add_parameter(value)}" if value is not None else None
 
         template = expression_template.format(variable="{path}", parameter="{parameter}")
         return CompiledDescriptor(template, entity_id_path, parameter_name)

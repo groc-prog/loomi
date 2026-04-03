@@ -7,7 +7,7 @@ from loomi.query._templates import (
     LogicalExpressionTemplate,
     UnaryExpressionTemplate,
 )
-from loomi.query.descriptor import FieldDescriptor
+from loomi.query.descriptors import FieldDescriptor
 from loomi.query.expressions import (
     CompoundQueryExpression,
     CustomCypherExpression,
@@ -18,9 +18,9 @@ from loomi.query.expressions import (
 )
 
 if TYPE_CHECKING:
-    from loomi.query.transformers import DbFunctionTransformer
+    from loomi.query.db_function import DbFunction
 else:
-    DbFunctionTransformer = object
+    DbFunction = object
 
 
 def equals(property_descriptor: Any, value: Any) -> QueryExpression:
@@ -37,10 +37,10 @@ def equals(property_descriptor: Any, value: Any) -> QueryExpression:
     Returns:
         QueryExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, (FieldDescriptor, DbFunctionTransformer)):
+    if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
         raise QueryError(
             f"Descriptor must be a valid field descriptor or db function. "
-            f"Expected {FieldDescriptor.__name__} or {DbFunctionTransformer.__name__}, got "
+            f"Expected {FieldDescriptor.__name__} or {DbFunction.__name__}, got "
             f"{property_descriptor}"
         )
 
@@ -61,10 +61,10 @@ def not_equals(property_descriptor: Any, value: Any) -> QueryExpression:
     Returns:
         QueryExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, (FieldDescriptor, DbFunctionTransformer)):
+    if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
         raise QueryError(
             f"Descriptor must be a valid field descriptor or db function. "
-            f"Expected {FieldDescriptor.__name__} or {DbFunctionTransformer.__name__}, got "
+            f"Expected {FieldDescriptor.__name__} or {DbFunction.__name__}, got "
             f"{property_descriptor}"
         )
 
@@ -72,7 +72,7 @@ def not_equals(property_descriptor: Any, value: Any) -> QueryExpression:
 
 
 def greater_than(
-    property_descriptor: Any, value: Union[NumericValue, DbFunctionTransformer]
+    property_descriptor: Any, value: Union[NumericValue, DbFunction]
 ) -> QueryExpression:
     """
     Builds a `>` expression for a query builder.
@@ -87,10 +87,10 @@ def greater_than(
     Returns:
         QueryExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, (FieldDescriptor, DbFunctionTransformer)):
+    if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
         raise QueryError(
             f"Descriptor must be a valid field descriptor or db function. "
-            f"Expected {FieldDescriptor.__name__} or {DbFunctionTransformer.__name__}, got "
+            f"Expected {FieldDescriptor.__name__} or {DbFunction.__name__}, got "
             f"{property_descriptor}"
         )
 
@@ -98,7 +98,7 @@ def greater_than(
 
 
 def greater_than_or_equal(
-    property_descriptor: Any, value: Union[NumericValue, DbFunctionTransformer]
+    property_descriptor: Any, value: Union[NumericValue, DbFunction]
 ) -> QueryExpression:
     """
     Builds a `>=` expression for a query builder.
@@ -113,19 +113,17 @@ def greater_than_or_equal(
     Returns:
         QueryExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, (FieldDescriptor, DbFunctionTransformer)):
+    if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
         raise QueryError(
             f"Descriptor must be a valid field descriptor or db function. "
-            f"Expected {FieldDescriptor.__name__} or {DbFunctionTransformer.__name__}, got "
+            f"Expected {FieldDescriptor.__name__} or {DbFunction.__name__}, got "
             f"{property_descriptor}"
         )
 
     return QueryExpression(property_descriptor, ExpressionTemplate.GTE, value)
 
 
-def less_than(
-    property_descriptor: Any, value: Union[NumericValue, DbFunctionTransformer]
-) -> QueryExpression:
+def less_than(property_descriptor: Any, value: Union[NumericValue, DbFunction]) -> QueryExpression:
     """
     Builds a `<` expression for a query builder.
 
@@ -139,10 +137,10 @@ def less_than(
     Returns:
         QueryExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, (FieldDescriptor, DbFunctionTransformer)):
+    if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
         raise QueryError(
             f"Descriptor must be a valid field descriptor or db function. "
-            f"Expected {FieldDescriptor.__name__} or {DbFunctionTransformer.__name__}, got "
+            f"Expected {FieldDescriptor.__name__} or {DbFunction.__name__}, got "
             f"{property_descriptor}"
         )
 
@@ -150,7 +148,7 @@ def less_than(
 
 
 def less_than_or_equal(
-    property_descriptor: Any, value: Union[NumericValue, DbFunctionTransformer]
+    property_descriptor: Any, value: Union[NumericValue, DbFunction]
 ) -> QueryExpression:
     """
     Builds a `<=` expression for a query builder.
@@ -165,10 +163,10 @@ def less_than_or_equal(
     Returns:
         QueryExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, (FieldDescriptor, DbFunctionTransformer)):
+    if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
         raise QueryError(
             f"Descriptor must be a valid field descriptor or db function. "
-            f"Expected {FieldDescriptor.__name__} or {DbFunctionTransformer.__name__}, got "
+            f"Expected {FieldDescriptor.__name__} or {DbFunction.__name__}, got "
             f"{property_descriptor}"
         )
 
@@ -289,9 +287,7 @@ def is_not_null(property_descriptor: Any) -> NullQueryExpression:
     )
 
 
-def in_(
-    property_descriptor: Any, value: Union[List[Any], DbFunctionTransformer]
-) -> QueryExpression:
+def in_(property_descriptor: Any, value: Union[List[Any], DbFunction]) -> QueryExpression:
     """
     Builds a `IN` expression for a query builder.
 
@@ -305,19 +301,17 @@ def in_(
     Returns:
         QueryExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, (FieldDescriptor, DbFunctionTransformer)):
+    if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
         raise QueryError(
             f"Descriptor must be a valid field descriptor or db function. "
-            f"Expected {FieldDescriptor.__name__} or {DbFunctionTransformer.__name__}, got "
+            f"Expected {FieldDescriptor.__name__} or {DbFunction.__name__}, got "
             f"{property_descriptor}"
         )
 
     return QueryExpression(property_descriptor, ExpressionTemplate.IN, value)
 
 
-def starts_with(
-    property_descriptor: Any, value: Union[str, DbFunctionTransformer]
-) -> QueryExpression:
+def starts_with(property_descriptor: Any, value: Union[str, DbFunction]) -> QueryExpression:
     """
     Builds a `STARTS WITH` expression for a query builder.
 
@@ -331,19 +325,17 @@ def starts_with(
     Returns:
         QueryExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, (FieldDescriptor, DbFunctionTransformer)):
+    if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
         raise QueryError(
             f"Descriptor must be a valid field descriptor or db function. "
-            f"Expected {FieldDescriptor.__name__} or {DbFunctionTransformer.__name__}, got "
+            f"Expected {FieldDescriptor.__name__} or {DbFunction.__name__}, got "
             f"{property_descriptor}"
         )
 
     return QueryExpression(property_descriptor, ExpressionTemplate.STARTS_WITH, value)
 
 
-def ends_with(
-    property_descriptor: Any, value: Union[str, DbFunctionTransformer]
-) -> QueryExpression:
+def ends_with(property_descriptor: Any, value: Union[str, DbFunction]) -> QueryExpression:
     """
     Builds a `ENDS WITH` expression for a query builder.
 
@@ -357,17 +349,17 @@ def ends_with(
     Returns:
         QueryExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, (FieldDescriptor, DbFunctionTransformer)):
+    if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
         raise QueryError(
             f"Descriptor must be a valid field descriptor or db function. "
-            f"Expected {FieldDescriptor.__name__} or {DbFunctionTransformer.__name__}, got "
+            f"Expected {FieldDescriptor.__name__} or {DbFunction.__name__}, got "
             f"{property_descriptor}"
         )
 
     return QueryExpression(property_descriptor, ExpressionTemplate.ENDS_WITH, value)
 
 
-def contains(property_descriptor: Any, value: Union[str, DbFunctionTransformer]) -> QueryExpression:
+def contains(property_descriptor: Any, value: Union[str, DbFunction]) -> QueryExpression:
     """
     Builds a `CONTAINS` expression for a query builder.
 
@@ -381,17 +373,17 @@ def contains(property_descriptor: Any, value: Union[str, DbFunctionTransformer])
     Returns:
         QueryExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, (FieldDescriptor, DbFunctionTransformer)):
+    if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
         raise QueryError(
             f"Descriptor must be a valid field descriptor or db function. "
-            f"Expected {FieldDescriptor.__name__} or {DbFunctionTransformer.__name__}, got "
+            f"Expected {FieldDescriptor.__name__} or {DbFunction.__name__}, got "
             f"{property_descriptor}"
         )
 
     return QueryExpression(property_descriptor, ExpressionTemplate.CONTAINS, value)
 
 
-def regex(property_descriptor: Any, value: Union[str, DbFunctionTransformer]) -> QueryExpression:
+def regex(property_descriptor: Any, value: Union[str, DbFunction]) -> QueryExpression:
     """
     Builds a `=~` expression for a query builder.
 
@@ -405,10 +397,10 @@ def regex(property_descriptor: Any, value: Union[str, DbFunctionTransformer]) ->
     Returns:
         QueryExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, (FieldDescriptor, DbFunctionTransformer)):
+    if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
         raise QueryError(
             f"Descriptor must be a valid field descriptor or db function. "
-            f"Expected {FieldDescriptor.__name__} or {DbFunctionTransformer.__name__}, got "
+            f"Expected {FieldDescriptor.__name__} or {DbFunction.__name__}, got "
             f"{property_descriptor}"
         )
 

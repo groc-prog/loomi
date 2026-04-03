@@ -1,10 +1,10 @@
 from typing import Any
 
 from loomi.query._templates import DbFunctionTemplate
-from loomi.query.transformers import DbFunctionTransformer
+from loomi.query.db_function import DbFunction
 
 
-def tail(property_descriptor: Any) -> DbFunctionTransformer:
+def tail(property_descriptor: Any) -> DbFunction:
     """
     Wraps the descriptor or value in a `tail()` function.
 
@@ -12,12 +12,12 @@ def tail(property_descriptor: Any) -> DbFunctionTransformer:
         property_descriptor (PropertyDescriptor): The descriptor to wrap.
 
     Returns:
-        DbFunctionTransformer: A transformer which can be compiled by a query builder.
+        DbFunction: A transformer which can be compiled by a query builder.
     """
-    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.TAIL, [])
+    return DbFunction(property_descriptor, DbFunctionTemplate.TAIL, [])
 
 
-def abs_(property_descriptor: Any) -> DbFunctionTransformer:
+def abs_(property_descriptor: Any) -> DbFunction:
     """
     Wraps the descriptor or value in a `abs()` function.
 
@@ -25,12 +25,12 @@ def abs_(property_descriptor: Any) -> DbFunctionTransformer:
         property_descriptor (PropertyDescriptor): The descriptor to wrap.
 
     Returns:
-        DbFunctionTransformer: A transformer which can be compiled by a query builder.
+        DbFunction: A transformer which can be compiled by a query builder.
     """
-    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.ABS, [])
+    return DbFunction(property_descriptor, DbFunctionTemplate.ABS, [])
 
 
-def ceil(property_descriptor: Any) -> DbFunctionTransformer:
+def ceil(property_descriptor: Any) -> DbFunction:
     """
     Wraps the descriptor or value in a `ceil()` function.
 
@@ -38,12 +38,12 @@ def ceil(property_descriptor: Any) -> DbFunctionTransformer:
         property_descriptor (PropertyDescriptor): The descriptor to wrap.
 
     Returns:
-        DbFunctionTransformer: A transformer which can be compiled by a query builder.
+        DbFunction: A transformer which can be compiled by a query builder.
     """
-    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.CEIL, [])
+    return DbFunction(property_descriptor, DbFunctionTemplate.CEIL, [])
 
 
-def floor(property_descriptor: Any) -> DbFunctionTransformer:
+def floor(property_descriptor: Any) -> DbFunction:
     """
     Wraps the descriptor or value in a `floor()` function.
 
@@ -51,12 +51,12 @@ def floor(property_descriptor: Any) -> DbFunctionTransformer:
         property_descriptor (PropertyDescriptor): The descriptor to wrap.
 
     Returns:
-        DbFunctionTransformer: A transformer which can be compiled by a query builder.
+        DbFunction: A transformer which can be compiled by a query builder.
     """
-    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.FLOOR, [])
+    return DbFunction(property_descriptor, DbFunctionTemplate.FLOOR, [])
 
 
-def round_(property_descriptor: Any) -> DbFunctionTransformer:
+def round_(property_descriptor: Any) -> DbFunction:
     """
     Wraps the descriptor or value in a `round()` function.
 
@@ -64,12 +64,12 @@ def round_(property_descriptor: Any) -> DbFunctionTransformer:
         property_descriptor (PropertyDescriptor): The descriptor to wrap.
 
     Returns:
-        DbFunctionTransformer: A transformer which can be compiled by a query builder.
+        DbFunction: A transformer which can be compiled by a query builder.
     """
-    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.ROUND, [])
+    return DbFunction(property_descriptor, DbFunctionTemplate.ROUND, [])
 
 
-def ltrim(property_descriptor: Any) -> DbFunctionTransformer:
+def ltrim(property_descriptor: Any) -> DbFunction:
     """
     Wraps the descriptor or value in a `ltrim()` function.
 
@@ -77,12 +77,12 @@ def ltrim(property_descriptor: Any) -> DbFunctionTransformer:
         property_descriptor (PropertyDescriptor): The descriptor to wrap.
 
     Returns:
-        DbFunctionTransformer: A transformer which can be compiled by a query builder.
+        DbFunction: A transformer which can be compiled by a query builder.
     """
-    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.LTRIM, [])
+    return DbFunction(property_descriptor, DbFunctionTemplate.LTRIM, [])
 
 
-def rtrim(property_descriptor: Any) -> DbFunctionTransformer:
+def rtrim(property_descriptor: Any) -> DbFunction:
     """
     Wraps the descriptor or value in a `rtrim()` function.
 
@@ -90,12 +90,12 @@ def rtrim(property_descriptor: Any) -> DbFunctionTransformer:
         property_descriptor (PropertyDescriptor): The descriptor to wrap.
 
     Returns:
-        DbFunctionTransformer: A transformer which can be compiled by a query builder.
+        DbFunction: A transformer which can be compiled by a query builder.
     """
-    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.RTRIM, [])
+    return DbFunction(property_descriptor, DbFunctionTemplate.RTRIM, [])
 
 
-def trim(property_descriptor: Any) -> DbFunctionTransformer:
+def trim(property_descriptor: Any) -> DbFunction:
     """
     Wraps the descriptor or value in a `trim()` function.
 
@@ -103,12 +103,12 @@ def trim(property_descriptor: Any) -> DbFunctionTransformer:
         property_descriptor (PropertyDescriptor): The descriptor to wrap.
 
     Returns:
-        DbFunctionTransformer: A transformer which can be compiled by a query builder.
+        DbFunction: A transformer which can be compiled by a query builder.
     """
-    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.TRIM, [])
+    return DbFunction(property_descriptor, DbFunctionTemplate.TRIM, [])
 
 
-def to_lower(property_descriptor: Any) -> DbFunctionTransformer:
+def to_lower(property_descriptor: Any) -> DbFunction:
     """
     Wraps the descriptor or value in a `toLower()` function.
 
@@ -116,12 +116,12 @@ def to_lower(property_descriptor: Any) -> DbFunctionTransformer:
         property_descriptor (PropertyDescriptor): The descriptor to wrap.
 
     Returns:
-        DbFunctionTransformer: A transformer which can be compiled by a query builder.
+        DbFunction: A transformer which can be compiled by a query builder.
     """
-    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.TO_LOWER, [])
+    return DbFunction(property_descriptor, DbFunctionTemplate.TO_LOWER, [])
 
 
-def to_upper(property_descriptor: Any) -> DbFunctionTransformer:
+def to_upper(property_descriptor: Any) -> DbFunction:
     """
     Wraps the descriptor or value in a `toUpper()` function.
 
@@ -129,6 +129,6 @@ def to_upper(property_descriptor: Any) -> DbFunctionTransformer:
         property_descriptor (PropertyDescriptor): The descriptor to wrap.
 
     Returns:
-        DbFunctionTransformer: A transformer which can be compiled by a query builder.
+        DbFunction: A transformer which can be compiled by a query builder.
     """
-    return DbFunctionTransformer(property_descriptor, DbFunctionTemplate.TO_UPPER, [])
+    return DbFunction(property_descriptor, DbFunctionTemplate.TO_UPPER, [])

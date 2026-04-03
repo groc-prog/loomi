@@ -21,7 +21,7 @@ from loomi._internal._types import ModelType
 from loomi._logger import LogContextKey, logger, scoped_log_ctx
 from loomi.constants import SUPPORTED_DATA_TYPES, SUPPORTED_LIST_DATA_TYPES, ServerType
 from loomi.exceptions import SerializationError
-from loomi.query.descriptor import FieldDescriptor
+from loomi.query.descriptors import FieldDescriptor
 
 if TYPE_CHECKING:
     from loomi._internal._base_client import ClientConfiguration
@@ -163,8 +163,8 @@ class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
                         f"{", ".join(data_type.__name__ for data_type in SUPPORTED_DATA_TYPES)}"
                     )
 
-                # If mode is Neo4j and we encounter nested values, we either need to raise a exception
-                # or serialize the value if configured
+                # If mode is Neo4j and we encounter nested values, we either need to raise a
+                # exception or serialize the value if configured
                 if mode == ServerType.NEO4J:
                     if isinstance(value, dict):
                         serialized[field_name] = self._serialize_neo4j_dict(

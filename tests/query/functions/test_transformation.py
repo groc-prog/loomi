@@ -7,6 +7,7 @@ import pytest
 
 from loomi.graph.node import Node
 from loomi.query.alias import create_alias
+from loomi.query.db_function import DbFunction
 from loomi.query.expressions import QueryCompilationContext, QueryExpression
 from loomi.query.functions.comparison import equals, in_
 from loomi.query.functions.identity import element_id
@@ -22,7 +23,6 @@ from loomi.query.functions.transformation import (
     to_upper,
     trim,
 )
-from loomi.query.transformers import DbFunctionTransformer
 from tests.fixtures.db import NEO4J_DRIVER_SPEC, DriverSpec, driver_spec, sync_cleanup, sync_driver
 
 
@@ -767,9 +767,7 @@ class TestDbFunctionWithArgs:
         )
         sync_cleanup(driver, NEO4J_DRIVER_SPEC.name)
 
-        transformer = DbFunctionTransformer(
-            Human.name, "rtrim({variable_or_parameter}, {arg0})", ["'n'"]
-        )
+        transformer = DbFunction(Human.name, "rtrim({variable_or_parameter}, {arg0})", ["'n'"])
 
         with driver.session() as session:
             session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
@@ -794,9 +792,7 @@ class TestDbFunctionWithArgs:
         )
         sync_cleanup(driver, NEO4J_DRIVER_SPEC.name)
 
-        transformer = DbFunctionTransformer(
-            "John", "rtrim({variable_or_parameter}, {arg0})", ["'n'"]
-        )
+        transformer = DbFunction("John", "rtrim({variable_or_parameter}, {arg0})", ["'n'"])
 
         with driver.session() as session:
             session.run("CREATE (:Human $props)", {"props": {"name": "Joh"}})
@@ -821,10 +817,10 @@ class TestDbFunctionWithArgs:
         )
         sync_cleanup(driver, NEO4J_DRIVER_SPEC.name)
 
-        transformer_parameter = DbFunctionTransformer(
+        transformer_parameter = DbFunction(
             "John", "rtrim({variable_or_parameter}, {arg0})", ["'n'"]
         )
-        transformer_variable = DbFunctionTransformer(
+        transformer_variable = DbFunction(
             Human.name, "rtrim({variable_or_parameter}, {arg0})", ["'n'"]
         )
 

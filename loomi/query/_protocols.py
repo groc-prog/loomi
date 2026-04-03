@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Optional, Protocol, runtime_checkable
 from loomi.query._context import QueryCompilationContext
 
 if TYPE_CHECKING:
-    from loomi.query.descriptor import CompiledDescriptor
+    from loomi.query.descriptors import CompiledDescriptor
 else:
     CompiledDescriptor = object
 

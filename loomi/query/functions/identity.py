@@ -1,6 +1,6 @@
 from loomi._internal._types import QueryModelType
 from loomi.query._templates import EntityIdExpressionTemplate
-from loomi.query.descriptor import EntityIdDescriptor
+from loomi.query.descriptors import EntityIdDescriptor
 
 
 def element_id(model_type: QueryModelType) -> EntityIdDescriptor:

@@ -31,7 +31,7 @@ class Node(EntityBase):
                 continue
 
             inherited_config = getattr(parent, "loomi_config", None)
-            if not inherited_config:
+            if inherited_config is None:
                 raise ModelError(
                     f"Parent class {parent.__name__} has no `loomi_config` attribute. Maybe you "
                     f"forgot to call {cls.model_rebuild.__name__}?"

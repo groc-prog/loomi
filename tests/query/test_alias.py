@@ -5,7 +5,7 @@ import pytest
 from loomi.exceptions import ModelError
 from loomi.graph.node import Node
 from loomi.query.alias import create_alias
-from loomi.query.descriptor import FieldDescriptor
+from loomi.query.descriptors import FieldDescriptor
 
 
 class Human(Node):

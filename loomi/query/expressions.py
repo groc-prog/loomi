@@ -14,11 +14,11 @@ from loomi.query._templates import (
 )
 
 if TYPE_CHECKING:
-    from loomi.query.descriptor import CompiledDescriptor
-    from loomi.query.transformers import DbFunctionTransformer
+    from loomi.query.db_function import DbFunction
+    from loomi.query.descriptors import CompiledDescriptor
 else:
     CompiledDescriptor = object
-    DbFunctionTransformer = object
+    DbFunction = object
 
 
 @dataclass(frozen=True)
@@ -48,18 +48,18 @@ class _BaseQueryExpression(CompilableExpression):
 class QueryExpression(_BaseQueryExpression):
     """A expression which can be compiled by a query builder."""
 
-    descriptor: Union[CompilableDescriptor, DbFunctionTransformer]
+    descriptor: Union[CompilableDescriptor, DbFunction]
     template: ExpressionTemplate
     value: Any
 
     def _compile(self, ctx: QueryCompilationContext) -> str:
-        from loomi.query.descriptor import DbFunctionTransformer
+        from loomi.query.descriptors import DbFunction
 
         logger.debug("Compiling %s for template %s", self.__class__.__name__, self.template.name)
 
-        if isinstance(self.descriptor, DbFunctionTransformer):
+        if isinstance(self.descriptor, DbFunction):
             compiled = self.descriptor._compile(ctx, self.template.value, self.value)
-            return compiled.template.format(transformed=compiled.transformed_path)
+            return compiled.template.format(wrapped=compiled.wrapped_path)
 
         compiled_descriptor: CompiledDescriptor = self.descriptor._compile(
             ctx, self.template.value, self.value

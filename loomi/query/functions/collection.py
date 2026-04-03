@@ -1,7 +1,7 @@
 from typing import Any, List, TypeVar, Union, cast, get_args, get_origin
 
 from loomi.exceptions import QueryError
-from loomi.query.descriptor import FieldDescriptor, ListPathOperator
+from loomi.query.descriptors import FieldDescriptor, ListPathOperator
 
 P = TypeVar("P")
 
