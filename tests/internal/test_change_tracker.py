@@ -5,7 +5,7 @@ from os import environ
 import pytest
 from neo4j import GraphDatabase
 
-from loomi._internal._change_tracker import TrackingOperation
+from loomi._internal.change_tracker import TrackingOperation
 from loomi._sync.change_tracker import ChangeTracker
 from loomi._sync.client import Client
 from loomi.exceptions import ChangeTrackerError

@@ -1,6 +1,6 @@
 from typing import ClassVar, List, Set, cast
 
-from loomi._internal._base_model import EntityBase, EntityConfiguration
+from loomi._internal.base_model import EntityBase, EntityConfiguration
 from loomi.exceptions import ModelError
 
 

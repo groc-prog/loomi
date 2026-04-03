@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Union, get_args, get_origin
 
 from pydantic import BaseModel
 
-from loomi._internal._types import NumericValue, QueryModelType
+from loomi._internal.types import NumericValue, QueryModelType
 from loomi._logger import logger
 from loomi.constants import ServerType
 from loomi.exceptions import ModelError

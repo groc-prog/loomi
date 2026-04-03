@@ -1,7 +1,7 @@
 import re
 from typing import ClassVar
 
-from loomi._internal._base_model import EntityBase, EntityConfiguration
+from loomi._internal.base_model import EntityBase, EntityConfiguration
 from loomi.exceptions import ModelError
 
 

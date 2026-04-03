@@ -7,7 +7,7 @@ from loomi.graph.node import Node
 from loomi.graph.relationship import Relationship
 
 if TYPE_CHECKING:
-    from loomi._internal._base_client import BaseClient
+    from loomi._internal.base_client import BaseClient
 else:
     BaseClient = object
 

@@ -17,14 +17,14 @@ from typing import (
 import xxhash
 from pydantic import BaseModel, ConfigDict, PrivateAttr, computed_field
 
-from loomi._internal._types import ModelType
+from loomi._internal.types import ModelType
 from loomi._logger import LogContextKey, logger, scoped_log_ctx
 from loomi.constants import SUPPORTED_DATA_TYPES, SUPPORTED_LIST_DATA_TYPES, ServerType
 from loomi.exceptions import SerializationError
 from loomi.query.descriptors import FieldDescriptor
 
 if TYPE_CHECKING:
-    from loomi._internal._base_client import ClientConfiguration
+    from loomi._internal.base_client import ClientConfiguration
 else:
     ClientConfiguration = object
 

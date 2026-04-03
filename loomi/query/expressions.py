@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Union
 
-from loomi._internal._types import QueryModelType
+from loomi._internal.types import QueryModelType
 from loomi._logger import logger
 from loomi.query._context import QueryCompilationContext
 from loomi.query._protocols import CompilableDescriptor, CompilableExpression

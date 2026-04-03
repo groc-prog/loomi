@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any, Dict, List, Union
 
-from loomi._internal._types import NumericValue, QueryModelType
+from loomi._internal.types import NumericValue, QueryModelType
 from loomi.exceptions import QueryError
 from loomi.query._templates import (
     ExpressionTemplate,

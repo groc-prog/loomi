@@ -1,4 +1,4 @@
-from loomi._internal._types import QueryModelType
+from loomi._internal.types import QueryModelType
 from loomi.query._templates import EntityIdExpressionTemplate
 from loomi.query.descriptors import EntityIdDescriptor
 

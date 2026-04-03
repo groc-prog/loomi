@@ -20,7 +20,7 @@ from typing import (
 import neo4j
 import neo4j.graph
 
-from loomi._internal._types import ModelType
+from loomi._internal.types import ModelType
 from loomi._logger import LogContextKey, logger, scoped_log_ctx
 from loomi.constants import ServerType
 from loomi.exceptions import ClientError, ModelError

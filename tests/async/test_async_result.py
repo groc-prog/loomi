@@ -5,7 +5,7 @@ import neo4j.graph
 import pytest
 
 from loomi._async.client import AsyncClient
-from loomi._internal._change_tracker import TrackingOperation
+from loomi._internal.change_tracker import TrackingOperation
 from loomi.graph.graph import Graph
 from loomi.graph.node import Node
 from loomi.graph.relationship import Relationship

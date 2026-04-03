@@ -2,7 +2,7 @@ from typing import Any, Literal, Union, overload
 
 import neo4j
 
-from loomi._internal._base_client import BaseClient, require_server_metadata
+from loomi._internal.base_client import BaseClient, require_server_metadata
 from loomi._logger import LogContextKey, logger, scoped_log_ctx
 from loomi._sync.session import Session
 from loomi.constants import ServerType

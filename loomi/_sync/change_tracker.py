@@ -2,7 +2,7 @@ from typing import Dict, LiteralString, Union, cast
 
 import neo4j
 
-from loomi._internal._change_tracker import BaseChangeTracker
+from loomi._internal.change_tracker import BaseChangeTracker
 from loomi._logger import LogContextKey, logger, scoped_log_ctx
 
 

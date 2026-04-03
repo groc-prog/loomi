@@ -1,6 +1,6 @@
 from typing import Any, Dict
 
-from loomi._internal._types import QueryModelType
+from loomi._internal.types import QueryModelType
 from loomi._logger import logger
 from loomi.constants import ServerType
 from loomi.exceptions import QueryError

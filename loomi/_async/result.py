@@ -6,7 +6,7 @@ import neo4j
 import neo4j.graph
 
 from loomi._async.change_tracker import AsyncChangeTracker
-from loomi._internal._types import TResultKey
+from loomi._internal.types import TResultKey
 from loomi.graph.graph import Graph
 from loomi.graph.node import Node
 from loomi.graph.relationship import Relationship
