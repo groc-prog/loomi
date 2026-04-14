@@ -1,12 +1,30 @@
-from typing import Any, Literal, Union, overload
+from typing import (
+    Any,
+    Dict,
+    List,
+    Literal,
+    LiteralString,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+    overload,
+)
 
 import neo4j
 
 from loomi._internal.base_client import BaseClient, require_server_metadata
+from loomi._internal.query_builder.match import MatchQueryBuilder, MatchQueryState
 from loomi._logger import LogContextKey, logger, scoped_log_ctx
 from loomi._sync.session import Session
 from loomi.constants import ServerType
 from loomi.exceptions import ClientError
+from loomi.graph.node import Node
+from loomi.graph.relationship import Relationship
+from loomi.query._context import CompilationContext
+
+T = TypeVar("T", bound=Union[Node, Relationship])
 
 
 class Client(BaseClient[neo4j.Driver]):
@@ -90,3 +108,60 @@ class Client(BaseClient[neo4j.Driver]):
                 return Session(session, self)
 
             return session
+
+    @require_server_metadata
+    def query(
+        self,
+        model_type: Type[T],
+        transaction: Optional[neo4j.Transaction] = None,
+        **kwparameters: Any,
+    ):
+        """
+        Runs the query. By default, a new session is created and used to run the query. You can
+        optionally pass a transaction, which will be used instead.
+
+        Args:
+            transaction (Optional[neo4j.Transaction]): A transaction to use. Defaults to
+            `None`.
+            kwparameters: Key-word arguments passed to the session/transaction directly.
+        """
+
+        def execute(query: str, parameters: Dict[str, Any]):
+            if transaction is not None:
+                query_result = transaction.run(
+                    cast(LiteralString, query), parameters, **kwparameters
+                )
+
+                result_keys = query_result.keys()
+                results = query_result.values()
+            else:
+                with self.session(**kwparameters) as session:
+                    query_result = session.run(
+                        cast(LiteralString, query), parameters, **kwparameters
+                    )
+
+                    result_keys = query_result.keys()
+                    results = query_result.values()
+
+            if (
+                len(results) == 0
+                or len(results[0]) == 0
+                or isinstance(results[0][0], (Node, Relationship))
+            ):
+                return [result[0] for result in results]
+
+            transformed_results = []
+            for result in results:
+                transformed: Dict[str, Any] = {}
+                for index, field_name in enumerate(result_keys):
+                    transformed[field_name] = result[index]
+
+                transformed_results.append(transformed)
+
+            return transformed_results
+
+        state = MatchQueryState(model_type)
+        ctx = CompilationContext(cast(ServerType, self._server_type))
+        ctx.add_model(model_type)
+
+        return MatchQueryBuilder[T, List[T]](execute, state, ctx)

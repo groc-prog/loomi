@@ -43,9 +43,9 @@ class Relationship(EntityBase):
         cls._hash = cls._generate_hash(cls.loomi_config["type"])
 
     def __repr__(self) -> str:
-        type_ = self.loomi_config.get("type", set())
-
-        return f"<{self.__class__.__name__} element_id={self._element_id!r} type={type_!r}>"
+        return (
+            f"<{self.__class__.__name__} element_id={self._element_id!r} type={self._get_type()!r}>"
+        )
 
     @classmethod
     def _merge_config(cls, config: RelationshipConfiguration) -> None:
@@ -66,3 +66,14 @@ class Relationship(EntityBase):
     @classmethod
     def _generate_hash(cls, type_: str) -> str:
         return f"r_{type_}"
+
+    @classmethod
+    def _get_type(cls) -> str:
+        type_ = cls.loomi_config.get("type")
+        if type_ is None:
+            raise ModelError(
+                f"Type on model {cls.__name__} is not initialized. Maybe "
+                f"you forgot to call {cls.model_rebuild.__name__}?"
+            )
+
+        return type_

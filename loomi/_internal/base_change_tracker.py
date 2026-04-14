@@ -390,14 +390,7 @@ class BaseChangeTracker(Generic[T]):
 
             if reference._hash not in groups:
                 logger.debug("Encountered new model with hash %s", reference._hash)
-                labels = reference.loomi_config.get("labels")
-                if labels is None:
-                    raise ModelError(
-                        f"Labels on model {reference.__class__.__name__} are not initialized. "
-                        f"Maybe you forgot to call {reference.model_rebuild.__name__}?"
-                    )
-
-                groups[reference._hash] = {"labels": labels, "batches": []}
+                groups[reference._hash] = {"labels": reference._get_labels(), "batches": []}
 
             groups[reference._hash]["batches"].append(
                 {
@@ -455,14 +448,7 @@ class BaseChangeTracker(Generic[T]):
             # nodes with their ID's
             if reference._hash not in groups:
                 logger.debug("Encountered new model with hash %s", reference._hash)
-                type_ = reference.loomi_config.get("type")
-                if type_ is None:
-                    raise ModelError(
-                        f"Type on model {reference.__class__.__name__} is not initialized. Maybe "
-                        f"you forgot to call {reference.model_rebuild.__name__}?"
-                    )
-
-                groups[reference._hash] = {"type_": type_, "batches": []}
+                groups[reference._hash] = {"type_": reference._get_type(), "batches": []}
 
             start_node_id, end_node_id = self._grouping_map[obj_id]
 

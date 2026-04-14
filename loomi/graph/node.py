@@ -43,8 +43,7 @@ class Node(EntityBase):
         cls._hash = cls._generate_hash(list(cls.loomi_config["labels"]))
 
     def __repr__(self) -> str:
-        labels = self.loomi_config.get("labels", set())
-        return f"<{self.__class__.__name__} element_id={self._element_id!r} labels={labels!r}>"
+        return f"<{self.__class__.__name__} element_id={self._element_id!r} labels={self._get_labels()!r}>"
 
     @classmethod
     def _merge_config(cls, config: NodeConfiguration) -> None:
@@ -59,3 +58,14 @@ class Node(EntityBase):
     @classmethod
     def _generate_hash(cls, labels: List[str]) -> str:
         return f"n_{"_".join(sorted(labels))}"
+
+    @classmethod
+    def _get_labels(cls) -> Set[str]:
+        labels = cls.loomi_config.get("labels")
+        if labels is None:
+            raise ModelError(
+                f"Labels on model {cls.__name__} are not initialized. "
+                f"Maybe you forgot to call {cls.model_rebuild.__name__}?"
+            )
+
+        return labels

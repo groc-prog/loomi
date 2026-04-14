@@ -1,6 +1,6 @@
 import re
 from dataclasses import dataclass
-from typing import Any, TypeVar, cast
+from typing import Any, Generic, TypeVar, cast
 
 from loomi._internal.types import ModelType
 from loomi.exceptions import ModelError
@@ -9,14 +9,14 @@ T = TypeVar("T", bound=ModelType)
 
 
 @dataclass(frozen=True)
-class AliasedModel:
+class AliasedModel(Generic[T]):
     """
     Model proxy allowing the same model type to be referenced multiple times with different
     variable names in queries.
     """
 
     _alias: str
-    _model_type: ModelType
+    _model_type: T
 
     def __getattribute__(self, name: str) -> Any:
         from loomi.query.descriptors import FieldDescriptor
