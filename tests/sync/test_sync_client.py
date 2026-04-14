@@ -10,10 +10,13 @@ from loomi._sync.client import Client
 from loomi._sync.result import Result
 from loomi._sync.session import Session
 from loomi._sync.transaction import Transaction
+from loomi.exceptions import QueryError
 from loomi.graph.graph import Graph
 from loomi.graph.node import Node
 from loomi.graph.path import Path
 from loomi.graph.relationship import Relationship
+from loomi.query.constants import OrderBy
+from loomi.query.descriptors import FieldDescriptor
 from tests.fixtures.db import DriverSpec, driver_spec, sync_driver
 
 
@@ -601,3 +604,389 @@ class TestTransaction:
                 loves = data[0][3]
                 assert isinstance(loves, neo4j.graph.Relationship)
                 assert loves.type == "LOVES"
+
+
+class TestQuery:
+    @pytest.mark.integration
+    def test_query_returns_empty_array_on_no_matches(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query returns the expected results."""
+
+        class Human(Node):
+            name: str
+
+        with sync_driver.session() as session:
+            session.run("CREATE (:Inhuman $props)", {"props": {"name": "Alien"}})
+
+        client = Client(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        result = client.query(Human).execute()
+        assert len(result) == 0
+
+    @pytest.mark.integration
+    def test_query_returns_all_matched_entities(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query returns the expected results."""
+
+        class Human(Node):
+            name: str
+
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
+            session.run("CREATE (:Inhuman $props)", {"props": {"name": "Alien"}})
+
+        client = Client(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        result = client.query(Human).execute()
+        assert len(result) == 2
+
+        for entity in result:
+            assert entity.name in ["John", "Jane"]
+
+    @pytest.mark.integration
+    def test_query_returns_filtered_entities(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query only returns results matching the filter."""
+
+        class Human(Node):
+            name: str
+
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
+            session.run("CREATE (:Inhuman $props)", {"props": {"name": "Alien"}})
+
+        client = Client(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        result = client.query(Human).where(Human.name == "John").execute()
+        assert len(result) == 1
+        assert result[0].name == "John"
+
+    @pytest.mark.integration
+    def test_query_returns_entities_in_order_based_on_single_field(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query returns results ordered by a field."""
+
+        class Human(Node):
+            name: str
+
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
+            session.run("CREATE (:Inhuman $props)", {"props": {"name": "Alien"}})
+
+        client = Client(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        result = client.query(Human).order_by("name", OrderBy.ASC).execute()
+        assert len(result) == 2
+        assert result[0].name == "Jane"
+        assert result[1].name == "John"
+
+    @pytest.mark.integration
+    def test_query_order_overwrites_field_defined_multiple_times(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query order for a already defined key gets overwritten."""
+
+        class Human(Node):
+            name: str
+
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
+            session.run("CREATE (:Inhuman $props)", {"props": {"name": "Alien"}})
+
+        client = Client(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        result = (
+            client.query(Human)
+            .order_by("name", OrderBy.DESC)
+            .order_by("name", OrderBy.ASC)
+            .execute()
+        )
+        assert len(result) == 2
+        assert result[0].name == "Jane"
+        assert result[1].name == "John"
+
+    @pytest.mark.integration
+    def test_query_returns_entities_in_order_based_on_single_descriptor(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query returns results ordered by a field."""
+
+        class Human(Node):
+            name: str
+
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
+            session.run("CREATE (:Inhuman $props)", {"props": {"name": "Alien"}})
+
+        client = Client(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        result = client.query(Human).order_by(Human.name, OrderBy.ASC).execute()
+        assert len(result) == 2
+        assert result[0].name == "Jane"
+        assert result[1].name == "John"
+
+    @pytest.mark.integration
+    def test_query_returns_entities_in_order_based_on_multiple_field(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query returns results ordered by multiple fields."""
+
+        class Human(Node):
+            name: str
+            age: int
+
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 20}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 31}})
+            session.run("CREATE (:Inhuman $props)", {"props": {"name": "Alien"}})
+
+        client = Client(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        result = (
+            client.query(Human)
+            .order_by("name", OrderBy.ASC)
+            .order_by("age", OrderBy.DESC)
+            .execute()
+        )
+        assert len(result) == 3
+        assert result[0].name == "Jane"
+        assert result[1].name == "John"
+        assert result[1].age == 24
+        assert result[2].name == "John"
+        assert result[2].age == 20
+
+    @pytest.mark.integration
+    def test_query_returns_entities_in_order_based_on_dict(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query returns results ordered by multiple fields."""
+
+        class Human(Node):
+            name: str
+            age: int
+
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 20}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 31}})
+            session.run("CREATE (:Inhuman $props)", {"props": {"name": "Alien"}})
+
+        client = Client(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        result = (
+            client.query(Human).order_by({"name": OrderBy.ASC, Human.age: OrderBy.DESC}).execute()
+        )
+        assert len(result) == 3
+        assert result[0].name == "Jane"
+        assert result[1].name == "John"
+        assert result[1].age == 24
+        assert result[2].name == "John"
+        assert result[2].age == 20
+
+    @pytest.mark.integration
+    def test_query_returns_entities_with_limit(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query returns a limited number of results."""
+
+        class Human(Node):
+            name: str
+
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
+            session.run("CREATE (:Inhuman $props)", {"props": {"name": "Alien"}})
+
+        client = Client(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        result = client.query(Human).limit(1).execute()
+        assert len(result) == 1
+        assert result[0].name != "Alien"
+
+    @pytest.mark.integration
+    def test_query_limit_overwrites_field_defined_multiple_times(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query overwrites the limit when defined multiple times."""
+
+        class Human(Node):
+            name: str
+
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
+            session.run("CREATE (:Inhuman $props)", {"props": {"name": "Alien"}})
+
+        client = Client(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        result = client.query(Human).limit(2).limit(1).execute()
+        assert len(result) == 1
+        assert result[0].name != "Alien"
+
+    @pytest.mark.integration
+    def test_query_returns_entities_with_skip(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query returns results with skipped entities."""
+
+        class Human(Node):
+            name: str
+
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
+            session.run("CREATE (:Inhuman $props)", {"props": {"name": "Alien"}})
+
+        client = Client(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        result = client.query(Human).skip(1).execute()
+        assert len(result) == 1
+
+    @pytest.mark.integration
+    def test_query_skip_overwrites_field_defined_multiple_times(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query overwrites the skip when defined multiple times."""
+
+        class Human(Node):
+            name: str
+
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John"}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane"}})
+            session.run("CREATE (:Inhuman $props)", {"props": {"name": "Alien"}})
+
+        client = Client(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        result = client.query(Human).skip(2).skip(1).execute()
+        assert len(result) == 1
+
+    @pytest.mark.integration
+    def test_query_returns_entities_as_dict(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query returns results as dicts when using projections."""
+
+        class Human(Node):
+            name: str
+            age: int
+
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human $props)", {"props": {"name": "John", "age": 24}})
+            session.run("CREATE (:Human $props)", {"props": {"name": "Jane", "age": 31}})
+            session.run("CREATE (:Inhuman $props)", {"props": {"name": "Alien"}})
+
+        client = Client(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        result = client.query(Human).project({"name": "human_name"}).execute()
+        assert len(result) == 2
+
+        for data in result:
+            assert isinstance(data, dict)
+            assert len(data.keys()) == 1
+            assert "human_name" in data
+            assert data["human_name"] in ["John", "Jane"]
+
+    @pytest.mark.integration
+    def test_query_raises_when_invalid_where_expression_is_provided(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query raises when a invalid value is provided as a expression."""
+
+        class Human(Node):
+            name: str
+            age: int
+
+        client = Client(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        with pytest.raises(QueryError):
+            client.query(Human).where(1)
+
+    @pytest.mark.integration
+    def test_query_raises_non_model_field_is_defined_in_order(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query raises when a non model field is provided as a order."""
+
+        class Human(Node):
+            name: str
+            age: int
+
+        client = Client(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        with pytest.raises(QueryError):
+            client.query(Human).order_by("foo")
+
+    @pytest.mark.integration
+    def test_query_raises_when_limit_lt_zero(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query raises when limit is less than 0."""
+
+        class Human(Node):
+            name: str
+            age: int
+
+        client = Client(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        with pytest.raises(QueryError):
+            client.query(Human).limit(-1)
+
+    @pytest.mark.integration
+    def test_query_raises_when_skip_lt_zero(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query raises when skip is less than 0."""
+
+        class Human(Node):
+            name: str
+            age: int
+
+        client = Client(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        with pytest.raises(QueryError):
+            client.query(Human).skip(-1)

@@ -15,7 +15,7 @@ class Human(Node):
 class TestAlias:
     def test_alias_raises_if_using_reserved_name(self):
         with pytest.raises(ModelError):
-            alias = create_alias(Human, "v0")
+            create_alias(Human, "v0")
 
     def test_alias_exposes_field_descriptor(self):
         alias = create_alias(Human, "human")
@@ -24,3 +24,9 @@ class TestAlias:
         assert isinstance(descriptor, FieldDescriptor)
         assert descriptor._full_path == "name"
         assert descriptor._model_type == alias
+
+    def test_alias_raises_when_not_accessing_field(self):
+        alias = create_alias(Human, "human")
+
+        with pytest.raises(ModelError):
+            _ = alias.element_id
