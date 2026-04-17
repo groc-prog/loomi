@@ -202,14 +202,11 @@ class MatchQueryBuilder(Generic[T, R]):
         Runs the query. By default, a new session is created and used to run the query. You can
         optionally pass a transaction, which will be used instead.
 
-        Args:
-            transaction (Optional[neo4j.Transaction]): A transaction to use. Defaults to
-            `None`.
-            kwparameters: Key-word arguments passed to the session/transaction directly.
-
         Returns:
             List[T]: A list of models.
         """
+        from loomi.graph.node import Node
+
         model_variable = self._compilation_ctx.get_variable(self._state.model_type)
 
         query = ""

@@ -15,6 +15,7 @@ from typing import (
 import neo4j
 
 from loomi._internal.base_client import BaseClient, require_server_metadata
+from loomi._internal.query_builder.delete import DeleteQueryBuilder, DeleteQueryState, DeleteResult
 from loomi._internal.query_builder.match import MatchQueryBuilder, MatchQueryState
 from loomi._logger import LogContextKey, logger, scoped_log_ctx
 from loomi._sync.session import Session
@@ -165,3 +166,41 @@ class Client(BaseClient[neo4j.Driver]):
         ctx.add_model(model_type)
 
         return MatchQueryBuilder[T, List[T]](execute, state, ctx)
+
+    @require_server_metadata
+    def delete(
+        self,
+        model_type: Type[T],
+        transaction: Optional[neo4j.Transaction] = None,
+        **kwparameters: Any,
+    ):
+        """
+        A query builder for deleting entities for a given model type.
+
+        Args:
+            transaction (Optional[neo4j.Transaction]): A transaction to use. Defaults to
+            `None`.
+            kwparameters: Key-word arguments passed to the session/transaction directly.
+        """
+
+        def execute(query: str, parameters: Dict[str, Any]):
+            if transaction is not None:
+                query_result = transaction.run(
+                    cast(LiteralString, query), parameters, **kwparameters
+                )
+                results = query_result.values()
+            else:
+                with self.session(**kwparameters) as session:
+                    query_result = session.run(
+                        cast(LiteralString, query), parameters, **kwparameters
+                    )
+                    results = query_result.values()
+
+            affected_entities = [(cast(str, result[0]), cast(int, result[1])) for result in results]
+            return DeleteResult(len(affected_entities), affected_entities)
+
+        state = DeleteQueryState(model_type)
+        ctx = CompilationContext(cast(ServerType, self._server_type))
+        ctx.add_model(model_type)
+
+        return DeleteQueryBuilder[DeleteResult](execute, state, ctx)
