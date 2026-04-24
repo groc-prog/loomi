@@ -71,6 +71,66 @@ class FieldDescriptor(CompilableDescriptor):
 
         return less_than_or_equal(self, value)
 
+    def __add__(self, value: NumericValue):
+        from loomi.query.functions.arithmetic import add
+
+        return add(self, value)
+
+    def __radd__(self, value: NumericValue):
+        from loomi.query.functions.arithmetic import reflected_add
+
+        return reflected_add(self, value)
+
+    def __sub__(self, value: NumericValue):
+        from loomi.query.functions.arithmetic import subtract
+
+        return subtract(self, value)
+
+    def __rsub__(self, value: NumericValue):
+        from loomi.query.functions.arithmetic import reflected_subtract
+
+        return reflected_subtract(self, value)
+
+    def __mul__(self, value: NumericValue):
+        from loomi.query.functions.arithmetic import multiply
+
+        return multiply(self, value)
+
+    def __rmul__(self, value: NumericValue):
+        from loomi.query.functions.arithmetic import reflected_multiply
+
+        return reflected_multiply(self, value)
+
+    def __truediv__(self, value: NumericValue):
+        from loomi.query.functions.arithmetic import divide
+
+        return divide(self, value)
+
+    def __rtruediv__(self, value: NumericValue):
+        from loomi.query.functions.arithmetic import reflected_divide
+
+        return reflected_divide(self, value)
+
+    def __mod__(self, value: NumericValue):
+        from loomi.query.functions.arithmetic import modulo
+
+        return modulo(self, value)
+
+    def __rmod__(self, value: NumericValue):
+        from loomi.query.functions.arithmetic import reflected_modulo
+
+        return reflected_modulo(self, value)
+
+    def __pow__(self, value: NumericValue):
+        from loomi.query.functions.arithmetic import pow_
+
+        return pow_(self, value)
+
+    def __rpow__(self, value: NumericValue):
+        from loomi.query.functions.arithmetic import reflected_pow
+
+        return reflected_pow(self, value)
+
     def __getattribute__(self, name: str):
         if name.startswith("_"):
             return super().__getattribute__(name)

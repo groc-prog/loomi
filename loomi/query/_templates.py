@@ -17,6 +17,23 @@ class ExpressionTemplate(StrEnum):
     REGEX = "{variable} =~ {parameter}"
 
 
+class ArithmeticExpressionTemplate(StrEnum):
+    """Templates for arithmetic query expressions."""
+
+    ADD = "{variable} + {parameter}"
+    R_ADD = "{parameter} + {variable}"
+    SUBTRACT = "{variable} - {parameter}"
+    R_SUBTRACT = "{parameter} - {variable}"
+    MULTIPLY = "{variable} * {parameter}"
+    R_MULTIPLY = "{parameter} * {variable}"
+    DIVIDE = "{variable} / {parameter}"
+    R_DIVIDE = "{parameter} / {variable}"
+    MODULO = "{variable} % {parameter}"
+    R_MODULO = "{parameter} % {variable}"
+    POW = "{variable} ^ {parameter}"
+    R_POW = "{parameter} ^ {variable}"
+
+
 class UnaryExpressionTemplate(StrEnum):
     """Templates for unary query expressions."""
 

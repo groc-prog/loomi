@@ -8,6 +8,7 @@ from loomi._logger import logger
 from loomi.query._context import CompilationContext
 from loomi.query._protocols import CompilableDescriptor, CompilableExpression
 from loomi.query._templates import (
+    ArithmeticExpressionTemplate,
     ExpressionTemplate,
     LogicalExpressionTemplate,
     UnaryExpressionTemplate,
@@ -22,34 +23,34 @@ else:
 
 
 @dataclass(frozen=True)
-class _BaseQueryExpression(CompilableExpression):
+class _BaseExpression(CompilableExpression):
     def __invert__(self) -> "InvertExpression":
         from loomi.query.functions.comparison import not_
 
         return not_(self)
 
-    def __and__(self, other: "ComparisonExpression") -> "CompoundExpression":
+    def __and__(self, other: "Expression") -> "CompoundExpression":
         from loomi.query.functions.comparison import and_
 
         return and_(self, other)
 
-    def __or__(self, other: "ComparisonExpression") -> "CompoundExpression":
+    def __or__(self, other: "Expression") -> "CompoundExpression":
         from loomi.query.functions.comparison import or_
 
         return or_(self, other)
 
-    def __xor__(self, other: "ComparisonExpression") -> "CompoundExpression":
+    def __xor__(self, other: "Expression") -> "CompoundExpression":
         from loomi.query.functions.comparison import xor
 
         return xor(self, other)
 
 
 @dataclass(frozen=True)
-class ComparisonExpression(_BaseQueryExpression):
+class Expression(_BaseExpression):
     """A expression which can be compiled by a query builder."""
 
     descriptor: Union[CompilableDescriptor, DbFunction]
-    template: ExpressionTemplate
+    template: Union[ExpressionTemplate, ArithmeticExpressionTemplate]
     value: Any
 
     def _compile(self, ctx: CompilationContext) -> str:
@@ -70,7 +71,7 @@ class ComparisonExpression(_BaseQueryExpression):
 
 
 @dataclass(frozen=True)
-class NullExpression(_BaseQueryExpression):
+class NullExpression(_BaseExpression):
     """A null-check expression which can be compiled by a query builder."""
 
     descriptor: CompilableDescriptor
@@ -87,10 +88,10 @@ class NullExpression(_BaseQueryExpression):
 
 
 @dataclass(frozen=True)
-class InvertExpression(_BaseQueryExpression):
+class InvertExpression(_BaseExpression):
     """A invert expression which can be compiled by a query builder."""
 
-    expression: Union["CompoundExpression", _BaseQueryExpression]
+    expression: Union["CompoundExpression", _BaseExpression]
 
     def _compile(self, ctx: CompilationContext) -> str:
         logger.debug("Compiling %s", self.__class__.__name__)
@@ -103,11 +104,9 @@ class CompoundExpression(CompilableExpression):
     """A compound expression which can be compiled by a query builder."""
 
     operator: LogicalExpressionTemplate
-    expressions: List[Union["CompoundExpression", _BaseQueryExpression]]
+    expressions: List[Union["CompoundExpression", _BaseExpression]]
 
-    def __and__(
-        self, other: Union["CompoundExpression", ComparisonExpression]
-    ) -> "CompoundExpression":
+    def __and__(self, other: Union["CompoundExpression", Expression]) -> "CompoundExpression":
         from loomi.query.functions.comparison import and_
 
         if self.operator == LogicalExpressionTemplate.AND:
@@ -115,9 +114,7 @@ class CompoundExpression(CompilableExpression):
 
         return and_(self, other)
 
-    def __or__(
-        self, other: Union["CompoundExpression", ComparisonExpression]
-    ) -> "CompoundExpression":
+    def __or__(self, other: Union["CompoundExpression", Expression]) -> "CompoundExpression":
         from loomi.query.functions.comparison import or_
 
         if self.operator == LogicalExpressionTemplate.OR:
@@ -125,9 +122,7 @@ class CompoundExpression(CompilableExpression):
 
         return or_(self, other)
 
-    def __xor__(
-        self, other: Union["CompoundExpression", ComparisonExpression]
-    ) -> "CompoundExpression":
+    def __xor__(self, other: Union["CompoundExpression", Expression]) -> "CompoundExpression":
         from loomi.query.functions.comparison import xor
 
         if self.operator == LogicalExpressionTemplate.XOR:
