@@ -6,10 +6,12 @@ import neo4j
 import neo4j.graph
 import pytest
 
+from loomi._internal.query_builder.delete import DeleteResult
 from loomi._sync.client import Client
 from loomi._sync.result import Result
 from loomi._sync.session import Session
 from loomi._sync.transaction import Transaction
+from loomi.constants import ServerType
 from loomi.exceptions import QueryError
 from loomi.graph.graph import Graph
 from loomi.graph.node import Node
@@ -17,6 +19,7 @@ from loomi.graph.path import Path
 from loomi.graph.relationship import Relationship
 from loomi.query.constants import OrderBy
 from loomi.query.descriptors import FieldDescriptor
+from loomi.query.functions.comparison import equals, starts_with
 from tests.fixtures.db import DriverSpec, driver_spec, sync_driver
 
 
@@ -608,7 +611,7 @@ class TestTransaction:
 
 class TestQuery:
     @pytest.mark.integration
-    def test_query_returns_empty_array_on_no_matches(
+    def test_node_query_returns_empty_array_on_no_matches(
         self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
     ):
         """Verify that the query returns the expected results."""
@@ -627,7 +630,29 @@ class TestQuery:
         assert len(result) == 0
 
     @pytest.mark.integration
-    def test_query_returns_all_matched_entities(
+    def test_relationship_query_returns_empty_array_on_no_matches(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query returns the expected results."""
+
+        class Knows(Relationship):
+            best_friends: bool
+
+        with sync_driver.session() as session:
+            session.run(
+                "CREATE (:Human)-[:LIKES $props]->(:Human)",
+                {"props": {"best_friends": False}},
+            )
+
+        client = Client(sync_driver)
+        client.register(Knows)
+        client.initialize()
+
+        result = client.query(Knows).execute()
+        assert len(result) == 0
+
+    @pytest.mark.integration
+    def test_query_returns_all_matched_nodes(
         self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
     ):
         """Verify that the query returns the expected results."""
@@ -651,9 +676,40 @@ class TestQuery:
             assert entity.name in ["John", "Jane"]
 
     @pytest.mark.integration
-    def test_query_returns_filtered_entities(
+    def test_query_returns_all_matched_relationships(
         self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
     ):
+        """Verify that the query returns the expected results."""
+
+        class Knows(Relationship):
+            best_friends: bool
+
+        with sync_driver.session() as session:
+            session.run(
+                "CREATE (:Human)-[:KNOWS $props]->(:Human)",
+                {"props": {"best_friends": True}},
+            )
+            session.run(
+                "CREATE (:Human)-[:KNOWS $props]->(:Human)",
+                {"props": {"best_friends": True}},
+            )
+            session.run(
+                "CREATE (:Human)-[:LIKES $props]->(:Human)",
+                {"props": {"best_friends": False}},
+            )
+
+        client = Client(sync_driver)
+        client.register(Knows)
+        client.initialize()
+
+        result = client.query(Knows).execute()
+        assert len(result) == 2
+
+        for entity in result:
+            assert entity.best_friends
+
+    @pytest.mark.integration
+    def test_query_returns_filtered_nodes(self, sync_driver: neo4j.Driver, driver_spec: DriverSpec):
         """Verify that the query only returns results matching the filter."""
 
         class Human(Node):
@@ -673,7 +729,38 @@ class TestQuery:
         assert result[0].name == "John"
 
     @pytest.mark.integration
-    def test_query_returns_entities_in_order_based_on_single_field(
+    def test_query_returns_filtered_relationships(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query only returns results matching the filter."""
+
+        class Knows(Relationship):
+            best_friends: bool
+
+        with sync_driver.session() as session:
+            session.run(
+                "CREATE (:Human)-[:KNOWS $props]->(:Human)",
+                {"props": {"best_friends": False}},
+            )
+            session.run(
+                "CREATE (:Human)-[:KNOWS $props]->(:Human)",
+                {"props": {"best_friends": True}},
+            )
+            session.run(
+                "CREATE (:Human)-[:LIKES $props]->(:Human)",
+                {"props": {"best_friends": False}},
+            )
+
+        client = Client(sync_driver)
+        client.register(Knows)
+        client.initialize()
+
+        result = client.query(Knows).where(equals(Knows.best_friends, True)).execute()
+        assert len(result) == 1
+        assert result[0].best_friends
+
+    @pytest.mark.integration
+    def test_query_returns_nodes_in_order_based_on_single_field(
         self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
     ):
         """Verify that the query returns results ordered by a field."""
@@ -694,6 +781,39 @@ class TestQuery:
         assert len(result) == 2
         assert result[0].name == "Jane"
         assert result[1].name == "John"
+
+    @pytest.mark.integration
+    def test_query_returns_relationships_in_order_based_on_single_field(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query returns results ordered by a field."""
+
+        class Knows(Relationship):
+            best_friends: bool
+            type: str
+
+        with sync_driver.session() as session:
+            session.run(
+                "CREATE (:Human)-[:KNOWS $props]->(:Human)",
+                {"props": {"best_friends": False, "type": "relative"}},
+            )
+            session.run(
+                "CREATE (:Human)-[:KNOWS $props]->(:Human)",
+                {"props": {"best_friends": True, "type": "friend"}},
+            )
+            session.run(
+                "CREATE (:Human)-[:LIKES $props]->(:Human)",
+                {"props": {"best_friends": False}},
+            )
+
+        client = Client(sync_driver)
+        client.register(Knows)
+        client.initialize()
+
+        result = client.query(Knows).order_by("type", OrderBy.ASC).execute()
+        assert len(result) == 2
+        assert result[0].best_friends
+        assert not result[1].best_friends
 
     @pytest.mark.integration
     def test_query_order_overwrites_field_defined_multiple_times(
@@ -724,7 +844,7 @@ class TestQuery:
         assert result[1].name == "John"
 
     @pytest.mark.integration
-    def test_query_returns_entities_in_order_based_on_single_descriptor(
+    def test_query_returns_nodes_in_order_based_on_single_descriptor(
         self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
     ):
         """Verify that the query returns results ordered by a field."""
@@ -747,7 +867,40 @@ class TestQuery:
         assert result[1].name == "John"
 
     @pytest.mark.integration
-    def test_query_returns_entities_in_order_based_on_multiple_field(
+    def test_query_returns_relationships_in_order_based_on_single_descriptor(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query returns results ordered by a field."""
+
+        class Knows(Relationship):
+            best_friends: bool
+            type: str
+
+        with sync_driver.session() as session:
+            session.run(
+                "CREATE (:Human)-[:KNOWS $props]->(:Human)",
+                {"props": {"best_friends": False, "type": "relative"}},
+            )
+            session.run(
+                "CREATE (:Human)-[:KNOWS $props]->(:Human)",
+                {"props": {"best_friends": True, "type": "friend"}},
+            )
+            session.run(
+                "CREATE (:Human)-[:LIKES $props]->(:Human)",
+                {"props": {"best_friends": False}},
+            )
+
+        client = Client(sync_driver)
+        client.register(Knows)
+        client.initialize()
+
+        result = client.query(Knows).order_by(Knows.type, OrderBy.ASC).execute()
+        assert len(result) == 2
+        assert result[0].best_friends
+        assert not result[1].best_friends
+
+    @pytest.mark.integration
+    def test_query_returns_nodes_in_order_based_on_multiple_field(
         self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
     ):
         """Verify that the query returns results ordered by multiple fields."""
@@ -780,7 +933,50 @@ class TestQuery:
         assert result[2].age == 20
 
     @pytest.mark.integration
-    def test_query_returns_entities_in_order_based_on_dict(
+    def test_query_returns_relationships_in_order_based_on_multiple_field(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query returns results ordered by multiple fields."""
+
+        class Knows(Relationship):
+            met_at: str
+            type: str
+
+        with sync_driver.session() as session:
+            session.run(
+                "CREATE (:Human)-[:KNOWS $props]->(:Human)",
+                {"props": {"met_at": "family_reunion", "type": "relative"}},
+            )
+            session.run(
+                "CREATE (:Human)-[:KNOWS $props]->(:Human)",
+                {"props": {"met_at": "supermarket", "type": "friend"}},
+            )
+            session.run(
+                "CREATE (:Human)-[:KNOWS $props]->(:Human)",
+                {"props": {"met_at": "supermarket", "type": "seen_once"}},
+            )
+            session.run(
+                "CREATE (:Human)-[:LIKES $props]->(:Human)",
+                {"props": {"best_friends": False}},
+            )
+
+        client = Client(sync_driver)
+        client.register(Knows)
+        client.initialize()
+
+        result = (
+            client.query(Knows)
+            .order_by("met_at", OrderBy.ASC)
+            .order_by("type", OrderBy.DESC)
+            .execute()
+        )
+        assert len(result) == 3
+        assert result[0].type == "relative"
+        assert result[1].type == "seen_once"
+        assert result[2].type == "friend"
+
+    @pytest.mark.integration
+    def test_query_returns_nodes_in_order_based_on_dict(
         self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
     ):
         """Verify that the query returns results ordered by multiple fields."""
@@ -810,7 +1006,50 @@ class TestQuery:
         assert result[2].age == 20
 
     @pytest.mark.integration
-    def test_query_returns_entities_with_limit(
+    def test_query_returns_relationships_in_order_based_on_dict(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query returns results ordered by multiple fields."""
+
+        class Knows(Relationship):
+            met_at: str
+            type: str
+
+        with sync_driver.session() as session:
+            session.run(
+                "CREATE (:Human)-[:KNOWS $props]->(:Human)",
+                {"props": {"met_at": "family_reunion", "type": "relative"}},
+            )
+            session.run(
+                "CREATE (:Human)-[:KNOWS $props]->(:Human)",
+                {"props": {"met_at": "supermarket", "type": "friend"}},
+            )
+            session.run(
+                "CREATE (:Human)-[:KNOWS $props]->(:Human)",
+                {"props": {"met_at": "supermarket", "type": "seen_once"}},
+            )
+            session.run(
+                "CREATE (:Human)-[:LIKES $props]->(:Human)",
+                {"props": {"best_friends": False}},
+            )
+
+        client = Client(sync_driver)
+        client.register(Knows)
+        client.initialize()
+
+        result = (
+            client.query(Knows)
+            .order_by({"met_at": OrderBy.ASC, Knows.type: OrderBy.DESC})
+            .execute()
+        )
+        assert len(result) == 3
+        assert len(result) == 3
+        assert result[0].type == "relative"
+        assert result[1].type == "seen_once"
+        assert result[2].type == "friend"
+
+    @pytest.mark.integration
+    def test_query_returns_nodes_with_limit(
         self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
     ):
         """Verify that the query returns a limited number of results."""
@@ -830,6 +1069,38 @@ class TestQuery:
         result = client.query(Human).limit(1).execute()
         assert len(result) == 1
         assert result[0].name != "Alien"
+
+    @pytest.mark.integration
+    def test_query_returns_relationships_with_limit(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query returns a limited number of results."""
+
+        class Knows(Relationship):
+            best_friends: bool
+            type: str
+
+        with sync_driver.session() as session:
+            session.run(
+                "CREATE (:Human)-[:KNOWS $props]->(:Human)",
+                {"props": {"best_friends": True, "type": "relative"}},
+            )
+            session.run(
+                "CREATE (:Human)-[:KNOWS $props]->(:Human)",
+                {"props": {"best_friends": True, "type": "friend"}},
+            )
+            session.run(
+                "CREATE (:Human)-[:LIKES $props]->(:Human)",
+                {"props": {"best_friends": False}},
+            )
+
+        client = Client(sync_driver)
+        client.register(Knows)
+        client.initialize()
+
+        result = client.query(Knows).limit(1).execute()
+        assert len(result) == 1
+        assert result[0].best_friends
 
     @pytest.mark.integration
     def test_query_limit_overwrites_field_defined_multiple_times(
@@ -854,7 +1125,7 @@ class TestQuery:
         assert result[0].name != "Alien"
 
     @pytest.mark.integration
-    def test_query_returns_entities_with_skip(
+    def test_query_returns_nodes_with_skip(
         self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
     ):
         """Verify that the query returns results with skipped entities."""
@@ -872,6 +1143,37 @@ class TestQuery:
         client.initialize()
 
         result = client.query(Human).skip(1).execute()
+        assert len(result) == 1
+
+    @pytest.mark.integration
+    def test_query_returns_relationships_with_skip(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query returns results with skipped entities."""
+
+        class Knows(Relationship):
+            best_friends: bool
+            type: str
+
+        with sync_driver.session() as session:
+            session.run(
+                "CREATE (:Human)-[:KNOWS $props]->(:Human)",
+                {"props": {"best_friends": False, "type": "relative"}},
+            )
+            session.run(
+                "CREATE (:Human)-[:KNOWS $props]->(:Human)",
+                {"props": {"best_friends": True, "type": "friend"}},
+            )
+            session.run(
+                "CREATE (:Human)-[:LIKES $props]->(:Human)",
+                {"props": {"best_friends": False}},
+            )
+
+        client = Client(sync_driver)
+        client.register(Knows)
+        client.initialize()
+
+        result = client.query(Knows).skip(1).execute()
         assert len(result) == 1
 
     @pytest.mark.integration
@@ -896,9 +1198,7 @@ class TestQuery:
         assert len(result) == 1
 
     @pytest.mark.integration
-    def test_query_returns_entities_as_dict(
-        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
-    ):
+    def test_query_returns_nodes_as_dict(self, sync_driver: neo4j.Driver, driver_spec: DriverSpec):
         """Verify that the query returns results as dicts when using projections."""
 
         class Human(Node):
@@ -922,6 +1222,43 @@ class TestQuery:
             assert len(data.keys()) == 1
             assert "human_name" in data
             assert data["human_name"] in ["John", "Jane"]
+
+    @pytest.mark.integration
+    def test_query_returns_relationships_as_dict(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query returns results as dicts when using projections."""
+
+        class Knows(Relationship):
+            best_friends: bool
+            type: str
+
+        with sync_driver.session() as session:
+            session.run(
+                "CREATE (:Human)-[:KNOWS $props]->(:Human)",
+                {"props": {"best_friends": False, "type": "relative"}},
+            )
+            session.run(
+                "CREATE (:Human)-[:KNOWS $props]->(:Human)",
+                {"props": {"best_friends": True, "type": "friend"}},
+            )
+            session.run(
+                "CREATE (:Human)-[:LIKES $props]->(:Human)",
+                {"props": {"best_friends": False}},
+            )
+
+        client = Client(sync_driver)
+        client.register(Knows)
+        client.initialize()
+
+        result = client.query(Knows).project({"type": "knows_because"}).execute()
+        assert len(result) == 2
+
+        for data in result:
+            assert isinstance(data, dict)
+            assert len(data.keys()) == 1
+            assert "knows_because" in data
+            assert data["knows_because"] in ["relative", "friend"]
 
     @pytest.mark.integration
     def test_query_raises_when_invalid_where_expression_is_provided(
@@ -990,3 +1327,255 @@ class TestQuery:
 
         with pytest.raises(QueryError):
             client.query(Human).skip(-1)
+
+
+class TestDelete:
+    @pytest.mark.integration
+    def test_batch_deletes_all_nodes(self, sync_driver: neo4j.Driver, driver_spec: DriverSpec):
+        """Verify that the query deletes all entities."""
+
+        class Human(Node):
+            name: str
+
+        if driver_spec.name == ServerType.NEO4J:
+            return_query = "RETURN elementId(n), id(n)"
+        else:
+            return_query = "RETURN toString(id(n)), id(n)"
+
+        ids = set()
+        element_ids = set()
+        with sync_driver.session() as session:
+            session.run("CREATE (:Inhuman)")
+            result = session.run(
+                f"""
+                UNWIND $data as props
+                CREATE (n:Human)
+                SET n = props
+                {return_query}
+            """,
+                {
+                    "data": [
+                        {"name": "John"},
+                        {"name": "Alex"},
+                        {"name": "Jane"},
+                        {"name": "Marcus"},
+                        {"name": "Anna"},
+                    ]
+                },
+            )
+
+            for result in result.values():
+                element_ids.add(result[0])
+                ids.add(result[1])
+
+        client = Client(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        result = client.delete(Human).execute()
+        assert isinstance(result, DeleteResult)
+        assert result.affected == 5
+
+        for affected in result.affected_ids:
+            assert affected[0] in element_ids
+            assert affected[1] in ids
+
+        with sync_driver.session() as session:
+            result = session.run("MATCH (n:Human) RETURN id(n)")
+            entity_ids = result.values()
+            assert len(entity_ids) == 0
+
+        with sync_driver.session() as session:
+            result = session.run("MATCH (n:Inhuman) RETURN id(n)")
+            entity_ids = result.values()
+            assert len(entity_ids) == 1
+
+    @pytest.mark.integration
+    def test_batch_deletes_all_relationships(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query deletes all entities."""
+
+        class Knows(Relationship):
+            best_friends: bool
+            type: str
+
+        if driver_spec.name == ServerType.NEO4J:
+            return_query = "RETURN elementId(n), id(n)"
+        else:
+            return_query = "RETURN toString(id(n)), id(n)"
+
+        ids = set()
+        element_ids = set()
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human)-[:LIKES]->(:Human)")
+            result = session.run(
+                f"""
+                UNWIND $data as props
+                CREATE (:Human)-[n:KNOWS]->(:Human)
+                SET n = props
+                {return_query}
+            """,
+                {
+                    "data": [
+                        {"best_friends": True, "type": "friend"},
+                        {"best_friends": False, "type": "relative"},
+                        {"best_friends": True, "type": "school"},
+                        {"best_friends": False, "type": "hobby"},
+                        {"best_friends": False, "type": "work"},
+                    ]
+                },
+            )
+
+            for result in result.values():
+                element_ids.add(result[0])
+                ids.add(result[1])
+
+        client = Client(sync_driver)
+        client.register(Knows)
+        client.initialize()
+
+        result = client.delete(Knows).execute()
+        assert isinstance(result, DeleteResult)
+        assert result.affected == 5
+
+        for affected in result.affected_ids:
+            assert affected[0] in element_ids
+            assert affected[1] in ids
+
+        with sync_driver.session() as session:
+            result = session.run("MATCH (:Human)-[n:KNOWS]->(:Human) RETURN id(n)")
+            entity_ids = result.values()
+            assert len(entity_ids) == 0
+
+        with sync_driver.session() as session:
+            result = session.run("MATCH (:Human)-[n:LIKES]->(:Human) RETURN id(n)")
+            entity_ids = result.values()
+            assert len(entity_ids) == 1
+
+    @pytest.mark.integration
+    def test_batch_deletes_matching_nodes(self, sync_driver: neo4j.Driver, driver_spec: DriverSpec):
+        """Verify that the query deletes the expected entities."""
+
+        class Human(Node):
+            name: str
+
+        if driver_spec.name == ServerType.NEO4J:
+            return_query = "RETURN elementId(n), id(n)"
+        else:
+            return_query = "RETURN toString(id(n)), id(n)"
+
+        ids = set()
+        element_ids = set()
+        with sync_driver.session() as session:
+            session.run("CREATE (:Inhuman)")
+            result = session.run(
+                f"""
+                UNWIND $data as props
+                CREATE (n:Human)
+                SET n = props
+                {return_query}
+            """,
+                {
+                    "data": [
+                        {"name": "John"},
+                        {"name": "Alex"},
+                        {"name": "Jane"},
+                        {"name": "Marcus"},
+                        {"name": "Anna"},
+                    ]
+                },
+            )
+
+            entity_ids = result.values()
+            element_ids.add(entity_ids[0][0])
+            ids.add(entity_ids[0][1])
+            element_ids.add(entity_ids[2][0])
+            ids.add(entity_ids[2][1])
+
+        client = Client(sync_driver)
+        client.register(Human)
+        client.initialize()
+
+        result = client.delete(Human).where(starts_with(Human.name, "J")).execute()
+        assert isinstance(result, DeleteResult)
+        assert result.affected == 2
+
+        for affected in result.affected_ids:
+            assert affected[0] in element_ids
+            assert affected[1] in ids
+
+        with sync_driver.session() as session:
+            result = session.run("MATCH (n:Human) RETURN id(n)")
+            entity_ids = result.values()
+            assert len(entity_ids) == 3
+
+        with sync_driver.session() as session:
+            result = session.run("MATCH (n:Inhuman) RETURN id(n)")
+            entity_ids = result.values()
+            assert len(entity_ids) == 1
+
+    @pytest.mark.integration
+    def test_batch_deletes_matching_relationships(
+        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+    ):
+        """Verify that the query deletes the expected entities."""
+
+        class Knows(Relationship):
+            best_friends: bool
+            type: str
+
+        if driver_spec.name == ServerType.NEO4J:
+            return_query = "RETURN elementId(n), id(n)"
+        else:
+            return_query = "RETURN toString(id(n)), id(n)"
+
+        ids = set()
+        element_ids = set()
+        with sync_driver.session() as session:
+            session.run("CREATE (:Human)-[:LIKES]->(:Human)")
+            result = session.run(
+                f"""
+                UNWIND $data as props
+                CREATE (:Human)-[n:KNOWS]->(:Human)
+                SET n = props
+                {return_query}
+            """,
+                {
+                    "data": [
+                        {"best_friends": True, "type": "friend"},
+                        {"best_friends": False, "type": "relative"},
+                        {"best_friends": True, "type": "school"},
+                        {"best_friends": False, "type": "hobby"},
+                        {"best_friends": False, "type": "work"},
+                    ]
+                },
+            )
+
+            entity_ids = result.values()
+            element_ids.add(entity_ids[0][0])
+            ids.add(entity_ids[0][1])
+            element_ids.add(entity_ids[2][0])
+            ids.add(entity_ids[2][1])
+
+        client = Client(sync_driver)
+        client.register(Knows)
+        client.initialize()
+
+        result = client.delete(Knows).where(equals(Knows.best_friends, True)).execute()
+        assert isinstance(result, DeleteResult)
+        assert result.affected == 2
+
+        for affected in result.affected_ids:
+            assert affected[0] in element_ids
+            assert affected[1] in ids
+
+        with sync_driver.session() as session:
+            result = session.run("MATCH (:Human)-[n:KNOWS]->(:Human) RETURN id(n)")
+            entity_ids = result.values()
+            assert len(entity_ids) == 3
+
+        with sync_driver.session() as session:
+            result = session.run("MATCH (:Human)-[n:LIKES]->(:Human) RETURN id(n)")
+            entity_ids = result.values()
+            assert len(entity_ids) == 1
