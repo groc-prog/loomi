@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from loomi.graph.node import Node
 from loomi.query.alias import create_alias
-from loomi.query.expressions import ComparisonExpression, CompilationContext
+from loomi.query.expressions import CompilationContext, Expression
 from loomi.query.functions.collection import all_, any_, none, single
 from loomi.query.functions.comparison import equals
 from tests.fixtures.db import (
@@ -45,7 +45,7 @@ class TestAnyListExpressions:
             ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(any_(Human.jobs), "Developer")
-            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
+            compiled_expression = cast(Expression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
@@ -70,7 +70,7 @@ class TestAnyListExpressions:
             ctx = CompilationContext(driver_spec.name)
             ctx.add_model(aliased_human)
             expression = equals(any_(aliased_human.jobs), "Developer")
-            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
+            compiled_expression = cast(Expression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
@@ -97,7 +97,7 @@ class TestAllListExpressions:
             ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(all_(Human.jobs), "Developer")
-            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
+            compiled_expression = cast(Expression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
@@ -122,7 +122,7 @@ class TestAllListExpressions:
             ctx = CompilationContext(driver_spec.name)
             ctx.add_model(aliased_human)
             expression = equals(all_(aliased_human.jobs), "Developer")
-            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
+            compiled_expression = cast(Expression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
@@ -149,7 +149,7 @@ class TestNoneListExpressions:
             ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(none(Human.jobs), "Artist")
-            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
+            compiled_expression = cast(Expression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
@@ -176,7 +176,7 @@ class TestNoneListExpressions:
             ctx = CompilationContext(driver_spec.name)
             ctx.add_model(aliased_human)
             expression = equals(none(aliased_human.jobs), "Artist")
-            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
+            compiled_expression = cast(Expression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
@@ -203,7 +203,7 @@ class TestSingleListExpressions:
             ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(single(Human.jobs), "Developer")
-            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
+            compiled_expression = cast(Expression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
@@ -230,7 +230,7 @@ class TestSingleListExpressions:
             ctx = CompilationContext(driver_spec.name)
             ctx.add_model(aliased_human)
             expression = equals(single(aliased_human.jobs), "Developer")
-            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
+            compiled_expression = cast(Expression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
@@ -257,7 +257,7 @@ class TestIndexListExpressions:
             ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = equals(Human.jobs[0], "Developer")
-            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
+            compiled_expression = cast(Expression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
@@ -284,7 +284,7 @@ class TestIndexListExpressions:
             ctx = CompilationContext(driver_spec.name)
             ctx.add_model(aliased_human)
             expression = equals(aliased_human.jobs[0], "Developer")
-            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
+            compiled_expression = cast(Expression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(aliased_human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(aliased_human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)

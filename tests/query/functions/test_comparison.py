@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from loomi.graph.node import Node
 from loomi.query.alias import create_alias
-from loomi.query.expressions import ComparisonExpression, CompilationContext
+from loomi.query.expressions import CompilationContext, Expression
 from loomi.query.functions.comparison import (
     and_,
     contains,
@@ -89,7 +89,7 @@ class TestEqualsExpression:
             ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = Human.name == "John"
-            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
+            compiled_expression = cast(Expression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
@@ -148,7 +148,7 @@ class TestNotEqualsExpression:
             ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = Human.name != "Jane"
-            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
+            compiled_expression = cast(Expression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
@@ -207,7 +207,7 @@ class TestGreaterExpression:
             ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = Human.age > 23
-            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
+            compiled_expression = cast(Expression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
@@ -266,7 +266,7 @@ class TestGreaterOrEqualsExpression:
             ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = Human.age >= 24
-            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
+            compiled_expression = cast(Expression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
@@ -325,7 +325,7 @@ class TestLessExpression:
             ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = Human.age < 23
-            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
+            compiled_expression = cast(Expression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
@@ -384,7 +384,7 @@ class TestLessOrEqualsExpression:
             ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = Human.age <= 22
-            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
+            compiled_expression = cast(Expression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
@@ -443,7 +443,7 @@ class TestNotExpression:
             ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = ~(Human.name == "Jane")
-            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
+            compiled_expression = cast(Expression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
@@ -794,7 +794,7 @@ class TestAndExpressions:
             ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = (Human.name == "John") & (Human.age == 24)
-            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
+            compiled_expression = cast(Expression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
@@ -863,7 +863,7 @@ class TestNestedAndExpressions:
             ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = ((Human.name == "John") & (Human.age > 20)) & (Human.age < 30)
-            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
+            compiled_expression = cast(Expression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
@@ -946,7 +946,7 @@ class TestOrExpressions:
             ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = (Human.name == "John") | (Human.age == 30)
-            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
+            compiled_expression = cast(Expression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
@@ -1014,7 +1014,7 @@ class TestNestedOrExpressions:
             ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = ((Human.name == "John") | (Human.age == 30)) | (Human.age == 40)
-            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
+            compiled_expression = cast(Expression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
@@ -1097,7 +1097,7 @@ class TestXorExpressions:
             ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = (Human.name == "John") ^ (Human.age == 30)
-            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
+            compiled_expression = cast(Expression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)
@@ -1165,7 +1165,7 @@ class TestNestedXorExpressions:
             ctx = CompilationContext(driver_spec.name)
             ctx.add_model(Human)
             expression = ((Human.name == "John") ^ (Human.age == 30)) ^ (Human.age == 40)
-            compiled_expression = cast(ComparisonExpression, expression)._compile(ctx)
+            compiled_expression = cast(Expression, expression)._compile(ctx)
 
             query = f"MATCH ({ctx.get_variable(Human)}:Human) WHERE {compiled_expression} RETURN {ctx.get_variable(Human)}"
             result = session.run(cast(LiteralString, query), ctx.parameters)

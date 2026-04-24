@@ -8,7 +8,7 @@ import pytest
 from loomi.graph.node import Node
 from loomi.query.alias import create_alias
 from loomi.query.db_function import DbFunction
-from loomi.query.expressions import ComparisonExpression, CompilationContext
+from loomi.query.expressions import CompilationContext, Expression
 from loomi.query.functions.comparison import equals, in_
 from loomi.query.functions.identity import element_id
 from loomi.query.functions.transformation import (
