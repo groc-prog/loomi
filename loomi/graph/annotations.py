@@ -3,6 +3,9 @@ from typing import Optional, Set
 
 from loomi.graph.constraints import DataTypeConstraintType
 
+# TODO: These are currently unused and will be used when implementing
+# migrations
+
 
 @dataclass
 class UniquenessConstraint:

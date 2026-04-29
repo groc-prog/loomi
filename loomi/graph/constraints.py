@@ -1,6 +1,9 @@
 from enum import StrEnum
 from typing import Dict
 
+# TODO: These are currently unused and will be used when implementing
+# migrations
+
 
 class Neo4jConstraintType(StrEnum):
     """Constraint types supported by Neo4j."""

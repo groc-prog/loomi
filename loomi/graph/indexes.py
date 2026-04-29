@@ -1,5 +1,8 @@
 from enum import StrEnum
 
+# TODO: These are currently unused and will be used when implementing
+# migrations
+
 
 class Neo4jIndexType(StrEnum):
     """Index types supported by Neo4j."""
