@@ -11,6 +11,7 @@ from loomi._async.result import AsyncResult
 from loomi._async.session import AsyncSession
 from loomi._async.transaction import AsyncTransaction
 from loomi._internal.query_builder.delete import DeleteResult
+from loomi._internal.query_builder.update import UpdateResult
 from loomi.constants import ServerType
 from loomi.exceptions import QueryError
 from loomi.graph.graph import Graph
@@ -19,6 +20,7 @@ from loomi.graph.path import Path
 from loomi.graph.relationship import Relationship
 from loomi.query.constants import OrderBy
 from loomi.query.functions.comparison import equals, starts_with
+from loomi.query.functions.transformation import to_lower, to_upper
 from tests.fixtures.db import DriverSpec, async_driver, driver_spec
 
 
@@ -1590,3 +1592,543 @@ class TestDelete:
             result = await session.run("MATCH (:Human)-[n:LIKES]->(:Human) RETURN id(n)")
             entity_ids = await result.values()
             assert len(entity_ids) == 1
+
+
+class TestUpdate:
+    @pytest.mark.integration
+    async def test_batch_updates_all_nodes(
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
+    ):
+        """Verify that the query updates all entities."""
+
+        class Human(Node):
+            name: str
+
+        if driver_spec.name == ServerType.NEO4J:
+            return_query = "RETURN elementId(n), id(n)"
+        else:
+            return_query = "RETURN toString(id(n)), id(n)"
+
+        ids = set()
+        element_ids = set()
+        async with async_driver.session() as session:
+            await session.run("CREATE (:Inhuman)")
+            result = await session.run(
+                f"""
+                UNWIND $data as props
+                CREATE (n:Human)
+                SET n = props
+                {return_query}
+            """,
+                {
+                    "data": [
+                        {"name": "John"},
+                        {"name": "Alex"},
+                        {"name": "Jane"},
+                        {"name": "Marcus"},
+                        {"name": "Anna"},
+                    ]
+                },
+            )
+
+            for result in await result.values():
+                element_ids.add(result[0])
+                ids.add(result[1])
+
+        client = AsyncClient(async_driver)
+        client.register(Human)
+        await client.initialize()
+
+        result = await client.update(Human).set_(Human.name, "Marvin").execute()
+        assert isinstance(result, UpdateResult)
+        assert result.affected == 5
+
+        for affected in result.affected_ids:
+            assert affected[0] in element_ids
+            assert affected[1] in ids
+
+        async with async_driver.session() as session:
+            result = await session.run("MATCH (n:Human) RETURN n.name")
+            entities = await result.values()
+            assert len(entities) == 5
+
+            for entity in entities:
+                assert entity[0] == "Marvin"
+
+        async with async_driver.session() as session:
+            result = await session.run("MATCH (n:Inhuman) RETURN n.name")
+            entities = await result.values()
+            assert len(entities) == 1
+            assert entities[0][0] is None
+
+    @pytest.mark.integration
+    async def test_batch_updates_all_relationships(
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
+    ):
+        """Verify that the query updates all entities."""
+
+        class Knows(Relationship):
+            best_friends: bool
+            type: str
+
+        if driver_spec.name == ServerType.NEO4J:
+            return_query = "RETURN elementId(n), id(n)"
+        else:
+            return_query = "RETURN toString(id(n)), id(n)"
+
+        ids = set()
+        element_ids = set()
+        async with async_driver.session() as session:
+            await session.run("CREATE (:Human)-[:LIKES]->(:Human)")
+            result = await session.run(
+                f"""
+                UNWIND $data as props
+                CREATE (:Human)-[n:KNOWS]->(:Human)
+                SET n = props
+                {return_query}
+            """,
+                {
+                    "data": [
+                        {"best_friends": True, "type": "friend"},
+                        {"best_friends": False, "type": "relative"},
+                        {"best_friends": True, "type": "school"},
+                        {"best_friends": False, "type": "hobby"},
+                        {"best_friends": False, "type": "work"},
+                    ]
+                },
+            )
+
+            for result in await result.values():
+                element_ids.add(result[0])
+                ids.add(result[1])
+
+        client = AsyncClient(async_driver)
+        client.register(Knows)
+        await client.initialize()
+
+        result = await client.update(Knows).set_(Knows.type, "close_friends").execute()
+        assert isinstance(result, UpdateResult)
+        assert result.affected == 5
+
+        for affected in result.affected_ids:
+            assert affected[0] in element_ids
+            assert affected[1] in ids
+
+        async with async_driver.session() as session:
+            result = await session.run("MATCH (:Human)-[n:KNOWS]->(:Human) RETURN n.type")
+            entities = await result.values()
+            assert len(entities) == 5
+
+            for entity in entities:
+                assert entity[0] == "close_friends"
+
+        async with async_driver.session() as session:
+            result = await session.run("MATCH (:Human)-[n:LIKES]->(:Human) RETURN n.type")
+            entities = await result.values()
+            assert len(entities) == 1
+            assert entities[0][0] is None
+
+    @pytest.mark.integration
+    async def test_batch_updates_matching_nodes(
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
+    ):
+        """Verify that the query updates the expected entities."""
+
+        class Human(Node):
+            name: str
+
+        if driver_spec.name == ServerType.NEO4J:
+            return_query = "RETURN elementId(n), id(n)"
+        else:
+            return_query = "RETURN toString(id(n)), id(n)"
+
+        ids = set()
+        element_ids = set()
+        async with async_driver.session() as session:
+            result = await session.run(
+                f"""
+                UNWIND $data as props
+                CREATE (n:Human)
+                SET n = props
+                {return_query}
+            """,
+                {
+                    "data": [
+                        {"name": "John"},
+                        {"name": "Alex"},
+                        {"name": "Jane"},
+                        {"name": "Marcus"},
+                        {"name": "Anna"},
+                    ]
+                },
+            )
+
+            entity_ids = await result.values()
+            element_ids.add(entity_ids[0][0])
+            ids.add(entity_ids[0][1])
+            element_ids.add(entity_ids[2][0])
+            ids.add(entity_ids[2][1])
+
+        client = AsyncClient(async_driver)
+        client.register(Human)
+        await client.initialize()
+
+        result = (
+            await client.update(Human)
+            .set_(Human.name, "Marvin")
+            .where(starts_with(Human.name, "J"))
+            .execute()
+        )
+        assert isinstance(result, UpdateResult)
+        assert result.affected == 2
+
+        for affected in result.affected_ids:
+            assert affected[0] in element_ids
+            assert affected[1] in ids
+
+        async with async_driver.session() as session:
+            result = await session.run("MATCH (n:Human) WHERE n.name = 'Marvin' RETURN id(n)")
+            entity_ids = await result.values()
+            assert len(entity_ids) == 2
+
+    @pytest.mark.integration
+    async def test_batch_updates_matching_relationships(
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
+    ):
+        """Verify that the query updates the expected entities."""
+
+        class Knows(Relationship):
+            best_friends: bool
+            type: str
+
+        if driver_spec.name == ServerType.NEO4J:
+            return_query = "RETURN elementId(n), id(n)"
+        else:
+            return_query = "RETURN toString(id(n)), id(n)"
+
+        ids = set()
+        element_ids = set()
+        async with async_driver.session() as session:
+            result = await session.run(
+                f"""
+                UNWIND $data as props
+                CREATE (:Human)-[n:KNOWS]->(:Human)
+                SET n = props
+                {return_query}
+            """,
+                {
+                    "data": [
+                        {"best_friends": True, "type": "friend"},
+                        {"best_friends": False, "type": "relative"},
+                        {"best_friends": True, "type": "school"},
+                        {"best_friends": False, "type": "hobby"},
+                        {"best_friends": False, "type": "work"},
+                    ]
+                },
+            )
+
+            entity_ids = await result.values()
+            element_ids.add(entity_ids[0][0])
+            ids.add(entity_ids[0][1])
+            element_ids.add(entity_ids[2][0])
+            ids.add(entity_ids[2][1])
+
+        client = AsyncClient(async_driver)
+        client.register(Knows)
+        await client.initialize()
+
+        result = (
+            await client.update(Knows)
+            .set_(Knows.type, "close_friends")
+            .where(equals(Knows.best_friends, True))
+            .execute()
+        )
+        assert isinstance(result, UpdateResult)
+        assert result.affected == 2
+
+        for affected in result.affected_ids:
+            assert affected[0] in element_ids
+            assert affected[1] in ids
+
+        async with async_driver.session() as session:
+            result = await session.run(
+                "MATCH (:Human)-[n:KNOWS]->(:Human) WHERE n.type = 'close_friends' RETURN id(n)"
+            )
+            entity_ids = await result.values()
+            assert len(entity_ids) == 2
+
+    @pytest.mark.integration
+    async def test_batch_updates_matching_nodes_with_expression(
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
+    ):
+        """Verify that the query updates the expected entities with a expression."""
+
+        class Human(Node):
+            age: int
+
+        async with async_driver.session() as session:
+            result = await session.run(
+                """
+                UNWIND $data as props
+                CREATE (n:Human)
+                SET n = props
+                """,
+                {
+                    "data": [
+                        {"age": 24},
+                    ]
+                },
+            )
+
+        client = AsyncClient(async_driver)
+        client.register(Human)
+        await client.initialize()
+
+        result = await client.update(Human).set_(Human.age, Human.age + 2).execute()
+        assert isinstance(result, UpdateResult)
+        assert result.affected == 1
+
+        async with async_driver.session() as session:
+            result = await session.run("MATCH (n:Human) WHERE n.age = 24 RETURN id(n)")
+            entity_ids = await result.values()
+            assert len(entity_ids) == 0
+
+            result = await session.run("MATCH (n:Human) WHERE n.age = 26 RETURN id(n)")
+            entity_ids = await result.values()
+            assert len(entity_ids) == 1
+
+    @pytest.mark.integration
+    async def test_batch_updates_matching_relationships_with_expression(
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
+    ):
+        """Verify that the query updates the expected entities with a expression."""
+
+        class Knows(Relationship):
+            known_for_years: int
+            type: str
+
+        async with async_driver.session() as session:
+            result = await session.run(
+                """
+                UNWIND $data as props
+                CREATE (:Human)-[n:KNOWS]->(:Human)
+                SET n = props
+                """,
+                {
+                    "data": [
+                        {"known_for_years": 2, "type": "friend"},
+                    ]
+                },
+            )
+
+        client = AsyncClient(async_driver)
+        client.register(Knows)
+        await client.initialize()
+
+        result = (
+            await client.update(Knows)
+            .set_(Knows.known_for_years, Knows.known_for_years + 3)
+            .execute()
+        )
+        assert isinstance(result, UpdateResult)
+        assert result.affected == 1
+
+        async with async_driver.session() as session:
+            result = await session.run(
+                "MATCH (:Human)-[n:KNOWS]->(:Human) WHERE n.known_for_years = 2 RETURN id(n)"
+            )
+            entity_ids = await result.values()
+            assert len(entity_ids) == 0
+
+            result = await session.run(
+                "MATCH (:Human)-[n:KNOWS]->(:Human) WHERE n.known_for_years = 5 RETURN id(n)"
+            )
+            entity_ids = await result.values()
+            assert len(entity_ids) == 1
+
+    @pytest.mark.integration
+    async def test_batch_updates_matching_nodes_with_db_function(
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
+    ):
+        """Verify that the query updates the expected entities with a expression."""
+
+        class Human(Node):
+            name: str
+
+        async with async_driver.session() as session:
+            result = await session.run(
+                """
+                UNWIND $data as props
+                CREATE (n:Human)
+                SET n = props
+                """,
+                {
+                    "data": [
+                        {"name": "John"},
+                    ]
+                },
+            )
+
+        client = AsyncClient(async_driver)
+        client.register(Human)
+        await client.initialize()
+
+        result = await client.update(Human).set_(Human.name, to_lower(Human.name)).execute()
+        assert isinstance(result, UpdateResult)
+        assert result.affected == 1
+
+        async with async_driver.session() as session:
+            result = await session.run("MATCH (n:Human) WHERE n.name = 'John' RETURN id(n)")
+            entity_ids = await result.values()
+            assert len(entity_ids) == 0
+
+            result = await session.run("MATCH (n:Human) WHERE n.name = 'john' RETURN id(n)")
+            entity_ids = await result.values()
+            assert len(entity_ids) == 1
+
+    @pytest.mark.integration
+    async def test_batch_updates_matching_relationships_with_db_function(
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
+    ):
+        """Verify that the query updates the expected entities with a expression."""
+
+        class Knows(Relationship):
+            type: str
+
+        async with async_driver.session() as session:
+            result = await session.run(
+                """
+                UNWIND $data as props
+                CREATE (:Human)-[n:KNOWS]->(:Human)
+                SET n = props
+                """,
+                {
+                    "data": [
+                        {"type": "friend"},
+                    ]
+                },
+            )
+
+        client = AsyncClient(async_driver)
+        client.register(Knows)
+        await client.initialize()
+
+        result = await client.update(Knows).set_(Knows.type, to_upper(Knows.type)).execute()
+        assert isinstance(result, UpdateResult)
+        assert result.affected == 1
+
+        async with async_driver.session() as session:
+            result = await session.run(
+                "MATCH (:Human)-[n:KNOWS]->(:Human) WHERE n.type = 'friend' RETURN id(n)"
+            )
+            entity_ids = await result.values()
+            assert len(entity_ids) == 0
+
+            result = await session.run(
+                "MATCH (:Human)-[n:KNOWS]->(:Human) WHERE n.type = 'FRIEND' RETURN id(n)"
+            )
+            entity_ids = await result.values()
+            assert len(entity_ids) == 1
+
+    @pytest.mark.integration
+    async def test_batch_updates_duplicate_field_set_overwrite_each_other(
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
+    ):
+        """Verify that the query updates the expected entities."""
+
+        class Human(Node):
+            name: str
+
+        if driver_spec.name == ServerType.NEO4J:
+            return_query = "RETURN elementId(n), id(n)"
+        else:
+            return_query = "RETURN toString(id(n)), id(n)"
+
+        ids = set()
+        element_ids = set()
+        async with async_driver.session() as session:
+            result = await session.run(
+                f"""
+                UNWIND $data as props
+                CREATE (n:Human)
+                SET n = props
+                {return_query}
+            """,
+                {
+                    "data": [
+                        {"name": "John"},
+                        {"name": "Alex"},
+                        {"name": "Jane"},
+                        {"name": "Marcus"},
+                        {"name": "Anna"},
+                    ]
+                },
+            )
+
+            entity_ids = await result.values()
+            element_ids.add(entity_ids[0][0])
+            ids.add(entity_ids[0][1])
+            element_ids.add(entity_ids[2][0])
+            ids.add(entity_ids[2][1])
+
+        client = AsyncClient(async_driver)
+        client.register(Human)
+        await client.initialize()
+
+        result = (
+            await client.update(Human)
+            .set_(Human.name, "Marvin")
+            .set_(Human.name, "Elvis")
+            .where(starts_with(Human.name, "J"))
+            .execute()
+        )
+        assert isinstance(result, UpdateResult)
+        assert result.affected == 2
+
+        for affected in result.affected_ids:
+            assert affected[0] in element_ids
+            assert affected[1] in ids
+
+        async with async_driver.session() as session:
+            result = await session.run("MATCH (n:Human) WHERE n.name = 'Elvis' RETURN id(n)")
+            entity_ids = await result.values()
+            assert len(entity_ids) == 2
+
+            result = await session.run("MATCH (n:Human) WHERE n.name = 'Marvin' RETURN id(n)")
+            entity_ids = await result.values()
+            assert len(entity_ids) == 0
+
+    @pytest.mark.integration
+    async def test_batch_updates_raises_if_wrong_field_descriptor_provided(
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
+    ):
+        """Verify that the query raises when a invalid field descriptor is provided."""
+
+        class Human(Node):
+            name: str
+
+        class Worker(Node):
+            id_: str
+
+        client = AsyncClient(async_driver)
+        client.register(Human, Worker)
+        await client.initialize()
+
+        with pytest.raises(QueryError):
+            await client.update(Human).set_(Worker.id_, "1").execute()
+
+    @pytest.mark.integration
+    async def test_batch_updates_raises_if_no_set_defined(
+        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
+    ):
+        """Verify that the query raises when a no set operations are provided."""
+
+        class Human(Node):
+            name: str
+
+        client = AsyncClient(async_driver)
+        client.register(Human)
+        await client.initialize()
+
+        with pytest.raises(QueryError):
+            await client.update(Human).execute()
