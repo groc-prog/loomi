@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Union, cast, overload
 
+from loomi._logger import logger
 from loomi.query._context import CompilationContext
 from loomi.query._protocols import CompilableDescriptor
 from loomi.query._templates import DbFunctionTemplate
@@ -36,6 +37,8 @@ class DbFunction:
         expression_template: Optional[str] = None,
         value: Optional[Any] = None,
     ) -> CompiledDbFunction:
+        logger.debug("Compiling DB function. Template: %s", expression_template)
+
         template_to_compile = (
             self.template.value if isinstance(self.template, DbFunctionTemplate) else self.template
         )

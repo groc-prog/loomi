@@ -1,17 +1,8 @@
 from dataclasses import dataclass, field
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Generic,
-    List,
-    Self,
-    Tuple,
-    TypeVar,
-    cast,
-)
+from typing import Any, Callable, Dict, Generic, List, Self, Tuple, TypeVar, cast
 
 from loomi._internal.types import ModelType
+from loomi._logger import logger
 from loomi.constants import ServerType
 from loomi.exceptions import QueryError
 from loomi.query._context import CompilationContext
@@ -83,6 +74,13 @@ class UpdateQueryBuilder(Generic[R]):
             raise QueryError(
                 "Invalid field found. Expected a valid field of model "
                 f"{self._state.model_type.__name__}, got {model_field._full_path}"
+            )
+
+        if model_field in self._state.update_expressions:
+            logger.warning(
+                "A set operation has already been defined for field %s. "
+                "This will overwrite any operations defined prior to this one",
+                model_field._full_path,
             )
 
         self._state.update_expressions[model_field] = expression_or_value

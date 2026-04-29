@@ -156,7 +156,7 @@ class FieldDescriptor(CompilableDescriptor):
                             "List field accessed without defining a list path operator, falling "
                             "back to %s"
                         ),
-                        ListPathOperator.ANY.value,
+                        ListPathOperator.ANY.name,
                     )
                     base_path = f"{base_path}.{ListPathOperator.ANY.value}"
 
@@ -203,9 +203,10 @@ class FieldDescriptor(CompilableDescriptor):
         # To check:
         # `ANY(v1 IN v0.tags WHERE v1.name = "t1" OR v1.name = "t2")`
         logger.debug(
-            "Generating compilation template for descriptor for model %s with path %s",
+            "Compiling descriptor for model %s with path %s. Template: %s",
             self._model_type,
             self._full_path,
+            expression_template,
         )
 
         list_operators = {op.value for op in ListPathOperator}  # Set for O(1) lookup
@@ -278,15 +279,18 @@ class EntityIdDescriptor(CompilableDescriptor):
         self, ctx: CompilationContext, expression_template: str, value: Optional[Any]
     ) -> CompiledDescriptor:
         logger.debug(
-            "Generating compilation plan for entity ID descriptor for model %s",
+            "Compiling entity ID descriptor for model %s. Template: %s",
             self.model_type,
+            expression_template,
         )
         model_variable = ctx.get_variable(self.model_type)
 
         if ctx.server_type == ServerType.MEMGRAPH:
             logger.debug(
-                "Server type defined as %s, falling back to %s",
+                "Server type defined as %s, which is not compatible with template %s. "
+                "Falling back to %s",
                 ctx.server_type.value,
+                self.template.name,
                 EntityIdExpressionTemplate.ID.name,
             )
             entity_id_path = EntityIdExpressionTemplate.ID.format(variable=model_variable)

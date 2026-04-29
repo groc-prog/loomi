@@ -78,7 +78,11 @@ class CompilationContext:
         """
         logger.debug(
             "Registering %s with expression context",
-            (f"alias {model._alias}" if isinstance(model, AliasedModel) else model.__name__),
+            (
+                f"alias {model._alias}"
+                if isinstance(model, AliasedModel)
+                else f"model {model.__name__}"
+            ),
         )
 
         variable = model._alias if isinstance(model, AliasedModel) else f"v{self._variable_counter}"
