@@ -11,15 +11,12 @@ from loomi.exceptions import (
 from loomi.graph import Graph, Node, Path, Relationship
 
 __all__ = [
-    # Clients
     "Client",
     "AsyncClient",
-    # Graph types
     "Graph",
     "Node",
     "Relationship",
     "Path",
-    # Exceptions
     "LoomiError",
     "ClientError",
     "ModelError",
