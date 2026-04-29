@@ -37,9 +37,7 @@ R = TypeVar("R")
 
 
 @dataclass
-class MatchQueryState:
-    """Internal query state for match queries."""
-
+class _MatchQueryState:
     model_type: ModelType
     expressions: List[CompilableExpression] = field(default_factory=list)
     projection: Optional[Dict[str, Any]] = None
@@ -53,7 +51,7 @@ class MatchQueryBuilder(Generic[T, R]):
     """Query builder for fetching models using a loomi client."""
 
     _execute_fn: Callable[[str, Dict[str, Any]], R]
-    _state: MatchQueryState
+    _state: _MatchQueryState
     _compilation_ctx: CompilationContext
 
     def where(self, expression: Any) -> Self:

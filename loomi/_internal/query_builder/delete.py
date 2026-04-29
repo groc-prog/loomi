@@ -24,9 +24,7 @@ class DeleteResult:
 
 
 @dataclass
-class DeleteQueryState:
-    """Internal query state for delete queries."""
-
+class _DeleteQueryState:
     model_type: ModelType
     expressions: List[CompilableExpression] = field(default_factory=list)
 
@@ -36,7 +34,7 @@ class DeleteQueryBuilder(Generic[R]):
     """Query builder for batch deleting entities using a loomi client."""
 
     _execute_fn: Callable[[str, Dict[str, Any]], R]
-    _state: DeleteQueryState
+    _state: _DeleteQueryState
     _compilation_ctx: CompilationContext
 
     def where(self, expression: Any) -> Self:
@@ -65,7 +63,7 @@ class DeleteQueryBuilder(Generic[R]):
         optionally pass a transaction, which will be used instead.
 
         Returns:
-            DeleteResult: A list of models.
+            DeleteResult: The delete result.
         """
         from loomi.graph.node import Node
 
@@ -96,4 +94,4 @@ class DeleteQueryBuilder(Generic[R]):
         else:
             query += f" RETURN DISTINCT toString(id({model_variable})), id({model_variable})"
 
-        return self._execute_fn(query, self._compilation_ctx.parameters)  # type: ignore
+        return self._execute_fn(query, self._compilation_ctx.parameters)
