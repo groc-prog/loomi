@@ -1,5 +1,9 @@
 from dataclasses import dataclass
-from typing import Optional, Set
+from typing import Any, Optional, Set
+
+from pydantic import GetJsonSchemaHandler
+from pydantic.json_schema import JsonSchemaValue
+from pydantic_core import core_schema
 
 from loomi.graph.constraints import DataTypeConstraintType
 
@@ -21,6 +25,40 @@ class UniquenessConstraint:
     if not defined.
     """
 
+    def __get_pydantic_core_schema__(
+        self, source_type: Any, handler: Any
+    ) -> core_schema.CoreSchema:
+        # 1. Get the base schema
+        base_schema = handler(source_type)
+
+        # FIXME: This is a bit hacky since this is not documented directly and is inferred
+        # by the source code of the pydantic_core repository
+        # Add constraint info to Pydantic's internal metadata, allowing us to access
+        # it later on when updating the schema
+        base_schema.setdefault("metadata", {})["loomi_constraint"] = {
+            "name": self.name,
+            "labels": list(self.labels) if self.labels else None,
+            "composite_key": self.composite_key,
+        }
+
+        return base_schema
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls, _core_schema: core_schema.CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        json_schema = handler(_core_schema)
+
+        # The metadata in the core schema should have the `loomi_constraint` key we
+        # set earlier
+        constraint_metadata = _core_schema.get("metadata", {}).get("loomi_constraint")
+
+        if constraint_metadata:
+            loomi_meta = json_schema.setdefault("loomi", {"indexes": [], "constraints": []})
+            loomi_meta["constraints"].append(constraint_metadata)
+
+        return json_schema
+
 
 @dataclass
 class ExistenceConstraint:
@@ -37,6 +75,39 @@ class ExistenceConstraint:
     Labels for which the constraint will be created. Will be created for all labels
     if not defined.
     """
+
+    def __get_pydantic_core_schema__(
+        self, source_type: Any, handler: Any
+    ) -> core_schema.CoreSchema:
+        # 1. Get the base schema
+        base_schema = handler(source_type)
+
+        # FIXME: This is a bit hacky since this is not documented directly and is inferred
+        # by the source code of the pydantic_core repository
+        # Add constraint info to Pydantic's internal metadata, allowing us to access
+        # it later on when updating the schema
+        base_schema.setdefault("metadata", {})["loomi_constraint"] = {
+            "name": self.name,
+            "labels": list(self.labels) if self.labels else None,
+        }
+
+        return base_schema
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls, _core_schema: core_schema.CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        json_schema = handler(_core_schema)
+
+        # The metadata in the core schema should have the `loomi_constraint` key we
+        # set earlier
+        constraint_metadata = _core_schema.get("metadata", {}).get("loomi_constraint")
+
+        if constraint_metadata:
+            loomi_meta = json_schema.setdefault("loomi", {"indexes": [], "constraints": []})
+            loomi_meta["constraints"].append(constraint_metadata)
+
+        return json_schema
 
 
 @dataclass
@@ -57,6 +128,40 @@ class DataTypeConstraint:
     if not defined.
     """
 
+    def __get_pydantic_core_schema__(
+        self, source_type: Any, handler: Any
+    ) -> core_schema.CoreSchema:
+        # 1. Get the base schema
+        base_schema = handler(source_type)
+
+        # FIXME: This is a bit hacky since this is not documented directly and is inferred
+        # by the source code of the pydantic_core repository
+        # Add constraint info to Pydantic's internal metadata, allowing us to access
+        # it later on when updating the schema
+        base_schema.setdefault("metadata", {})["loomi_constraint"] = {
+            "name": self.name,
+            "labels": list(self.labels) if self.labels else None,
+            "data_type": self.data_type,
+        }
+
+        return base_schema
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls, _core_schema: core_schema.CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        json_schema = handler(_core_schema)
+
+        # The metadata in the core schema should have the `loomi_constraint` key we
+        # set earlier
+        constraint_metadata = _core_schema.get("metadata", {}).get("loomi_constraint")
+
+        if constraint_metadata:
+            loomi_meta = json_schema.setdefault("loomi", {"indexes": [], "constraints": []})
+            loomi_meta["constraints"].append(constraint_metadata)
+
+        return json_schema
+
 
 @dataclass
 class PropertyIndex:
@@ -75,6 +180,40 @@ class PropertyIndex:
     Labels for which the index will be created. Will be created for all labels
     if not defined.
     """
+
+    def __get_pydantic_core_schema__(
+        self, source_type: Any, handler: Any
+    ) -> core_schema.CoreSchema:
+        # 1. Get the base schema
+        base_schema = handler(source_type)
+
+        # FIXME: This is a bit hacky since this is not documented directly and is inferred
+        # by the source code of the pydantic_core repository
+        # Add constraint info to Pydantic's internal metadata, allowing us to access
+        # it later on when updating the schema
+        base_schema.setdefault("metadata", {})["loomi_constraint"] = {
+            "name": self.name,
+            "labels": list(self.labels) if self.labels else None,
+            "composite_key": self.composite_key,
+        }
+
+        return base_schema
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls, _core_schema: core_schema.CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        json_schema = handler(_core_schema)
+
+        # The metadata in the core schema should have the `loomi_constraint` key we
+        # set earlier
+        constraint_metadata = _core_schema.get("metadata", {}).get("loomi_constraint")
+
+        if constraint_metadata:
+            loomi_meta = json_schema.setdefault("loomi", {"indexes": [], "constraints": []})
+            loomi_meta["constraints"].append(constraint_metadata)
+
+        return json_schema
 
 
 @dataclass
@@ -95,6 +234,40 @@ class RangeIndex:
     if not defined.
     """
 
+    def __get_pydantic_core_schema__(
+        self, source_type: Any, handler: Any
+    ) -> core_schema.CoreSchema:
+        # 1. Get the base schema
+        base_schema = handler(source_type)
+
+        # FIXME: This is a bit hacky since this is not documented directly and is inferred
+        # by the source code of the pydantic_core repository
+        # Add constraint info to Pydantic's internal metadata, allowing us to access
+        # it later on when updating the schema
+        base_schema.setdefault("metadata", {})["loomi_constraint"] = {
+            "name": self.name,
+            "labels": list(self.labels) if self.labels else None,
+            "composite_key": self.composite_key,
+        }
+
+        return base_schema
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls, _core_schema: core_schema.CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        json_schema = handler(_core_schema)
+
+        # The metadata in the core schema should have the `loomi_constraint` key we
+        # set earlier
+        constraint_metadata = _core_schema.get("metadata", {}).get("loomi_constraint")
+
+        if constraint_metadata:
+            loomi_meta = json_schema.setdefault("loomi", {"indexes": [], "constraints": []})
+            loomi_meta["constraints"].append(constraint_metadata)
+
+        return json_schema
+
 
 @dataclass
 class TextIndex:
@@ -112,6 +285,39 @@ class TextIndex:
     if not defined.
     """
 
+    def __get_pydantic_core_schema__(
+        self, source_type: Any, handler: Any
+    ) -> core_schema.CoreSchema:
+        # 1. Get the base schema
+        base_schema = handler(source_type)
+
+        # FIXME: This is a bit hacky since this is not documented directly and is inferred
+        # by the source code of the pydantic_core repository
+        # Add constraint info to Pydantic's internal metadata, allowing us to access
+        # it later on when updating the schema
+        base_schema.setdefault("metadata", {})["loomi_constraint"] = {
+            "name": self.name,
+            "labels": list(self.labels) if self.labels else None,
+        }
+
+        return base_schema
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls, _core_schema: core_schema.CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        json_schema = handler(_core_schema)
+
+        # The metadata in the core schema should have the `loomi_constraint` key we
+        # set earlier
+        constraint_metadata = _core_schema.get("metadata", {}).get("loomi_constraint")
+
+        if constraint_metadata:
+            loomi_meta = json_schema.setdefault("loomi", {"indexes": [], "constraints": []})
+            loomi_meta["constraints"].append(constraint_metadata)
+
+        return json_schema
+
 
 @dataclass
 class PointIndex:
@@ -126,6 +332,39 @@ class PointIndex:
     Labels for which the index will be created. Will be created for all labels
     if not defined.
     """
+
+    def __get_pydantic_core_schema__(
+        self, source_type: Any, handler: Any
+    ) -> core_schema.CoreSchema:
+        # 1. Get the base schema
+        base_schema = handler(source_type)
+
+        # FIXME: This is a bit hacky since this is not documented directly and is inferred
+        # by the source code of the pydantic_core repository
+        # Add constraint info to Pydantic's internal metadata, allowing us to access
+        # it later on when updating the schema
+        base_schema.setdefault("metadata", {})["loomi_constraint"] = {
+            "name": self.name,
+            "labels": list(self.labels) if self.labels else None,
+        }
+
+        return base_schema
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls, _core_schema: core_schema.CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        json_schema = handler(_core_schema)
+
+        # The metadata in the core schema should have the `loomi_constraint` key we
+        # set earlier
+        constraint_metadata = _core_schema.get("metadata", {}).get("loomi_constraint")
+
+        if constraint_metadata:
+            loomi_meta = json_schema.setdefault("loomi", {"indexes": [], "constraints": []})
+            loomi_meta["constraints"].append(constraint_metadata)
+
+        return json_schema
 
 
 @dataclass
@@ -146,6 +385,40 @@ class FullTextIndex:
     if not defined.
     """
 
+    def __get_pydantic_core_schema__(
+        self, source_type: Any, handler: Any
+    ) -> core_schema.CoreSchema:
+        # 1. Get the base schema
+        base_schema = handler(source_type)
+
+        # FIXME: This is a bit hacky since this is not documented directly and is inferred
+        # by the source code of the pydantic_core repository
+        # Add constraint info to Pydantic's internal metadata, allowing us to access
+        # it later on when updating the schema
+        base_schema.setdefault("metadata", {})["loomi_constraint"] = {
+            "name": self.name,
+            "labels": list(self.labels) if self.labels else None,
+            "composite_key": self.composite_key,
+        }
+
+        return base_schema
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls, _core_schema: core_schema.CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        json_schema = handler(_core_schema)
+
+        # The metadata in the core schema should have the `loomi_constraint` key we
+        # set earlier
+        constraint_metadata = _core_schema.get("metadata", {}).get("loomi_constraint")
+
+        if constraint_metadata:
+            loomi_meta = json_schema.setdefault("loomi", {"indexes": [], "constraints": []})
+            loomi_meta["constraints"].append(constraint_metadata)
+
+        return json_schema
+
 
 @dataclass
 class VectorIndex:
@@ -162,3 +435,36 @@ class VectorIndex:
     Labels for which the index will be created. Will be created for all labels
     if not defined.
     """
+
+    def __get_pydantic_core_schema__(
+        self, source_type: Any, handler: Any
+    ) -> core_schema.CoreSchema:
+        # 1. Get the base schema
+        base_schema = handler(source_type)
+
+        # FIXME: This is a bit hacky since this is not documented directly and is inferred
+        # by the source code of the pydantic_core repository
+        # Add constraint info to Pydantic's internal metadata, allowing us to access
+        # it later on when updating the schema
+        base_schema.setdefault("metadata", {})["loomi_constraint"] = {
+            "name": self.name,
+            "labels": list(self.labels) if self.labels else None,
+        }
+
+        return base_schema
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls, _core_schema: core_schema.CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        json_schema = handler(_core_schema)
+
+        # The metadata in the core schema should have the `loomi_constraint` key we
+        # set earlier
+        constraint_metadata = _core_schema.get("metadata", {}).get("loomi_constraint")
+
+        if constraint_metadata:
+            loomi_meta = json_schema.setdefault("loomi", {"indexes": [], "constraints": []})
+            loomi_meta["constraints"].append(constraint_metadata)
+
+        return json_schema

@@ -186,7 +186,7 @@ class FieldDescriptor(CompilableDescriptor):
 
         inner_type = Any
         if origin in (list, List, Union):
-            inner_type = next((a for a in args if a is not type(None)), Any)
+            inner_type = next((a for a in args if not isinstance(a, type(None))), Any)
         elif origin in (dict, Dict) and len(args) > 1:
             inner_type = args[1] if len(args) > 1 else Any
 
