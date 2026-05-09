@@ -1,13 +1,18 @@
 # pylint: disable=missing-class-docstring, missing-function-docstring
 
 import functools
+import importlib.util
 import inspect
+import pathlib
+import sys
 from typing import (
     Any,
     Callable,
     Dict,
     Generic,
+    Iterable,
     Optional,
+    Set,
     Tuple,
     Type,
     TypedDict,
@@ -87,14 +92,50 @@ class BaseClient(Generic[T]):
         """
         return cast(ServerType, self._server_type)
 
-    def register(self, *models: ModelType) -> None:
+    @overload
+    def register(self, *models: ModelType) -> None: ...
+
+    @overload
+    def register(self, models_dir: Union[str, pathlib.Path]) -> None: ...
+
+    def register(  # pyright: ignore[reportInconsistentOverload]
+        self, *models_or_path: Union[ModelType, str, pathlib.Path]
+    ) -> None:
         """
         Registers models with the current client. Models which have not been registered can not be
         resolved from query results.
 
         Args:
-            *models (ModelType): The models to register.
+            *models_or_path (Union[ModelType, str, pathlib.Path]): The models to register or
+            a path to a directory containing the models to register.
         """
+
+        if len(models_or_path) == 1 and isinstance(models_or_path[0], (str, pathlib.Path)):
+            to_register: Set[ModelType] = set()
+            path = pathlib.Path(models_or_path[0]).resolve()
+
+            if path.is_dir():
+                self._load_modules_from_dir(path)
+
+                for root in (Node, Relationship):
+                    for descendant in self._get_all_descendants(root):
+                        if self._is_class_in_path(descendant, path):
+                            if hasattr(descendant, "model_rebuild"):
+                                descendant.model_rebuild(raise_errors=False)
+                            to_register.add(descendant)
+
+            self._register_models(*to_register)
+        else:
+            self._register_models(*cast(Iterable[ModelType], models_or_path))
+
+    def _is_class_in_path(self, cls: Type, base_path: pathlib.Path) -> bool:
+        try:
+            source_file = pathlib.Path(inspect.getfile(cls)).resolve()
+            return base_path in source_file.parents or source_file == base_path
+        except (TypeError, OSError):
+            return False
+
+    def _register_models(self, *models: ModelType) -> None:
         with scoped_log_ctx(
             {
                 LogContextKey.DRIVER: self._driver.__class__.__name__,
@@ -119,6 +160,42 @@ class BaseClient(Generic[T]):
 
                 logger.debug("Registering model %s with client %s", model, self)
                 self._models[model._hash] = model
+
+    def _get_all_descendants(self, cls: Type) -> Iterable[Type]:
+        for subclass in cls.__subclasses__():
+            subclass.model_rebuild()
+
+            yield subclass
+            yield from self._get_all_descendants(subclass)
+
+    def _load_modules_from_dir(self, path: pathlib.Path) -> None:
+        already_loaded_files = {
+            pathlib.Path(cast(str, mod.__file__)).resolve()
+            for mod in list(sys.modules.values())
+            if getattr(mod, "__file__", None)
+        }
+
+        for py_file in path.rglob("*.py"):
+            if py_file.name == "__init__.py":
+                continue
+
+            resolved_file = py_file.resolve()
+            if resolved_file in already_loaded_files:
+                logger.debug("Skipping %s, already loaded in sys.modules", py_file)
+                continue
+
+            mod_name = f"loomi_model_discovery{py_file.stem}_{hash(str(resolved_file)) % 10**4}"
+            spec = importlib.util.spec_from_file_location(mod_name, resolved_file)
+            if spec and spec.loader:
+                module = importlib.util.module_from_spec(spec)
+                sys.modules[mod_name] = module
+                try:
+                    spec.loader.exec_module(module)
+                    # Add to set so we don't load the same file twice in this loop
+                    already_loaded_files.add(resolved_file)
+                except Exception as e:
+                    logger.error("Failed to load module %s: %s", py_file, e)
+                    del sys.modules[mod_name]
 
     def _extract_version(self, version: str) -> None:
         self._server_version = tuple(int(part) for part in version.split("."))
