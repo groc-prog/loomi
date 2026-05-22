@@ -113,7 +113,7 @@ jobs:
           --health-retries 5
 
       memgraph:
-        image: memgraph/memgraph
+        image: memgraph/memgraph-mage:latest
         env:
           MEMGRAPH: "--storage-properties-on-edges=true --log-level=TRACE"
           MEMGRAPH_USER: memgraph
@@ -121,7 +121,7 @@ jobs:
         ports:
           - 7688:7687
         options: >-
-          --health-cmd "sh -c '</dev/tcp/127.0.0.1/7687'"
+          --health-cmd "mgconsole -u memgraph -p password -e 'RETURN 0;'"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
