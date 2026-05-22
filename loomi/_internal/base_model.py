@@ -1,6 +1,8 @@
 # pylint: disable=arguments-differ, missing-class-docstring
 
 import json
+from dataclasses import dataclass
+from enum import StrEnum
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -10,12 +12,15 @@ from typing import (
     List,
     Optional,
     Self,
+    Set,
     TypedDict,
     cast,
 )
 
 import xxhash
-from pydantic import BaseModel, ConfigDict, PrivateAttr, computed_field
+from pydantic import BaseModel, ConfigDict, GetJsonSchemaHandler, PrivateAttr, computed_field
+from pydantic.json_schema import JsonSchemaValue
+from pydantic_core import core_schema
 
 from loomi._internal.types import ModelType
 from loomi._logger import LogContextKey, logger, scoped_log_ctx
@@ -27,6 +32,19 @@ if TYPE_CHECKING:
     from loomi._internal.base_client import ClientConfiguration
 else:
     ClientConfiguration = object
+
+
+class _JsonSchemaModelType(StrEnum):
+    NODE = "node"
+    RELATIONSHIP = "relationship"
+
+
+@dataclass(frozen=True)
+class _ModelSchemaMetadata:
+    model_type: _JsonSchemaModelType
+    labels: Optional[Set[str]]
+    type: Optional[str]
+    hash: Optional[str]
 
 
 class EntityConfiguration(TypedDict, total=False):
@@ -79,6 +97,30 @@ class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
         for field_name, field_info in cls.model_fields.items():
             if field_info.alias is not None:
                 cls._alias_cache[field_info.alias] = field_name
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls, _core_schema: core_schema.CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        json_schema = handler(_core_schema)
+        loomi_config: Dict[str, Any] = getattr(cls, "loomi_config")
+
+        if loomi_config.get("labels"):
+            json_schema.setdefault(
+                "loomi",
+                _ModelSchemaMetadata(
+                    _JsonSchemaModelType.NODE, loomi_config.get("labels"), None, cls._hash
+                ),
+            )
+        if loomi_config.get("type"):
+            json_schema.setdefault(
+                "loomi",
+                _ModelSchemaMetadata(
+                    _JsonSchemaModelType.RELATIONSHIP, None, loomi_config.get("type"), cls._hash
+                ),
+            )
+
+        return json_schema
 
     def __eq__(self, value: Any) -> bool:
         if type(self) is not type(value):

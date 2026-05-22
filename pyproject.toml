@@ -5,10 +5,19 @@ description = ""
 authors = [{ name = "Marc Troisner", email = "marc.troisner@gmail.com" }]
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = ["pydantic (>=2.12.5,<3.0.0)", "neo4j (>=6.0.3,<7.0.0)", "xxhash (>=3.6.0,<4.0.0)"]
+dependencies = [
+    "pydantic (>=2.12.5,<3.0.0)",
+    "neo4j (>=6.0.3,<7.0.0)",
+    "xxhash (>=3.6.0,<4.0.0)",
+    "pydantic-settings (>=2.14.0,<3.0.0)",
+    "click (>=8.3.3,<9.0.0)",
+]
 
 [tool.poetry]
 packages = [{ include = "loomi" }]
+
+[tool.poetry.scripts]
+loomi = "loomi.migrations.cli:cli"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

@@ -21,6 +21,15 @@ class _JsonSchemaIndexOrConstraintType(StrEnum):
     VECTOR_INDEX = "vector_index"
 
 
+@dataclass(frozen=True)
+class _IndexOrConstraintMetadata:
+    type: _JsonSchemaIndexOrConstraintType
+    name: Optional[str]
+    labels: Optional[Set[str]]
+    composite_key: Optional[str]
+    data_type: Optional[DataTypeConstraintType]
+
+
 @dataclass
 class UniquenessConstraint:
     """Annotation for creating a uniqueness constraint for a field."""
@@ -40,12 +49,13 @@ class UniquenessConstraint:
     ) -> core_schema.CoreSchema:
         # 1. Get the base schema
         base_schema = handler(source_type)
-        base_schema.setdefault("metadata", {})["loomi_constraint"] = {
-            "type": _JsonSchemaIndexOrConstraintType.UNIQUENESS_CONSTRAINT.value,
-            "name": self.name,
-            "labels": list(self.labels) if self.labels else None,
-            "composite_key": self.composite_key,
-        }
+        base_schema.setdefault("metadata", {})["loomi_constraint"] = _IndexOrConstraintMetadata(
+            _JsonSchemaIndexOrConstraintType.UNIQUENESS_CONSTRAINT,
+            self.name,
+            self.labels if self.labels else None,
+            self.composite_key,
+            None,
+        )
 
         return base_schema
 
@@ -87,11 +97,13 @@ class ExistenceConstraint:
     ) -> core_schema.CoreSchema:
         # 1. Get the base schema
         base_schema = handler(source_type)
-        base_schema.setdefault("metadata", {})["loomi_constraint"] = {
-            "type": _JsonSchemaIndexOrConstraintType.EXISTENCE_CONSTRAINT.value,
-            "name": self.name,
-            "labels": list(self.labels) if self.labels else None,
-        }
+        base_schema.setdefault("metadata", {})["loomi_constraint"] = _IndexOrConstraintMetadata(
+            _JsonSchemaIndexOrConstraintType.EXISTENCE_CONSTRAINT,
+            self.name,
+            self.labels if self.labels else None,
+            None,
+            None,
+        )
 
         return base_schema
 
@@ -135,12 +147,13 @@ class DataTypeConstraint:
     ) -> core_schema.CoreSchema:
         # 1. Get the base schema
         base_schema = handler(source_type)
-        base_schema.setdefault("metadata", {})["loomi_constraint"] = {
-            "type": _JsonSchemaIndexOrConstraintType.DATA_TYPE_CONSTRAINT.value,
-            "name": self.name,
-            "labels": list(self.labels) if self.labels else None,
-            "data_type": self.data_type.value,
-        }
+        base_schema.setdefault("metadata", {})["loomi_constraint"] = _IndexOrConstraintMetadata(
+            _JsonSchemaIndexOrConstraintType.DATA_TYPE_CONSTRAINT,
+            self.name,
+            self.labels if self.labels else None,
+            None,
+            self.data_type,
+        )
 
         return base_schema
 
@@ -184,12 +197,13 @@ class PropertyIndex:
     ) -> core_schema.CoreSchema:
         # 1. Get the base schema
         base_schema = handler(source_type)
-        base_schema.setdefault("metadata", {})["loomi_index"] = {
-            "type": _JsonSchemaIndexOrConstraintType.PROPERTY_INDEX.value,
-            "name": self.name,
-            "labels": list(self.labels) if self.labels else None,
-            "composite_key": self.composite_key,
-        }
+        base_schema.setdefault("metadata", {})["loomi_index"] = _IndexOrConstraintMetadata(
+            _JsonSchemaIndexOrConstraintType.PROPERTY_INDEX,
+            self.name,
+            self.labels if self.labels else None,
+            self.composite_key,
+            None,
+        )
 
         return base_schema
 
@@ -233,12 +247,13 @@ class RangeIndex:
     ) -> core_schema.CoreSchema:
         # 1. Get the base schema
         base_schema = handler(source_type)
-        base_schema.setdefault("metadata", {})["loomi_index"] = {
-            "type": _JsonSchemaIndexOrConstraintType.RANGE_INDEX.value,
-            "name": self.name,
-            "labels": list(self.labels) if self.labels else None,
-            "composite_key": self.composite_key,
-        }
+        base_schema.setdefault("metadata", {})["loomi_index"] = _IndexOrConstraintMetadata(
+            _JsonSchemaIndexOrConstraintType.RANGE_INDEX,
+            self.name,
+            self.labels if self.labels else None,
+            self.composite_key,
+            None,
+        )
 
         return base_schema
 
@@ -280,11 +295,13 @@ class TextIndex:
     ) -> core_schema.CoreSchema:
         # 1. Get the base schema
         base_schema = handler(source_type)
-        base_schema.setdefault("metadata", {})["loomi_index"] = {
-            "type": _JsonSchemaIndexOrConstraintType.TEXT_INDEX.value,
-            "name": self.name,
-            "labels": list(self.labels) if self.labels else None,
-        }
+        base_schema.setdefault("metadata", {})["loomi_index"] = _IndexOrConstraintMetadata(
+            _JsonSchemaIndexOrConstraintType.TEXT_INDEX,
+            self.name,
+            self.labels if self.labels else None,
+            None,
+            None,
+        )
 
         return base_schema
 
@@ -324,11 +341,13 @@ class PointIndex:
     ) -> core_schema.CoreSchema:
         # 1. Get the base schema
         base_schema = handler(source_type)
-        base_schema.setdefault("metadata", {})["loomi_index"] = {
-            "type": _JsonSchemaIndexOrConstraintType.POINT_INDEX.value,
-            "name": self.name,
-            "labels": list(self.labels) if self.labels else None,
-        }
+        base_schema.setdefault("metadata", {})["loomi_index"] = _IndexOrConstraintMetadata(
+            _JsonSchemaIndexOrConstraintType.POINT_INDEX,
+            self.name,
+            self.labels if self.labels else None,
+            None,
+            None,
+        )
 
         return base_schema
 
@@ -372,12 +391,13 @@ class FullTextIndex:
     ) -> core_schema.CoreSchema:
         # 1. Get the base schema
         base_schema = handler(source_type)
-        base_schema.setdefault("metadata", {})["loomi_index"] = {
-            "type": _JsonSchemaIndexOrConstraintType.FULL_TEXT_INDEX.value,
-            "name": self.name,
-            "labels": list(self.labels) if self.labels else None,
-            "composite_key": self.composite_key,
-        }
+        base_schema.setdefault("metadata", {})["loomi_index"] = _IndexOrConstraintMetadata(
+            _JsonSchemaIndexOrConstraintType.FULL_TEXT_INDEX,
+            self.name,
+            self.labels if self.labels else None,
+            self.composite_key,
+            None,
+        )
 
         return base_schema
 
@@ -419,11 +439,13 @@ class VectorIndex:
     ) -> core_schema.CoreSchema:
         # 1. Get the base schema
         base_schema = handler(source_type)
-        base_schema.setdefault("metadata", {})["loomi_index"] = {
-            "type": _JsonSchemaIndexOrConstraintType.VECTOR_INDEX.value,
-            "name": self.name,
-            "labels": list(self.labels) if self.labels else None,
-        }
+        base_schema.setdefault("metadata", {})["loomi_index"] = _IndexOrConstraintMetadata(
+            _JsonSchemaIndexOrConstraintType.VECTOR_INDEX,
+            self.name,
+            self.labels if self.labels else None,
+            None,
+            None,
+        )
 
         return base_schema
 

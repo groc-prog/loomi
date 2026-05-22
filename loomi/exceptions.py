@@ -20,3 +20,7 @@ class ChangeTrackerError(LoomiError):
 
 class QueryError(LoomiError):
     """Error related to queries and query builders."""
+
+
+class MigrationError(LoomiError):
+    """Error related to migrations."""
