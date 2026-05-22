@@ -14,7 +14,7 @@ env:
 
 jobs:
   install-dependencies:
-    name: Setup Dependencies
+    name: Setup & Cache Dependencies
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -38,73 +38,70 @@ jobs:
         if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
           poetry config virtualenvs.in-project true
-          poetry install --no-interaction # Removed --no-root so loomi is importable!
+          poetry install --no-interaction
 
   lint:
     needs: install-dependencies
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
+      - name: Install Poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-
       - name: Restore Cache
         uses: actions/cache@v4
         with:
           path: .venv
           key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
-
+      - name: Sync Dependencies
+        run: poetry install --no-interaction
       - name: Run Pylint
-        run: |
-          source .venv/bin/activate
-          pylint loomi
+        run: poetry run pylint loomi
 
   type-check:
     needs: install-dependencies
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
+      - name: Install Poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-
       - name: Restore Cache
         uses: actions/cache@v4
         with:
           path: .venv
           key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
-
+      - name: Sync Dependencies
+        run: poetry install --no-interaction
       - name: Run Pyright
-        run: |
-          source .venv/bin/activate
-          pyright loomi
+        run: poetry run pyright loomi
 
   format:
     needs: install-dependencies
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
+      - name: Install Poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-
       - name: Restore Cache
         uses: actions/cache@v4
         with:
           path: .venv
           key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
-
+      - name: Sync Dependencies
+        run: poetry install --no-interaction
       - name: Run Black
-        run: |
-          source .venv/bin/activate
-          black --check loomi
+        run: poetry run black --check loomi
 
   test:
     needs: install-dependencies
@@ -134,6 +131,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -145,6 +145,9 @@ jobs:
           path: .venv
           key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
 
+      - name: Sync Dependencies
+        run: poetry install --no-interaction
+
       - name: Run Integration Tests
         env:
           NEO4J_URI: "bolt://localhost:7687"
@@ -153,6 +156,4 @@ jobs:
           MEMGRAPH_URI: "bolt://localhost:7688"
           MEMGRAPH_USER: memgraph
           MEMGRAPH_PWD: password
-        run: |
-          source .venv/bin/activate
-          pytest --cov=src tests/
+        run: poetry run pytest --cov=src tests/
