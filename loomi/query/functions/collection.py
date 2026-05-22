@@ -28,7 +28,7 @@ def all_(property_descriptor: List[P]) -> P:
 
     inferred_type = Any
     if origin in (list, List, Union):
-        inferred_type = next((a for a in args if a is not type(None)), Any)
+        inferred_type = next((a for a in args if not isinstance(a, type(None))), Any)
 
     return cast(
         P,
@@ -63,7 +63,7 @@ def any_(property_descriptor: List[P]) -> P:
 
     inferred_type = Any
     if origin in (list, List, Union):
-        inferred_type = next((a for a in args if a is not type(None)), Any)
+        inferred_type = next((a for a in args if not isinstance(a, type(None))), Any)
 
     return cast(
         P,
@@ -97,7 +97,7 @@ def none(property_descriptor: List[P]) -> P:
 
     inferred_type = Any
     if origin in (list, List, Union):
-        inferred_type = next((a for a in args if a is not type(None)), Any)
+        inferred_type = next((a for a in args if not isinstance(a, type(None))), Any)
 
     return cast(
         P,
@@ -131,7 +131,7 @@ def single(property_descriptor: List[P]) -> P:
 
     inferred_type = Any
     if origin in (list, List, Union):
-        inferred_type = next((a for a in args if a is not type(None)), Any)
+        inferred_type = next((a for a in args if not isinstance(a, type(None))), Any)
 
     return cast(
         P,

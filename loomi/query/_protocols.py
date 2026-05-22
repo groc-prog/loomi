@@ -2,12 +2,12 @@
 
 from typing import TYPE_CHECKING, Any, Optional, Protocol, runtime_checkable
 
-from loomi.query._context import CompilationContext
-
 if TYPE_CHECKING:
+    from loomi.query._context import CompilationContext
     from loomi.query.descriptors import CompiledDescriptor
 else:
     CompiledDescriptor = object
+    CompilationContext = object
 
 
 @runtime_checkable

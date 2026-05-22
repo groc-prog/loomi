@@ -1,7 +1,7 @@
 import re
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, Dict, List, Optional, Union, get_args, get_origin
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, get_args, get_origin
 
 from pydantic import BaseModel
 
@@ -9,10 +9,14 @@ from loomi._internal.types import NumericValue, QueryModelType
 from loomi._logger import logger
 from loomi.constants import ServerType
 from loomi.exceptions import ModelError
-from loomi.query._context import CompilationContext
 from loomi.query._protocols import CompilableDescriptor
 from loomi.query._templates import EntityIdExpressionTemplate
 from loomi.query.db_function import DbFunction
+
+if TYPE_CHECKING:
+    from loomi.query._context import CompilationContext
+else:
+    CompilationContext = object
 
 
 @dataclass(frozen=True)
@@ -143,7 +147,7 @@ class FieldDescriptor(CompilableDescriptor):
 
         # If we encounter a list we get the first valid item type we find
         if origin is list or origin is List or origin is Union:
-            inner_type = next((a for a in args if a is not type(None)), None)
+            inner_type = next((a for a in args if not isinstance(a, type(None))), None)
             if inner_type is not None:
                 current_annotation = inner_type
                 origin = get_origin(current_annotation)
@@ -186,7 +190,7 @@ class FieldDescriptor(CompilableDescriptor):
 
         inner_type = Any
         if origin in (list, List, Union):
-            inner_type = next((a for a in args if a is not type(None)), Any)
+            inner_type = next((a for a in args if not isinstance(a, type(None))), Any)
         elif origin in (dict, Dict) and len(args) > 1:
             inner_type = args[1] if len(args) > 1 else Any
 

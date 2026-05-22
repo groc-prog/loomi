@@ -8,8 +8,8 @@ import neo4j
 import pytest
 
 from loomi.constants import ServerType
-from loomi.graph.constraints import _MEMGRAPH_DATA_TYPE_MAPPING, MemgraphConstraintType
-from loomi.graph.indexes import MemgraphIndexType
+from loomi.graph._constraints import _MEMGRAPH_DATA_TYPE_MAPPING, MemgraphConstraintType
+from loomi.graph._indexes import MemgraphIndexType
 
 
 @dataclass

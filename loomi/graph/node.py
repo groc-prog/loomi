@@ -26,24 +26,14 @@ class Node(EntityBase):
         if "labels" not in cls.loomi_config:
             cls.loomi_config["labels"] = {cls.__name__}
 
-        for parent in cls.__mro__[1:]:
-            if not hasattr(parent, "loomi_config"):
-                continue
-
-            inherited_config = getattr(parent, "loomi_config", None)
-            if inherited_config is None:
-                raise ModelError(
-                    f"Parent class {parent.__name__} has no `loomi_config` attribute. Maybe you "
-                    f"forgot to call {cls.model_rebuild.__name__}?"
-                )
-
-            cls._merge_config(inherited_config)
-
         cls._init_config_defaults()
         cls._hash = cls._generate_hash(list(cls.loomi_config["labels"]))
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} element_id={self._element_id!r} labels={self._get_labels()!r}>"
+        return (
+            f"<{self.__class__.__name__} element_id={self._element_id!r} "
+            f"labels={self._get_labels()!r}>"
+        )
 
     @classmethod
     def _merge_config(cls, config: NodeConfiguration) -> None:

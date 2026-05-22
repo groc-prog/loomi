@@ -26,19 +26,6 @@ class Relationship(EntityBase):
         if "type" not in cls.loomi_config:
             cls.loomi_config["type"] = cls._get_normalized_type()
 
-        for parent in cls.__mro__[1:]:
-            if not hasattr(parent, "loomi_config"):
-                continue
-
-            inherited_config = getattr(parent, "loomi_config", None)
-            if inherited_config is None:
-                raise ModelError(
-                    f"Parent class {parent.__name__} has no `loomi_config` attribute. Maybe you "
-                    f"forgot to call {cls.model_rebuild.__name__}?"
-                )
-
-            cls._merge_config(inherited_config)
-
         cls._init_config_defaults()
         cls._hash = cls._generate_hash(cls.loomi_config["type"])
 

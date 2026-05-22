@@ -20,7 +20,7 @@ from pydantic import BaseModel, ConfigDict, PrivateAttr, computed_field
 from loomi._internal.types import ModelType
 from loomi._logger import LogContextKey, logger, scoped_log_ctx
 from loomi.constants import SUPPORTED_DATA_TYPES, SUPPORTED_LIST_DATA_TYPES, ServerType
-from loomi.exceptions import SerializationError
+from loomi.exceptions import ModelError, SerializationError
 from loomi.query.descriptors import FieldDescriptor
 
 if TYPE_CHECKING:
@@ -326,6 +326,8 @@ class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
                 LogContextKey.MODEL_IDENTIFIER: cls._hash,
             }
         ):
+            cls._merge_configs()
+
             # `loomi_config` is defined per model class to prevent having to cast the type each time
             if "serializer_fn" not in cls.loomi_config:  # type: ignore
                 logger.debug("No 'serializer_fn' defined, falling back to 'json.dumps'")
@@ -334,3 +336,18 @@ class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
             if "deserializer_fn" not in cls.loomi_config:  # type: ignore
                 logger.debug("No 'deserializer_fn' defined, falling back to 'json.loads'")
                 cls.loomi_config["deserializer_fn"] = json.loads  # type: ignore
+
+    @classmethod
+    def _merge_configs(cls) -> None:
+        for parent in cls.__mro__[1:]:
+            if not hasattr(parent, "loomi_config"):
+                continue
+
+            inherited_config = getattr(parent, "loomi_config", None)
+            if inherited_config is None:
+                raise ModelError(
+                    f"Parent class {parent.__name__} has no `loomi_config` attribute. Maybe you "
+                    f"forgot to call {cls.model_rebuild.__name__}?"
+                )
+
+            cast(Callable[[Dict[str, Any]], None], cls._merge_config)(inherited_config)
