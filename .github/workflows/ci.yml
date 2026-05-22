@@ -121,7 +121,7 @@ jobs:
         ports:
           - 7688:7687
         options: >-
-          --health-cmd "echo 'RETURN 1;' | mgconsole"
+          --health-cmd "echo 'RETURN 0;' | mgconsole"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
