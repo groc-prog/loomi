@@ -121,7 +121,7 @@ jobs:
         ports:
           - 7688:7687
         options: >-
-          --health-cmd "echo 'RETURN 0;' | mgconsole"
+          --health-cmd "bash -c 'mgconsole -u memgraph -p password -e \"RETURN 0;\"'"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
