@@ -1,18 +1,16 @@
 name: Lint, type-check and format
 
 on:
-  # push:
-  #   branches:
-  # - feature/**
-  # - hotfix/**
+  push:
+    branches:
+      - feature/**
   pull_request:
     branches:
       - main
-      # - feature/**
-      # - hotfix/**
+      - feature/**
 
 env:
-  PYTHON_VERSION: "3.13"
+  PYTHON_VERSION: "3.14"
 
 jobs:
   install-dependencies:

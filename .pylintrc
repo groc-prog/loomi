@@ -1,4 +1,5 @@
 [MAIN]
+fail-under=9.0
 jobs=0
 ignore=CVS,
        .git,
@@ -23,6 +24,3 @@ disable=missing-module-docstring,
        too-many-locals,
        import-outside-toplevel,
        attribute-defined-outside-init
-
-[TYPE_CHECKING]
-generated-member=__wrapped__
