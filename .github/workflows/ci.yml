@@ -1,4 +1,4 @@
-name: Lint, type-check and format
+name: Continuous Integration
 
 on:
   push:
@@ -7,10 +7,9 @@ on:
   pull_request:
     branches:
       - main
-      - feature/**
 
 env:
-  PYTHON_VERSION: "3.14"
+  PYTHON_VERSION: "3.13"
 
 jobs:
   install-dependencies:
@@ -96,3 +95,56 @@ jobs:
         run: |
           source .venv/bin/activate
           black --check loomi
+
+  test:
+    needs: install-dependencies
+    runs-on: ubuntu-latest
+    services:
+      neo4j:
+        image: neo4j:latest
+        env:
+          NEO4J_AUTH: neo4j/password
+        ports:
+          - 7687:7687
+        options: >-
+          --health-cmd "cypher-shell -u neo4j -p password 'RETURN 1;'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      memgraph:
+        image: memgraph/memgraph
+        env:
+          MEMGRAPH: "--storage-properties-on-edges=true --log-level=TRACE"
+          MEMGRAPH_USER: memgraph
+          MEMGRAPH_PASSWORD: password
+        ports:
+          - 7688:7687
+        options: >-
+          --health-cmd "echo 'RETURN 1;' | mgconsole"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Restore Cache
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+      - name: Run Integration Tests
+        env:
+          NEO4J_URI: "bolt://localhost:7687"
+          NEO4J_USER: neo4j
+          NEO4J_PWD: password
+          MEMGRAPH_URI: "bolt://localhost:7688"
+          MEMGRAPH_USER: memgraph
+          MEMGRAPH_PWD: password
+        run: |
+          source .venv/bin/activate
+          pytest --cov=src tests/
