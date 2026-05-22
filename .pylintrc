@@ -1,0 +1,26 @@
+[MAIN]
+fail-under=9.0
+jobs=0
+ignore=CVS,
+       .git,
+       __pycache__,
+       .pytest_cache,
+       venv,
+       .venv,
+       env,
+       .env,
+       node_modules,
+       build,
+       dist
+
+[MESSAGE CONTROL]
+disable=missing-module-docstring,
+       broad-exception-caught,
+       protected-access,
+       too-few-public-methods,
+       too-many-instance-attributes,
+       too-many-lines,
+       too-many-ancestors,
+       too-many-locals,
+       import-outside-toplevel,
+       attribute-defined-outside-init

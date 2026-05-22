@@ -1,0 +1,11 @@
+{
+  "include": [
+    "loomi"
+  ],
+  "exclude": [
+    "venv",
+    "**/__pycache__",
+  ],
+  "pythonVersion": "3.13",
+  "typeCheckingMode": "standard"
+}

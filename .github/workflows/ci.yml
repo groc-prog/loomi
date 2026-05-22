@@ -1,0 +1,159 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+      - "feature/**"
+  pull_request:
+    branches:
+      - main
+
+env:
+  PYTHON_VERSION: "3.13"
+  POETRY_VERSION: "2.3.2"
+
+jobs:
+  install-dependencies:
+    name: Setup & Cache Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache Virtualenv
+        uses: actions/cache@v4
+        id: cache-venv
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Install Dependencies
+        if: steps.cache-venv.outputs.cache-hit != 'true'
+        run: |
+          poetry config virtualenvs.in-project true
+          poetry install --no-interaction
+
+  lint:
+    needs: install-dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Restore Cache
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+      - name: Sync Dependencies
+        run: poetry install --no-interaction
+      - name: Run Pylint
+        run: poetry run pylint loomi
+
+  type-check:
+    needs: install-dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Restore Cache
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+      - name: Sync Dependencies
+        run: poetry install --no-interaction
+      - name: Run Pyright
+        run: poetry run pyright loomi
+
+  format:
+    needs: install-dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Restore Cache
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+      - name: Sync Dependencies
+        run: poetry install --no-interaction
+      - name: Run Black
+        run: poetry run black --check loomi
+
+  test:
+    needs: install-dependencies
+    runs-on: ubuntu-latest
+    services:
+      neo4j:
+        image: neo4j:latest
+        env:
+          NEO4J_AUTH: neo4j/password
+        ports:
+          - 7687:7687
+        options: >-
+          --health-cmd "cypher-shell -u neo4j -p password 'RETURN 1;'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      memgraph:
+        image: memgraph/memgraph-mage:latest
+        env:
+          MEMGRAPH: "--storage-properties-on-edges=true --log-level=TRACE"
+          MEMGRAPH_USER: memgraph
+          MEMGRAPH_PASSWORD: password
+        ports:
+          - 7688:7687
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Restore Cache
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Sync Dependencies
+        run: poetry install --no-interaction
+
+      - name: Run Integration Tests
+        env:
+          NEO4J_URI: "bolt://localhost:7687"
+          NEO4J_USER: neo4j
+          NEO4J_PWD: password
+          MEMGRAPH_URI: "bolt://localhost:7688"
+          MEMGRAPH_USER: memgraph
+          MEMGRAPH_PWD: password
+        run: poetry run pytest --cov=src tests/
