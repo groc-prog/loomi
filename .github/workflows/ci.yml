@@ -120,11 +120,7 @@ jobs:
           MEMGRAPH_PASSWORD: password
         ports:
           - 7688:7687
-        options: >-
-          --health-cmd "mgconsole --port 7688 -u memgraph -p password -e 'RETURN 0;'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+        # TODO: add health check here
 
     steps:
       - uses: actions/checkout@v4
