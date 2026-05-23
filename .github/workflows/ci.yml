@@ -4,9 +4,13 @@ on:
   push:
     branches:
       - "feature/**"
+    paths-ignore:
+      - "docs/**"
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - "docs/**"
 
 env:
   PYTHON_VERSION: "3.13"
