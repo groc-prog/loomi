@@ -1,4 +1,4 @@
-# Loomi
+# loomi
 
 [![CI](https://github.com/yourusername/loomi/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/loomi/actions/workflows/ci.yml)
 [![Python Version](https://img.shields.io/pypi/pyversions/loomi)](https://pypi.org/project/loomi/)
@@ -27,8 +27,8 @@ Or with poetry:
 poetry add loomi
 ```
 
-## Quick Start
-### 1. Define Your Schema
+## Quick start
+### 1. Define your schema
 
 ```python
 from loomi import Node, Relationship
@@ -59,7 +59,7 @@ class FamilyRelation(Relationship):
   }
 ```
 
-### 2. Connect and Query
+### 2. Connect and query
 
 ```python
 import asyncio
@@ -115,11 +115,11 @@ if __name__ == "__main__":
   asyncio.run(main())
 ```
 
-## Local Development & Testing
+## Local development & testing
 
 This project uses [Poetry](https://python-poetry.org/) to manage dependencies and virtual environments.
 
-### 1. Setup Environment
+### 1. Setup environment
 
 ```bash
 git clone [https://github.com/yourusername/loomi.git](https://github.com/yourusername/loomi.git)
@@ -129,13 +129,13 @@ poetry install
 poetry run pre-commit install
 ```
 
-### 2. Run Database Containers
+### 2. Run database containers
 
 ```bash
 docker compose up -d
 ```
 
-### 3. Run the Test Suite
+### 3. Run the test suite
 
 ```bash
 poetry run pytest tests/
