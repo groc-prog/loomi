@@ -4,9 +4,15 @@ on:
   push:
     branches:
       - "feature/**"
+    paths-ignore:
+      - "docs/**"
+      - "README.md"
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - "docs/**"
+      - "README.md"
 
 env:
   PYTHON_VERSION: "3.13"
