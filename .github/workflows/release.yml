@@ -1,12 +1,15 @@
 name: Semantic Release
 
 on:
-  workflow_run:
-    workflows: ["Continuous Integration"]
-    types:
-      - completed
+  # workflow_run:
+  #   workflows: ["Continuous Integration"]
+  #   types:
+  #     - completed
+  #   branches:
+  #     - main
+  push:
     branches:
-      - main
+      - "feature/release-workflow"
 
 jobs:
   release:
