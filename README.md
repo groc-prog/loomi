@@ -1,6 +1,6 @@
 # loomi
 
-[![CI](https://github.com/yourusername/loomi/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/loomi/actions/workflows/ci.yml)
+[![CI](https://github.com/groc-prog/loomi/actions/workflows/ci.yml/badge.svg)](https://github.com/groc-prog/loomi/actions/workflows/ci.yml)
 [![Python Version](https://img.shields.io/pypi/pyversions/loomi)](https://pypi.org/project/loomi/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
