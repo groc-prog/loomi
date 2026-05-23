@@ -26,6 +26,36 @@ dev = [
     "pytest-dotenv (>=0.5.2,<0.6.0)",
 ]
 
+[tool.semantic_release]
+version_toml = ["pyproject.toml:tool.poetry.version"]
+branch = "main"
+upload_to_pypi = true
+upload_to_release = true
+build_command = "poetry build"
+commit_message = "chore(release): 🎉 v{version} [skip ci]"
+
+[tool.semantic_release.publish]
+repository = "testpypi"
+
+[tool.semantic_release.changelog]
+mode = "update"
+changelog_file = "CHANGELOG.md"
+
+exclude_commit_patterns = [
+    '''chore(?:\([^)]*?\))?: .+''',
+    '''ci(?:\([^)]*?\))?: .+''',
+    '''build(?:\([^)]*?\))?: .+''',
+    '''style(?:\([^)]*?\))?: .+''',
+    '''test(?:\([^)]*?\))?: .+''',
+    '''docs(?:\([^)]*?\))?: .+''',
+]
+
+[tool.semantic_release.changelog.sections]
+"feat" = "✨ New Features"
+"fix" = "🪲 Bug Fixes"
+"perf" = "🚀 Performance Improvements"
+"refactor" = "🛠️ Code Refactoring"
+
 [tool.black]
 line-length = 100
 
