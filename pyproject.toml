@@ -28,7 +28,7 @@ dev = [
 
 [tool.semantic_release]
 version_toml = ["pyproject.toml:tool.poetry.version"]
-branch = "feature/release-workflow"
+branches = ["main", "feature/release-workflow"]
 upload_to_pypi = true
 upload_to_release = true
 build_command = "poetry build"
