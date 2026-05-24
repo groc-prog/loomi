@@ -33,9 +33,6 @@ upload_to_release = true
 build_command = "poetry build"
 commit_message = "chore(release): 🎉 v{version} [skip ci]"
 
-[tool.semantic_release.publish]
-repository = "testpypi"
-
 [tool.semantic_release.changelog]
 mode = "update"
 changelog_file = "CHANGELOG.md"
