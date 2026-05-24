@@ -1,6 +1,6 @@
 [project]
 name = "loomi"
-version = "0.1.0"
+version = "1.0.0"
 description = ""
 authors = [{ name = "Marc Troisner", email = "marc.troisner@gmail.com" }]
 readme = "README.md"
