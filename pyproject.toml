@@ -38,11 +38,6 @@ commit_message = "chore(release): 🎉 v{version} [skip ci]"
 match = "main"
 prerelease = false
 
-[tool.semantic_release.branches.feature_query_api]
-match = "feature/query-api"
-prerelease = true
-prerelease_token = "rc"
-
 [tool.semantic_release.changelog]
 mode = "update"
 exclude_commit_patterns = [

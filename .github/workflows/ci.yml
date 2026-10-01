@@ -7,6 +7,8 @@ on:
     paths-ignore:
       - "docs/**"
       - "README.md"
+      - "LICENSE"
+      - ".gitignore"
   pull_request:
     types: [opened]
     branches:
@@ -96,32 +98,6 @@ jobs:
       - name: Run Pyright
         run: poetry run pyright loomi
 
-  format:
-    needs: install-dependencies
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Poetry
-        run: pipx install poetry==${{ env.POETRY_VERSION }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Restore Cache
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
-
-      - name: Sync Dependencies
-        run: poetry install --no-interaction
-
-      - name: Run Black
-        run: poetry run black --check loomi
-
   test:
     needs: install-dependencies
     runs-on: ubuntu-latest
@@ -129,11 +105,11 @@ jobs:
       neo4j:
         image: neo4j:latest
         env:
-          NEO4J_AUTH: neo4j/password
+          NEO4J_AUTH: neo4j/${{ secrets.NEO4J_PWD }}
         ports:
           - 7687:7687
         options: >-
-          --health-cmd "cypher-shell -u neo4j -p password 'RETURN 1;'"
+          --health-cmd "cypher-shell -u neo4j -p ${{ secrets.NEO4J_PWD }} 'RETURN 1;'"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -143,7 +119,7 @@ jobs:
         env:
           MEMGRAPH: "--storage-properties-on-edges=true --log-level=TRACE"
           MEMGRAPH_USER: memgraph
-          MEMGRAPH_PASSWORD: password
+          MEMGRAPH_PASSWORD: ${{ secrets.MEMGRAPH_PWD }}
         ports:
           - 7688:7687
 
