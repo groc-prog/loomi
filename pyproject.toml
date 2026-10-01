@@ -33,9 +33,18 @@ upload_to_release = true
 build_command = "poetry build"
 commit_message = "chore(release): 🎉 v{version} [skip ci]"
 
+# 👇 Add multibranch configuration here
+[tool.semantic_release.branches.main]
+match = "main"
+prerelease = false
+
+[tool.semantic_release.branches.feature_query_api]
+match = "feature/query-api"
+prerelease = true
+prerelease_token = "rc"
+
 [tool.semantic_release.changelog]
 mode = "update"
-changelog_file = "CHANGELOG.md"
 exclude_commit_patterns = [
     '''chore(?:\([^)]*?\))?: .+''',
     '''ci(?:\([^)]*?\))?: .+''',
@@ -45,6 +54,9 @@ exclude_commit_patterns = [
     '''build\((?!deps\): .+)''',
     '''Initial [Cc]ommit.*''',
 ]
+
+[tool.semantic_release.changelog.default_templates]
+changelog_file = "CHANGELOG.md"
 
 [tool.semantic_release.changelog.sections]
 "feat" = "✨ New Features"
