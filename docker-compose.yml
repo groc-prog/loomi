@@ -4,12 +4,12 @@ services:
     container_name: neo4j
     pull_policy: always
     ports:
-      - 7687:7687
-      - 7474:7474
+      - "7687:7687"
+      - "7474:7474"
     volumes:
-      - neo4j:/data
+      - ./.neo4j:/data
     environment:
-      NEO4J_AUTH: neo4j/password
+      NEO4J_AUTH: ${NEO4J_AUTH}
 
   memgraph:
     image: memgraph/memgraph
@@ -19,11 +19,11 @@ services:
       - "7688:7687"
       - "7444:7444"
     volumes:
-      - memgraph:/var/lib
+      - ./.memgraph:/var/lib
     environment:
       - MEMGRAPH="--storage-properties-on-edges=true --log-level=TRACE"
-      - MEMGRAPH_USER=memgraph
-      - MEMGRAPH_PASSWORD=password
+      - MEMGRAPH_USER=${MEMGRAPH_USER}
+      - MEMGRAPH_PASSWORD=${MEMGRAPH_PASSWORD}
 
   lab:
     image: memgraph/lab:latest
