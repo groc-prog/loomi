@@ -106,10 +106,11 @@ jobs:
         image: neo4j:latest
         env:
           NEO4J_AUTH: neo4j/${{ secrets.NEO4J_PWD }}
+          NEO4J_PWD: ${{ secrets.NEO4J_PWD }}
         ports:
           - 7687:7687
         options: >-
-          --health-cmd "cypher-shell -u neo4j -p ${{ secrets.NEO4J_PWD }} 'RETURN 1;'"
+          --health-cmd "cypher-shell -u neo4j -p \$NEO4J_PWD 'RETURN 1;'"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
