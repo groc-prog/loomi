@@ -7,7 +7,7 @@ from typing import Any, Mapping, Union
 log_ctx = ContextVar("loomi_log_ctx", default={})
 
 
-class LogContextKey(StrEnum):
+class LogContext(StrEnum):
     """Commonly used log context variables."""
 
     DRIVER = "loomi.driver"

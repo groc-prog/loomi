@@ -16,7 +16,7 @@ from typing import (
 
 from pydantic import BaseModel
 
-from loomi._internal.types import ModelType
+from loomi._core.types import ModelType
 from loomi._logger import logger
 from loomi.exceptions import QueryError
 from loomi.query._context import CompilationContext

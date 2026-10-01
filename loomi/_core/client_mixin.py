@@ -20,44 +20,52 @@ from typing import (
 import neo4j
 import neo4j.graph
 
-from loomi._internal.types import ModelType
-from loomi._logger import LogContextKey, logger, scoped_log_ctx
+from loomi._core.types import ModelType
+from loomi._logger import LogContext, logger, scoped_log_ctx
 from loomi.constants import ServerType
-from loomi.exceptions import ClientError, ModelError
+from loomi.exceptions import ClientError, ModelError, SerializationError
 from loomi.graph.node import Node
 from loomi.graph.path import Path
 from loomi.graph.relationship import Relationship
 
 T = TypeVar("T", bound=Union[neo4j.Driver, neo4j.AsyncDriver])
-F = TypeVar("F", bound=Callable[..., Any])
+U = TypeVar("U", bound=Callable[..., Any])
 
 
 class ClientConfiguration(TypedDict, total=False):
     """TypedDict for configuring Loomi client behavior."""
 
     serialize_nested: bool
+    """Whether nested properties should be serialized before they are stored to Neo4j."""
+
+    strict_transformations: bool
+    """
+    Whether entities which can not be transformed to models should be kept unchanged or
+    raise a exception.
+    """
 
 
-def require_server_metadata(func: F) -> F:
+def require_server_metadata(func: U) -> U:
+    exc = ClientError("Client must be initialized before method can be called")
 
     @functools.wraps(func)
     async def async_wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
         if self._server_type is None:
-            raise ClientError(f"Method '{func.__name__}' requires a connected server. ")
+            raise exc
         return await func(self, *args, **kwargs)
 
     @functools.wraps(func)
     def sync_wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
         if self._server_type is None:
-            raise ClientError(f"Method '{func.__name__}' requires a connected server. ")
+            raise exc
         return func(self, *args, **kwargs)
 
     if inspect.iscoroutinefunction(func):
-        return cast(F, async_wrapper)
-    return cast(F, sync_wrapper)
+        return cast(U, async_wrapper)
+    return cast(U, sync_wrapper)
 
 
-class BaseClient(Generic[T]):
+class ClientMixin(Generic[T]):
     _driver: T
     _server_type: Optional[ServerType]
     _server_version: Optional[Tuple[int, ...]]
@@ -69,7 +77,7 @@ class BaseClient(Generic[T]):
         self._server_type = None
         self._server_version = None
         self._models = {}
-        self._configuration = ClientConfiguration(**config)
+        self._configuration = self.__init_configuration(**config)
 
     def __repr__(self) -> str:
         return (
@@ -77,15 +85,14 @@ class BaseClient(Generic[T]):
             f"server_type={self._server_type} server_version={self._server_version}>"
         )
 
-    @require_server_metadata
-    def server_type(self) -> ServerType:
+    def server_type(self) -> Optional[ServerType]:
         """
         Returns the type of server the client is currently connected to.
 
         Returns:
-            ServerType: The server type.
+            Optional[ServerType]: The server type or `None` if client is not yet connected.
         """
-        return cast(ServerType, self._server_type)
+        return self._server_type
 
     def register(self, *models: ModelType) -> None:
         """
@@ -94,13 +101,11 @@ class BaseClient(Generic[T]):
 
         Args:
             *models (ModelType): The models to register.
+
+        Raises:
+            ModelError: If a model has not finished initialization.
         """
-        with scoped_log_ctx(
-            {
-                LogContextKey.DRIVER: self._driver.__class__.__name__,
-                LogContextKey.SERVER_TYPE: self._server_type,
-            }
-        ):
+        with scoped_log_ctx({LogContext.DRIVER: self._driver.__class__.__name__}):
             for model in models:
                 if not issubclass(model, (Node, Relationship)):
                     logger.warning(
@@ -109,8 +114,8 @@ class BaseClient(Generic[T]):
                     )
                     continue
 
-                # In most cases, the hash should always be initialized, but there can be some issues
-                # when using forward refs
+                # In most cases, the hash should always be initialized, but there can be some cases in which
+                # the models have not finished initialization
                 if model._hash is None:
                     raise ModelError(
                         f"Hash on model {model.__name__} is not initialized. Maybe you forgot to "
@@ -126,8 +131,8 @@ class BaseClient(Generic[T]):
     def _transform_entity(self, entity: Any) -> Any:
         with scoped_log_ctx(
             {
-                LogContextKey.DRIVER: self._driver.__class__.__name__,
-                LogContextKey.SERVER_TYPE: self._server_type,
+                LogContext.DRIVER: self._driver.__class__.__name__,
+                LogContext.SERVER_TYPE: self._server_type,
             }
         ):
             if isinstance(entity, (neo4j.graph.Node, neo4j.graph.Relationship)):
@@ -157,16 +162,23 @@ class BaseClient(Generic[T]):
     def _entity_to_model(
         self, entity: Union[neo4j.graph.Node, neo4j.graph.Relationship]
     ) -> Union[Node, Relationship, neo4j.graph.Node, neo4j.graph.Relationship]:
+        is_node = isinstance(entity, neo4j.graph.Node)
+
         model_hash = (
             Node._generate_hash(list(entity.labels))
-            if isinstance(entity, neo4j.graph.Node)
+            if is_node
             else Relationship._generate_hash(entity.type)
         )
 
         if model_hash not in self._models:
+            identifiers = f"labels {", ".join(entity.labels)}" if is_node else f"type {entity.type}"
+
+            if self._configuration.get("strict_transformations"):
+                raise SerializationError(f"No model with {identifiers} registered")
+
             logger.warning(
-                "No model with hash %s registered with client. Record will not be transformed",
-                model_hash,
+                "No model with %s registered with client. Record will not be transformed",
+                identifiers,
             )
             return entity
 
@@ -184,17 +196,26 @@ class BaseClient(Generic[T]):
     def _relationship_type_to_model(self, type_: str) -> Optional[Type[Relationship]]:
         with scoped_log_ctx(
             {
-                LogContextKey.DRIVER: self._driver.__class__.__name__,
-                LogContextKey.SERVER_TYPE: self._server_type,
+                LogContext.DRIVER: self._driver.__class__.__name__,
+                LogContext.SERVER_TYPE: self._server_type,
             }
         ):
             model_hash = Relationship._generate_hash(type_)
 
             if model_hash not in self._models:
+                if self._configuration.get("strict_transformations"):
+                    raise SerializationError(f"No model with type {type_} registered")
+
                 logger.warning(
-                    "No model with hash %s registered with client. Record will not be transformed",
-                    model_hash,
+                    "No model with type %s registered with client. Record will not be transformed",
+                    type_,
                 )
                 return None
 
             return cast(Type[Relationship], self._models[model_hash])
+
+    def __init_configuration(self, **config) -> ClientConfiguration:
+        return ClientConfiguration(
+            serialize_nested=config.get("serialize_nested", False),
+            strict_transformations=config.get("strict_transformations", True),
+        )

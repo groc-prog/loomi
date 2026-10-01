@@ -14,11 +14,19 @@ from typing import (
 
 import neo4j
 
-from loomi._internal.base_client import BaseClient, require_server_metadata
-from loomi._internal.query_builder.delete import DeleteQueryBuilder, _DeleteQueryState, DeleteResult
-from loomi._internal.query_builder.match import MatchQueryBuilder, _MatchQueryState
-from loomi._internal.query_builder.update import _UpdateQueryState, UpdateQueryBuilder, UpdateResult
-from loomi._logger import LogContextKey, logger, scoped_log_ctx
+from loomi._core.client_mixin import ClientMixin, require_server_metadata
+from loomi._core.client_query_builder.delete_builder import (
+    DeleteQueryBuilder,
+    DeleteResult,
+    _DeleteQueryState,
+)
+from loomi._core.client_query_builder.match_builder import MatchQueryBuilder, _MatchQueryState
+from loomi._core.client_query_builder.update_builder import (
+    UpdateQueryBuilder,
+    UpdateResult,
+    _UpdateQueryState,
+)
+from loomi._logger import LogContext, logger, scoped_log_ctx
 from loomi._sync.session import Session
 from loomi.constants import ServerType
 from loomi.exceptions import ClientError
@@ -29,7 +37,7 @@ from loomi.query._context import CompilationContext
 T = TypeVar("T", bound=Union[Node, Relationship])
 
 
-class Client(BaseClient[neo4j.Driver]):
+class Client(ClientMixin[neo4j.Driver]):
     """Sync database client for interacting with Loomi models."""
 
     def initialize(self) -> None:
@@ -40,7 +48,7 @@ class Client(BaseClient[neo4j.Driver]):
             ClientError: If the remote server can not be reached or does not return required
                 metadata.
         """
-        with scoped_log_ctx({LogContextKey.DRIVER: self._driver.__class__.__name__}):
+        with scoped_log_ctx({LogContext.DRIVER: self._driver.__class__.__name__}):
             try:
                 logger.info("Verifying connectivity to remote")
                 self._driver.verify_connectivity()
@@ -100,8 +108,8 @@ class Client(BaseClient[neo4j.Driver]):
         """
         with scoped_log_ctx(
             {
-                LogContextKey.DRIVER: self._driver.__class__.__name__,
-                LogContextKey.SERVER_TYPE: self._server_type,
+                LogContext.DRIVER: self._driver.__class__.__name__,
+                LogContext.SERVER_TYPE: self._server_type,
             }
         ):
             session = self._driver.session(**session_config)

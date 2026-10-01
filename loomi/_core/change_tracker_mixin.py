@@ -19,7 +19,7 @@ from typing import (
 
 import neo4j
 
-from loomi._logger import LogContextKey, logger, scoped_log_ctx
+from loomi._logger import LogContext, logger, scoped_log_ctx
 from loomi.constants import ServerType
 from loomi.exceptions import ChangeTrackerError, ModelError
 from loomi.graph.node import Node
@@ -37,17 +37,17 @@ T = TypeVar(
 )
 
 
-class NodeInsertProperties(TypedDict):
+class NodeInsertItem(TypedDict):
     id_: int
     properties: Dict[str, Any]
 
 
 class NodeInsertBatch(TypedDict):
     labels: Set[str]
-    batches: List[NodeInsertProperties]
+    batches: List[NodeInsertItem]
 
 
-class RelationshipInsertProperties(TypedDict):
+class RelationshipInsertItem(TypedDict):
     start_node_id: Union[str, int]
     end_node_id: Union[str, int]
     properties: Dict[str, Any]
@@ -55,7 +55,7 @@ class RelationshipInsertProperties(TypedDict):
 
 class RelationshipInsertBatch(TypedDict):
     type_: str
-    batches: List[RelationshipInsertProperties]
+    batches: List[RelationshipInsertItem]
 
 
 class EntityUpdateBatch(TypedDict):
@@ -74,7 +74,7 @@ class TrackingOperationState(TypedDict):
     relationships: Dict[int, Tuple[Relationship, Dict[str, Optional[str]]]]
 
 
-class BaseChangeTracker(Generic[T]):
+class ChangeTrackerMixin(Generic[T]):
     _state: Dict[TrackingOperation, TrackingOperationState]
     _grouping_map: Dict[int, Tuple[int, int]]
     _session_or_tx: T
@@ -133,9 +133,9 @@ class BaseChangeTracker(Generic[T]):
 
         with scoped_log_ctx(
             {
-                LogContextKey.MODEL_NAME: model.__class__.__name__,
-                LogContextKey.MODEL_IDENTIFIER: obj_id,
-                LogContextKey.CHANGE_TRACKER_OPERATION: operation.name,
+                LogContext.MODEL_NAME: model.__class__.__name__,
+                LogContext.MODEL_IDENTIFIER: obj_id,
+                LogContext.CHANGE_TRACKER_OPERATION: operation.name,
             }
         ):
             # If the entity is already being tracked with `TrackingOperation.DELETE`, this
@@ -265,9 +265,9 @@ class BaseChangeTracker(Generic[T]):
 
         with scoped_log_ctx(
             {
-                LogContextKey.MODEL_NAME: model.__class__.__name__,
-                LogContextKey.MODEL_IDENTIFIER: obj_id,
-                LogContextKey.CHANGE_TRACKER_OPERATION: TrackingOperation.DELETE.name,
+                LogContext.MODEL_NAME: model.__class__.__name__,
+                LogContext.MODEL_IDENTIFIER: obj_id,
+                LogContext.CHANGE_TRACKER_OPERATION: TrackingOperation.DELETE.name,
             }
         ):
             if is_relationship:

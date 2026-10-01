@@ -2,7 +2,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Generic, TypeVar, cast
 
-from loomi._internal.types import ModelType
+from loomi._core.types import ModelType
 from loomi.exceptions import ModelError
 
 T = TypeVar("T", bound=ModelType)

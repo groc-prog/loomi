@@ -7,9 +7,9 @@ from loomi.graph.node import Node
 from loomi.graph.relationship import Relationship
 
 if TYPE_CHECKING:
-    from loomi._internal.base_client import BaseClient
+    from loomi._core.client_mixin import ClientMixin
 else:
-    BaseClient = object
+    ClientMixin = object
 
 PathNode = Union[Node, neo4j.graph.Node]
 PathRelationship = Union[Relationship, neo4j.graph.Relationship]
@@ -18,14 +18,14 @@ PathRelationship = Union[Relationship, neo4j.graph.Relationship]
 class Path:
     """Graph path containing resolved Loomi nodes."""
 
-    __client: BaseClient
+    __client: ClientMixin
     _nodes: Tuple[PathNode, ...]
     _relationships: Tuple[PathRelationship, ...]
     _graph: neo4j.graph.Graph
 
     def __init__(
         self,
-        client: BaseClient,
+        client: ClientMixin,
         nodes: Tuple[PathNode, ...],
         relationships: Tuple[PathRelationship, ...],
         graph: neo4j.graph.Graph,

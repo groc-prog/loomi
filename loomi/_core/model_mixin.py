@@ -1,4 +1,4 @@
-# pylint: disable=arguments-differ, missing-class-docstring
+# pylint: disable=missing-class-docstring
 
 import hashlib
 import json
@@ -17,14 +17,14 @@ from typing import (
 
 from pydantic import BaseModel, ConfigDict, PrivateAttr, computed_field
 
-from loomi._internal.types import ModelType
-from loomi._logger import LogContextKey, logger, scoped_log_ctx
+from loomi._core.types import ModelType
+from loomi._logger import LogContext, logger, scoped_log_ctx
 from loomi.constants import SUPPORTED_DATA_TYPES, SUPPORTED_LIST_DATA_TYPES, ServerType
 from loomi.exceptions import ModelError, SerializationError
 from loomi.query.descriptors import FieldDescriptor
 
 if TYPE_CHECKING:
-    from loomi._internal.base_client import ClientConfiguration
+    from loomi._core.client_mixin import ClientConfiguration
 else:
     ClientConfiguration = object
 
@@ -49,7 +49,7 @@ class EntityConfiguration(TypedDict, total=False):
     """
 
 
-class EntityBaseMetaclass(type(BaseModel)):
+class ModelMixinMetaclass(type(BaseModel)):
     def __getattribute__(cls, name):
         # To prevent any recursive __getattribute__ calls we need to skip this handler if any
         # of the following are accessed
@@ -66,7 +66,7 @@ class EntityBaseMetaclass(type(BaseModel)):
         return super().__getattribute__(name)
 
 
-class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
+class ModelMixin(BaseModel, metaclass=ModelMixinMetaclass):
     _id: Optional[int] = PrivateAttr(None)
     _element_id: Optional[str] = PrivateAttr(None)
     _hash: Optional[str] = PrivateAttr(None)
@@ -76,6 +76,7 @@ class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
 
     @classmethod
     def __pydantic_init_subclass__(cls, **kwargs):
+        # Build alias cache once so we do not have to look it up during de-serialization each time
         for field_name, field_info in cls.model_fields.items():
             if field_info.alias is not None:
                 cls._alias_cache[field_info.alias] = field_name
@@ -116,8 +117,8 @@ class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
     def _compute_checksums(self) -> Dict[str, Optional[str]]:
         with scoped_log_ctx(
             {
-                LogContextKey.MODEL_NAME: self.__class__.__name__,
-                LogContextKey.MODEL_IDENTIFIER: self._hash,
+                LogContext.MODEL_NAME: self.__class__.__name__,
+                LogContext.MODEL_IDENTIFIER: self._hash,
             }
         ):
             logger.debug("Computing checksums for model fields")
@@ -138,8 +139,8 @@ class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
     ) -> Dict[str, Any]:
         with scoped_log_ctx(
             {
-                LogContextKey.MODEL_NAME: self.__class__.__name__,
-                LogContextKey.MODEL_IDENTIFIER: self._hash,
+                LogContext.MODEL_NAME: self.__class__.__name__,
+                LogContext.MODEL_IDENTIFIER: self._hash,
             }
         ):
             model_dump = self.model_dump(by_alias=True, exclude={"element_id", "id"}, **kwargs)
@@ -163,22 +164,20 @@ class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
                         f"{", ".join(data_type.__name__ for data_type in SUPPORTED_DATA_TYPES)}"
                     )
 
-                # If mode is Neo4j and we encounter nested values, we either need to raise a
-                # exception or serialize the value if configured
+                # By default, Neo4j does not support storing nested values
+                # We can work around this by serializing the values from Pydantic into a storable format
+                # but this has the drawback that it can not be queried easily later on
                 if mode == ServerType.NEO4J:
                     if isinstance(value, dict):
                         serialized[field_name] = self._serialize_neo4j_dict(
                             field_name, value, serializer_fn, serialize_nested
                         )
-                        continue
-
                     if isinstance(value, list):
                         serialized[field_name] = self._serialize_neo4j_list(
                             field_name, value, serializer_fn, serialize_nested
                         )
-                        continue
-
-                serialized[field_name] = value
+                else:
+                    serialized[field_name] = value
 
             return serialized
 
@@ -240,8 +239,8 @@ class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
     ) -> Self:
         with scoped_log_ctx(
             {
-                LogContextKey.MODEL_NAME: cls.__name__,
-                LogContextKey.MODEL_IDENTIFIER: cls._hash,
+                LogContext.MODEL_NAME: cls.__name__,
+                LogContext.MODEL_IDENTIFIER: cls._hash,
             }
         ):
             deserialized: Dict[str, Any] = {}
@@ -267,9 +266,10 @@ class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
                     logger.warning("Encountered unknown field %s, skipping", field_name)
                     continue
 
-                # Some values might have been stringified previously, so we need to check each of
-                # them and deserialize them back to a dictionary so Pydantic can handle the rest of
-                # the validation correctly
+                # Due to usage of `serialize_nested`, some string values might actually be nested values which we
+                # have to handle with special care so Pydantic validation does not fail later on
+                # TODO: We _could_ do some sort of lookup on which fields could actually be nested values as custom
+                # deserializer functions could be expensive to run
                 if mode == ServerType.NEO4J and serialize_nested and isinstance(value, (str, list)):
                     if isinstance(value, str) and field_info.annotation is not str:
                         try:
@@ -281,7 +281,6 @@ class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
                                 field_name,
                             )
                             deserialized[field_name] = deserializer_fn(value)
-                            continue
                         except Exception as exc:
                             raise SerializationError(
                                 f"Serialized value at {field_name} could not be deserialized"
@@ -308,13 +307,12 @@ class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
                                 deserialized_list.append(deserializer_fn(item))
 
                             deserialized[field_name] = deserialized_list
-                            continue
                         except Exception as exc:
                             raise SerializationError(
                                 f"Serialized value at {field_name} could not be deserialized"
                             ) from exc
-
-                deserialized[field_name] = value
+                else:
+                    deserialized[field_name] = value
 
             return cls.model_validate(deserialized)
 
@@ -322,8 +320,8 @@ class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
     def _init_config_defaults(cls) -> None:
         with scoped_log_ctx(
             {
-                LogContextKey.MODEL_NAME: cls.__name__,
-                LogContextKey.MODEL_IDENTIFIER: cls._hash,
+                LogContext.MODEL_NAME: cls.__name__,
+                LogContext.MODEL_IDENTIFIER: cls._hash,
             }
         ):
             cls._merge_configs()

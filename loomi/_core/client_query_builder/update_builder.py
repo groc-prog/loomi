@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Generic, List, Self, Tuple, TypeVar, cast
 
-from loomi._internal.types import ModelType
+from loomi._core.types import ModelType
 from loomi._logger import logger
 from loomi.constants import ServerType
 from loomi.exceptions import QueryError

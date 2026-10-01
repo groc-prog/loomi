@@ -2,11 +2,11 @@ from typing import Dict, LiteralString, Union, cast
 
 import neo4j
 
-from loomi._internal.base_change_tracker import BaseChangeTracker
-from loomi._logger import LogContextKey, logger, scoped_log_ctx
+from loomi._core.change_tracker_mixin import ChangeTrackerMixin
+from loomi._logger import LogContext, logger, scoped_log_ctx
 
 
-class AsyncChangeTracker(BaseChangeTracker[Union[neo4j.AsyncSession, neo4j.AsyncTransaction]]):
+class AsyncChangeTracker(ChangeTrackerMixin[Union[neo4j.AsyncSession, neo4j.AsyncTransaction]]):
     """Manages state synchronization between local entities and the database state."""
 
     async def flush(self) -> None:
@@ -22,11 +22,9 @@ class AsyncChangeTracker(BaseChangeTracker[Union[neo4j.AsyncSession, neo4j.Async
 
         with scoped_log_ctx(
             {
-                LogContextKey.DRIVER: self._client.__class__.__name__,
-                LogContextKey.SERVER_TYPE: self._client._server_type,
-                LogContextKey.CHANGE_TRACKER_FLUSH_SCOPE: (
-                    "session" if is_session else "transaction"
-                ),
+                LogContext.DRIVER: self._client.__class__.__name__,
+                LogContext.SERVER_TYPE: self._client._server_type,
+                LogContext.CHANGE_TRACKER_FLUSH_SCOPE: ("session" if is_session else "transaction"),
             }
         ):
             self._omit_redundant_relationship_operations()

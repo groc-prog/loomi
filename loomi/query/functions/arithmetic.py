@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any, Union
 
-from loomi._internal.types import NumericValue
+from loomi._core.types import NumericValue
 from loomi.exceptions import QueryError
 from loomi.query._templates import ArithmeticExpressionTemplate
 from loomi.query.descriptors import FieldDescriptor

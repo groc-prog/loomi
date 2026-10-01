@@ -1,6 +1,6 @@
 from typing import ClassVar, List, Set, cast
 
-from loomi._internal.base_model import EntityBase, EntityConfiguration
+from loomi._core.model_mixin import EntityConfiguration, ModelMixin
 from loomi.exceptions import ModelError
 
 
@@ -10,7 +10,7 @@ class NodeConfiguration(EntityConfiguration, total=False):
     labels: Set[str]
 
 
-class Node(EntityBase):
+class Node(ModelMixin):
     """A base class for Loomi nodes."""
 
     loomi_config: ClassVar[NodeConfiguration]
@@ -48,6 +48,13 @@ class Node(EntityBase):
     @classmethod
     def _generate_hash(cls, labels: List[str]) -> str:
         return f"n_{"_".join(sorted(labels))}"
+
+    @classmethod
+    def _labels_from_hash(cls, hash_: str) -> List[str]:
+        if not hash_.startswith("n_"):
+            raise ModelError("Provided hash is not a node model hash")
+
+        return hash_[2:].split("_")
 
     @classmethod
     def _get_labels(cls) -> Set[str]:

@@ -1,7 +1,7 @@
 import re
 from typing import ClassVar
 
-from loomi._internal.base_model import EntityBase, EntityConfiguration
+from loomi._core.model_mixin import EntityConfiguration, ModelMixin
 from loomi.exceptions import ModelError
 
 
@@ -11,7 +11,7 @@ class RelationshipConfiguration(EntityConfiguration, total=False):
     type: str
 
 
-class Relationship(EntityBase):
+class Relationship(ModelMixin):
     """A base class for Loomi relationships."""
 
     loomi_config: ClassVar[RelationshipConfiguration]
@@ -53,6 +53,13 @@ class Relationship(EntityBase):
     @classmethod
     def _generate_hash(cls, type_: str) -> str:
         return f"r_{type_}"
+
+    @classmethod
+    def _type_from_hash(cls, hash_: str) -> str:
+        if not hash_.startswith("r_"):
+            raise ModelError("Provided hash is not a relationship model hash")
+
+        return hash_[2:]
 
     @classmethod
     def _get_type(cls) -> str:
