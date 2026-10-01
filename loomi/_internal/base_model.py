@@ -1,5 +1,6 @@
 # pylint: disable=arguments-differ, missing-class-docstring
 
+import hashlib
 import json
 from typing import (
     TYPE_CHECKING,
@@ -14,7 +15,6 @@ from typing import (
     cast,
 )
 
-import xxhash
 from pydantic import BaseModel, ConfigDict, PrivateAttr, computed_field
 
 from loomi._internal.types import ModelType
@@ -129,7 +129,7 @@ class EntityBase(BaseModel, metaclass=EntityBaseMetaclass):
                     checksums[field_name] = None
                 else:
                     dump = self.model_dump_json(include={field_name})
-                    checksums[field_name] = xxhash.xxh64(dump).hexdigest()
+                    checksums[field_name] = hashlib.blake2b(dump.encode("utf-8")).hexdigest()
 
             return checksums
 
