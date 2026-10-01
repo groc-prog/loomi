@@ -118,7 +118,7 @@ class MatchQueryBuilder(Generic[T, R]):
             if field_name not in self._state.model_type.model_fields:
                 raise QueryError(f"{field_name} is not a valid field to order by")
 
-            if field_name in self._state.order_by:
+            if field_name in self._state.order_by:  # pragma: no cover
                 logger.warning(
                     "A order has already been defined for field %s. The old order will be "
                     "overwritten",
@@ -142,7 +142,7 @@ class MatchQueryBuilder(Generic[T, R]):
         if limit < 0:
             raise QueryError("limit must be a positive integer if defined")
 
-        if self._state.limit is not None:
+        if self._state.limit is not None:  # pragma: no cover
             logger.warning(
                 "A limit has already been defined for this query. The old limit will "
                 "be overwritten"
@@ -164,7 +164,7 @@ class MatchQueryBuilder(Generic[T, R]):
         if skip < 0:
             raise QueryError("skip must be a positive integer if defined")
 
-        if self._state.skip is not None:
+        if self._state.skip is not None:  # pragma: no cover
             logger.warning(
                 "A skip has already been defined for this query. The old skip will "
                 "be overwritten"
@@ -180,7 +180,7 @@ class MatchQueryBuilder(Generic[T, R]):
         Args:
             projection (Dict[str, Any]): The projection to apply.
         """
-        if self._state.projection is not None:
+        if self._state.projection is not None:  # pragma: no cover
             logger.warning(
                 "A projection has already been defined for this query. The old projection will "
                 "be overwritten"

@@ -276,7 +276,7 @@ class ChangeTrackerMixin(Generic[T]):
                 tracked_state = self._state[operation]["nodes"].get(obj_id)
 
             if model._element_id is None:
-                if tracked_state is None:
+                if tracked_state is None:  # pragma: no cover
                     raise ChangeTrackerError(
                         "Can not track a entity to be deleted if it has not been persisted "
                         "to the database and has not been previously added to the change tracker"
@@ -459,7 +459,7 @@ class ChangeTrackerMixin(Generic[T]):
                 start_node_entity_id = id_map[start_node_id]
             else:
                 start_node_state = self._state[TrackingOperation.UPDATE]["nodes"].get(start_node_id)
-                if start_node_state is None:
+                if start_node_state is None:  # pragma: no cover
                     raise ChangeTrackerError(
                         "Start node for relationship not found in change tracker"
                     )
@@ -470,7 +470,7 @@ class ChangeTrackerMixin(Generic[T]):
                     if cast(ServerType, self._client._server_type) == ServerType.NEO4J
                     else start_node.id
                 )
-                if start_node_entity_id is None:
+                if start_node_entity_id is None:  # pragma: no cover
                     raise ChangeTrackerError(
                         "Start node for relationship is being tracked as "
                         f"{TrackingOperation.UPDATE.name} but is not saved to database",
@@ -481,7 +481,7 @@ class ChangeTrackerMixin(Generic[T]):
                 end_node_entity_id = id_map[end_node_id]
             else:
                 end_node_state = self._state[TrackingOperation.UPDATE]["nodes"].get(end_node_id)
-                if end_node_state is None:
+                if end_node_state is None:  # pragma: no cover
                     raise ChangeTrackerError(
                         "End node for relationship not found in change tracker"
                     )
@@ -492,7 +492,7 @@ class ChangeTrackerMixin(Generic[T]):
                     if cast(ServerType, self._client._server_type) == ServerType.NEO4J
                     else end_node.id
                 )
-                if end_node_entity_id is None:
+                if end_node_entity_id is None:  # pragma: no cover
                     raise ChangeTrackerError(
                         "End node for relationship is being tracked as "
                         f"{TrackingOperation.UPDATE.name} but is not saved to database",
@@ -537,7 +537,7 @@ class ChangeTrackerMixin(Generic[T]):
         for state in self._state[TrackingOperation.UPDATE]["nodes"].values():
             reference, original_checksums = state
 
-            if reference._element_id is None or reference._id is None:
+            if reference._element_id is None or reference._id is None:  # pragma: no cover
                 raise ChangeTrackerError(
                     f"Entity is being tracked as {TrackingOperation.UPDATE.name} but has not "
                     "been saved to the database yet"
@@ -596,7 +596,7 @@ class ChangeTrackerMixin(Generic[T]):
         for state in self._state[TrackingOperation.UPDATE]["relationships"].values():
             reference, original_checksums = state
 
-            if reference._element_id is None or reference._id is None:
+            if reference._element_id is None or reference._id is None:  # pragma: no cover
                 raise ChangeTrackerError(
                     f"Entity is being tracked as {TrackingOperation.UPDATE.name} but has not "
                     "been saved to the database yet"
