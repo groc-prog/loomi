@@ -3,7 +3,8 @@ name: Semantic Release
 on:
   push:
     branches:
-      - main
+      - "main"
+      - "develop"
     paths-ignore:
       - "docs/**"
       - "README.md"
