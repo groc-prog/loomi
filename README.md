@@ -137,6 +137,15 @@ docker compose up -d
 
 ### 3. Run the test suite
 
+The following environment variables must be set in order to run all tests:
+- NEO4J_URI
+- NEO4J_USER
+- NEO4J_PWD=
+- MEMGRAPH_URI
+- MEMGRAPH_USER
+- MEMGRAPH_PWD
+
+
 ```bash
-poetry run pytest tests/
+poetry run pytest --envfile .env.test tests/
 ```

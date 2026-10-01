@@ -24,3 +24,6 @@ disable=missing-module-docstring,
        too-many-locals,
        import-outside-toplevel,
        attribute-defined-outside-init
+
+[FORMAT]
+max-line-length = 120
