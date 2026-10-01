@@ -11,11 +11,15 @@ on:
       - "LICENSE"
       - ".gitignore"
   pull_request:
-    types: [opened]
+    types: [opened, synchronize, reopened]
     branches:
       - "main"
       - "develop"
   workflow_dispatch:
+
+concurrency:
+  group: \({{ github.workflow }}-\){{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 env:
   PYTHON_VERSION: "3.14"
