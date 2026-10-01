@@ -13,6 +13,8 @@ from typing import (
     Self,
     TypedDict,
     cast,
+    get_args,
+    get_origin,
 )
 
 from pydantic import BaseModel, ConfigDict, PrivateAttr, computed_field
@@ -172,10 +174,12 @@ class ModelMixin(BaseModel, metaclass=ModelMixinMetaclass):
                         serialized[field_name] = self._serialize_neo4j_dict(
                             field_name, value, serializer_fn, serialize_nested
                         )
-                    if isinstance(value, list):
+                    elif isinstance(value, list):
                         serialized[field_name] = self._serialize_neo4j_list(
                             field_name, value, serializer_fn, serialize_nested
                         )
+                    else:
+                        serialized[field_name] = value
                 else:
                     serialized[field_name] = value
 
@@ -271,20 +275,23 @@ class ModelMixin(BaseModel, metaclass=ModelMixinMetaclass):
                 # TODO: We _could_ do some sort of lookup on which fields could actually be nested values as custom
                 # deserializer functions could be expensive to run
                 if mode == ServerType.NEO4J and serialize_nested and isinstance(value, (str, list)):
-                    if isinstance(value, str) and field_info.annotation is not str:
-                        try:
-                            logger.debug(
-                                (
-                                    "Stringified value found at %s, parsing value with "
-                                    "'deserializer_fn'"
-                                ),
-                                field_name,
-                            )
-                            deserialized[field_name] = deserializer_fn(value)
-                        except Exception as exc:
-                            raise SerializationError(
-                                f"Serialized value at {field_name} could not be deserialized"
-                            ) from exc
+                    if isinstance(value, str):
+                        if field_info.annotation is str:
+                            deserialized[field_name] = value
+                        else:
+                            try:
+                                logger.debug(
+                                    (
+                                        "Stringified value found at %s, parsing value with "
+                                        "'deserializer_fn'"
+                                    ),
+                                    field_name,
+                                )
+                                deserialized[field_name] = deserializer_fn(value)
+                            except Exception as exc:
+                                raise SerializationError(
+                                    f"Serialized value at {field_name} could not be deserialized"
+                                ) from exc
 
                     if isinstance(value, list):
                         try:
@@ -293,9 +300,17 @@ class ModelMixin(BaseModel, metaclass=ModelMixinMetaclass):
                                 field_name,
                             )
 
+                            annotation_args = get_args(field_info.annotation)
+                            list_annotation = next(
+                                (arg for arg in annotation_args if get_origin(arg) is list),
+                                field_info.annotation,
+                            )
+                            list_args = get_args(list_annotation)
+                            string_items = bool(list_args) and list_args[0] is str
+
                             deserialized_list = []
                             for index, item in enumerate(value):
-                                if not isinstance(item, str):
+                                if not isinstance(item, str) or string_items:
                                     deserialized_list.append(item)
                                     continue
 
