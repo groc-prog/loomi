@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.2.0-rc.1 (2026-10-01)
+
+### Features
+
+- Trigger release
+  ([`26d49fc`](https://github.com/groc-prog/loomi/commit/26d49fccb837ef0d97ceec12e5047ccbab583ef4))
+
+
 ## v1.1.0 (2026-10-01)
 
 ### Features
