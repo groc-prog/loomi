@@ -8,7 +8,7 @@ from loomi._sync.client import Client
 from loomi.exceptions import ChangeTrackerError
 from loomi.graph.node import Node
 from loomi.graph.relationship import Relationship
-from loomi.query.constants import OrderBy
+from loomi.query_api.constants import OrderBy
 
 
 class TrackerPerson(Node):
