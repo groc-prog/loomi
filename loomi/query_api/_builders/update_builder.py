@@ -5,10 +5,10 @@ from loomi._core.types import ModelType
 from loomi._logger import logger
 from loomi.constants import ServerType
 from loomi.exceptions import QueryError
-from loomi.query._context import CompilationContext
-from loomi.query._protocols import CompilableExpression
-from loomi.query.db_function import DbFunction
-from loomi.query.descriptors import FieldDescriptor
+from loomi.query_api._core.context import CompilationContext
+from loomi.query_api._core.db_function import DbFunction
+from loomi.query_api._core.descriptors import FieldDescriptor
+from loomi.query_api._core.protocols import CompilableExpression
 
 R = TypeVar("R")
 
@@ -112,7 +112,7 @@ class UpdateQueryBuilder(Generic[R]):
             query = f"MATCH ()-[{model_variable}:{type_}]->()"
 
         compiled_filter_expressions = [
-            expression._compile(self._compilation_ctx)
+            expression._compile_expression(self._compilation_ctx)
             for expression in self._state.filter_expressions
         ]
         if len(compiled_filter_expressions) != 0:
@@ -121,7 +121,9 @@ class UpdateQueryBuilder(Generic[R]):
         compiled_set_clauses: List[str] = []
         for model_field, expression_or_value in self._state.update_expressions.items():
             if isinstance(expression_or_value, DbFunction):
-                compiled = expression_or_value._compile(self._compilation_ctx, "{variable}", None)
+                compiled = expression_or_value._compile_db_function(
+                    self._compilation_ctx, "{variable}", None
+                )
                 set_value = compiled.template.format(wrapped=compiled.wrapped_path)
                 compiled_set_clauses.append(
                     f"{model_variable}.{model_field._full_path} = {set_value}"
@@ -129,7 +131,7 @@ class UpdateQueryBuilder(Generic[R]):
                 continue
 
             if isinstance(expression_or_value, CompilableExpression):
-                compiled = expression_or_value._compile(self._compilation_ctx)
+                compiled = expression_or_value._compile_expression(self._compilation_ctx)
                 compiled_set_clauses.append(
                     f"{model_variable}.{model_field._full_path} = {compiled}"
                 )
@@ -145,4 +147,4 @@ class UpdateQueryBuilder(Generic[R]):
         else:
             query += f" RETURN DISTINCT toString(id({model_variable})), id({model_variable})"
 
-        return self._execute_fn(query, self._compilation_ctx.parameters)
+        return self._execute_fn(query, self._compilation_ctx.get_parameters())

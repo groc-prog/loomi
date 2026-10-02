@@ -17,23 +17,23 @@ import neo4j
 
 from loomi._async.session import AsyncSession
 from loomi._core.client_mixin import ClientMixin, require_server_metadata
-from loomi._core.client_query_builder.delete_builder import (
-    DeleteQueryBuilder,
-    DeleteResult,
-    _DeleteQueryState,
-)
-from loomi._core.client_query_builder.match_builder import MatchQueryBuilder, _MatchQueryState
-from loomi._core.client_query_builder.update_builder import (
-    UpdateQueryBuilder,
-    UpdateResult,
-    _UpdateQueryState,
-)
 from loomi._logger import LogContext, logger, scoped_log_ctx
 from loomi.constants import ServerType
 from loomi.exceptions import ClientError
 from loomi.graph.node import Node
 from loomi.graph.relationship import Relationship
-from loomi.query._context import CompilationContext
+from loomi.query_api._builders.delete_builder import (
+    DeleteQueryBuilder,
+    DeleteResult,
+    _DeleteQueryState,
+)
+from loomi.query_api._builders.match_builder import MatchQueryBuilder, _MatchQueryState
+from loomi.query_api._builders.update_builder import (
+    UpdateQueryBuilder,
+    UpdateResult,
+    _UpdateQueryState,
+)
+from loomi.query_api._core.context import CompilationContext
 
 T = TypeVar("T", bound=Union[Node, Relationship])
 

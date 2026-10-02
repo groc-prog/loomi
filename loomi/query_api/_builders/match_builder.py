@@ -19,17 +19,18 @@ from pydantic import BaseModel
 from loomi._core.types import ModelType
 from loomi._logger import logger
 from loomi.exceptions import QueryError
-from loomi.query._context import CompilationContext
-from loomi.query._protocols import CompilableExpression
-from loomi.query.constants import OrderBy
-from loomi.query.descriptors import FieldDescriptor
+from loomi.query_api._core.context import CompilationContext
+from loomi.query_api._core.descriptors import FieldDescriptor
+from loomi.query_api._core.protocols import CompilableExpression
 
 if TYPE_CHECKING:
     from loomi.graph.node import Node
     from loomi.graph.relationship import Relationship
+    from loomi.query_api.constants import OrderBy
 else:
     Node = object
     Relationship = object
+    OrderBy = object
 
 T = TypeVar("T", bound=Union[Node, Relationship, Dict[str, Any]])
 P = TypeVar("P", bound=BaseModel)
@@ -214,7 +215,8 @@ class MatchQueryBuilder(Generic[T, R]):
             query = f"MATCH ()-[{model_variable}:{self._state.model_type._get_type()}]->()"
 
         compiled_expressions = [
-            expression._compile(self._compilation_ctx) for expression in self._state.expressions
+            expression._compile_expression(self._compilation_ctx)
+            for expression in self._state.expressions
         ]
         if len(compiled_expressions) != 0:
             query += f" WHERE {' AND '.join(compiled_expressions)}"
@@ -246,4 +248,4 @@ class MatchQueryBuilder(Generic[T, R]):
         if self._state.limit is not None:
             query += f" LIMIT {self._state.limit}"
 
-        return self._execute_fn(query, self._compilation_ctx.parameters)  # type: ignore
+        return self._execute_fn(query, self._compilation_ctx.get_parameters())  # type: ignore

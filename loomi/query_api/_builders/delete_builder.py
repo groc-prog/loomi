@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Generic, List, Self, Tupl
 from loomi._core.types import ModelType
 from loomi.constants import ServerType
 from loomi.exceptions import QueryError
-from loomi.query._context import CompilationContext
-from loomi.query._protocols import CompilableExpression
+from loomi.query_api._core.context import CompilationContext
+from loomi.query_api._core.protocols import CompilableExpression
 
 if TYPE_CHECKING:
     from loomi.graph.relationship import Relationship
@@ -79,7 +79,8 @@ class DeleteQueryBuilder(Generic[R]):
             query = f"MATCH ()-[{model_variable}:{type_}]->()"
 
         compiled_expressions = [
-            expression._compile(self._compilation_ctx) for expression in self._state.expressions
+            expression._compile_expression(self._compilation_ctx)
+            for expression in self._state.expressions
         ]
         if len(compiled_expressions) != 0:
             query += f" WHERE {' AND '.join(compiled_expressions)}"
@@ -94,4 +95,4 @@ class DeleteQueryBuilder(Generic[R]):
         else:
             query += f" RETURN DISTINCT toString(id({model_variable})), id({model_variable})"
 
-        return self._execute_fn(query, self._compilation_ctx.parameters)
+        return self._execute_fn(query, self._compilation_ctx.get_parameters())

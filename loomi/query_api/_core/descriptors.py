@@ -5,27 +5,23 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, get_args, ge
 
 from pydantic import BaseModel
 
+import loomi.query_api.functions.arithmetic as arithmetic_functions
+import loomi.query_api.functions.comparison as comparison_functions
 from loomi._core.types import NumericValue, QueryModelType
 from loomi._logger import logger
 from loomi.constants import ServerType
 from loomi.exceptions import ModelError
-from loomi.query._protocols import CompilableDescriptor
-from loomi.query._templates import EntityIdExpressionTemplate
-from loomi.query.db_function import DbFunction
+from loomi.query_api._core.protocols import (
+    CompilableDbFunction,
+    CompilableDescriptor,
+    CompiledDescriptor,
+)
+from loomi.query_api._core.templates import EntityIdExpressionTemplate
 
 if TYPE_CHECKING:
-    from loomi.query._context import CompilationContext
+    from loomi.query_api._core.context import CompilationContext
 else:
     CompilationContext = object
-
-
-@dataclass(frozen=True)
-class CompiledDescriptor:
-    """The compiled version for a given descriptor."""
-
-    template: str
-    variable_path: str
-    parameter_name: Optional[str]
 
 
 class ListPathOperator(StrEnum):
@@ -39,101 +35,65 @@ class ListPathOperator(StrEnum):
 
 @dataclass(frozen=True)
 class FieldDescriptor(CompilableDescriptor):
-    """Descriptor class used for building query paths for the a model."""
+    """Descriptor class used for building query paths for a model."""
 
     _full_path: str
     _annotation: Any
     _model_type: QueryModelType
 
     def __eq__(self, value: Any):  # type: ignore[override]
-        from loomi.query.functions.comparison import equals
-
-        return equals(self, value)
+        return comparison_functions.equals(self, value)
 
     def __ne__(self, value: Any):  # type: ignore[override]
-        from loomi.query.functions.comparison import not_equals
-
-        return not_equals(self, value)
+        return comparison_functions.not_equals(self, value)
 
     def __gt__(self, value: NumericValue):
-        from loomi.query.functions.comparison import greater_than
-
-        return greater_than(self, value)
+        return comparison_functions.greater_than(self, value)
 
     def __ge__(self, value: NumericValue):
-        from loomi.query.functions.comparison import greater_than_or_equal
-
-        return greater_than_or_equal(self, value)
+        return comparison_functions.greater_than_or_equal(self, value)
 
     def __lt__(self, value: NumericValue):
-        from loomi.query.functions.comparison import less_than
-
-        return less_than(self, value)
+        return comparison_functions.less_than(self, value)
 
     def __le__(self, value: NumericValue):
-        from loomi.query.functions.comparison import less_than_or_equal
-
-        return less_than_or_equal(self, value)
+        return comparison_functions.less_than_or_equal(self, value)
 
     def __add__(self, value: NumericValue):
-        from loomi.query.functions.arithmetic import add
-
-        return add(self, value)
+        return arithmetic_functions.add(self, value)
 
     def __radd__(self, value: NumericValue):
-        from loomi.query.functions.arithmetic import reflected_add
-
-        return reflected_add(self, value)
+        return arithmetic_functions.reflected_add(self, value)
 
     def __sub__(self, value: NumericValue):
-        from loomi.query.functions.arithmetic import subtract
-
-        return subtract(self, value)
+        return arithmetic_functions.subtract(self, value)
 
     def __rsub__(self, value: NumericValue):
-        from loomi.query.functions.arithmetic import reflected_subtract
-
-        return reflected_subtract(self, value)
+        return arithmetic_functions.reflected_subtract(self, value)
 
     def __mul__(self, value: NumericValue):
-        from loomi.query.functions.arithmetic import multiply
-
-        return multiply(self, value)
+        return arithmetic_functions.multiply(self, value)
 
     def __rmul__(self, value: NumericValue):
-        from loomi.query.functions.arithmetic import reflected_multiply
-
-        return reflected_multiply(self, value)
+        return arithmetic_functions.reflected_multiply(self, value)
 
     def __truediv__(self, value: NumericValue):
-        from loomi.query.functions.arithmetic import divide
-
-        return divide(self, value)
+        return arithmetic_functions.divide(self, value)
 
     def __rtruediv__(self, value: NumericValue):
-        from loomi.query.functions.arithmetic import reflected_divide
-
-        return reflected_divide(self, value)
+        return arithmetic_functions.reflected_divide(self, value)
 
     def __mod__(self, value: NumericValue):
-        from loomi.query.functions.arithmetic import modulo
-
-        return modulo(self, value)
+        return arithmetic_functions.modulo(self, value)
 
     def __rmod__(self, value: NumericValue):
-        from loomi.query.functions.arithmetic import reflected_modulo
-
-        return reflected_modulo(self, value)
+        return arithmetic_functions.reflected_modulo(self, value)
 
     def __pow__(self, value: NumericValue):
-        from loomi.query.functions.arithmetic import pow_
-
-        return pow_(self, value)
+        return arithmetic_functions.pow_(self, value)
 
     def __rpow__(self, value: NumericValue):
-        from loomi.query.functions.arithmetic import reflected_pow
-
-        return reflected_pow(self, value)
+        return arithmetic_functions.reflected_pow(self, value)
 
     def __getattribute__(self, name: str):
         if name.startswith("_"):
@@ -196,7 +156,7 @@ class FieldDescriptor(CompilableDescriptor):
 
         return FieldDescriptor(f"{self._full_path}[{index}]", inner_type, self._model_type)
 
-    def _compile(
+    def _compile_descriptor(
         self, ctx: CompilationContext, expression_template: str, value: Optional[Any]
     ) -> CompiledDescriptor:
         # TODO: This currently generates 2 loops when filtering 2 list expressions which are
@@ -216,8 +176,8 @@ class FieldDescriptor(CompilableDescriptor):
         list_operators = {op.value for op in ListPathOperator}  # Set for O(1) lookup
         model_variable = ctx.get_variable(self._model_type)
 
-        if isinstance(value, DbFunction):
-            compiled_db_function = value._compile(ctx)
+        if isinstance(value, CompilableDbFunction):
+            compiled_db_function = value._compile_db_function(ctx)
             parameter_name = compiled_db_function.template.format(
                 wrapped=compiled_db_function.wrapped_path
             )
@@ -240,7 +200,7 @@ class FieldDescriptor(CompilableDescriptor):
         # template in reverse order (from inner-most to outer-most)
         operators = [(index, part) for index, part in enumerate(parts) if part in list_operators]
 
-        start_var_id = ctx._variable_counter
+        start_var_id = ctx.get_variable_count()
         ctx.force_increment_variable_counter(len(operators))
 
         # Build the inner-most expression first, as this will be the template part which
@@ -269,6 +229,15 @@ class FieldDescriptor(CompilableDescriptor):
                 f"WHERE {current_template})"
             )
 
+        # If there is any part of the path remaining after the last list operator, we have to append
+        # it to the final target path
+        last_operator_index = operators[-1][0]
+        if last_operator_index < (len(parts) - 1):
+            cutoff_index = last_operator_index + 1
+            remaining_paths = ".".join(parts[cutoff_index:])
+
+            target_path = f"{target_path}.{remaining_paths}"
+
         return CompiledDescriptor(current_template, target_path, parameter_name)
 
 
@@ -279,7 +248,7 @@ class EntityIdDescriptor(CompilableDescriptor):
     model_type: QueryModelType
     template: EntityIdExpressionTemplate
 
-    def _compile(
+    def _compile_descriptor(
         self, ctx: CompilationContext, expression_template: str, value: Optional[Any]
     ) -> CompiledDescriptor:
         logger.debug(
@@ -301,8 +270,8 @@ class EntityIdDescriptor(CompilableDescriptor):
         else:
             entity_id_path = self.template.format(variable=model_variable)
 
-        if isinstance(value, DbFunction):
-            compiled_db_function = value._compile(ctx)
+        if isinstance(value, CompilableDbFunction):
+            compiled_db_function = value._compile_db_function(ctx)
             parameter_name = compiled_db_function.template.format(
                 wrapped=compiled_db_function.wrapped_path
             )

@@ -23,7 +23,7 @@ from loomi._core.types import ModelType
 from loomi._logger import LogContext, logger, scoped_log_ctx
 from loomi.constants import SUPPORTED_DATA_TYPES, SUPPORTED_LIST_DATA_TYPES, ServerType
 from loomi.exceptions import ModelError, SerializationError
-from loomi.query.descriptors import FieldDescriptor
+from loomi.query_api._core.descriptors import FieldDescriptor
 
 if TYPE_CHECKING:
     from loomi._core.client_mixin import ClientConfiguration

@@ -1,7 +1,7 @@
 from typing import Any, List, TypeVar, Union, cast, get_args, get_origin
 
 from loomi.exceptions import QueryError
-from loomi.query.descriptors import FieldDescriptor, ListPathOperator
+from loomi.query_api._core.descriptors import FieldDescriptor, ListPathOperator
 
 P = TypeVar("P")
 
@@ -9,6 +9,9 @@ P = TypeVar("P")
 def all_(property_descriptor: List[P]) -> P:
     """
     Marks this list property to use `ALL` when a query builder encounters it.
+
+    Args:
+        property_descriptor (List[P]): The property descriptor to wrap.
 
     Raises:
         QueryError: If the provided descriptor is not valid.
@@ -45,6 +48,9 @@ def any_(property_descriptor: List[P]) -> P:
     Marks this list property to use `ANY` when a query builder encounters it. This is also
     the default which will be used if nothing is defined for a list property.
 
+    Args:
+        property_descriptor (List[P]): The property descriptor to wrap.
+
     Raises:
         QueryError: If the provided descriptor is not valid.
 
@@ -79,6 +85,9 @@ def none(property_descriptor: List[P]) -> P:
     """
     Marks this list property to use `NONE` when a query builder encounters it.
 
+    Args:
+        property_descriptor (List[P]): The property descriptor to wrap.
+
     Raises:
         QueryError: If the provided descriptor is not valid.
 
@@ -112,6 +121,9 @@ def none(property_descriptor: List[P]) -> P:
 def single(property_descriptor: List[P]) -> P:
     """
     Marks this list property to use `SINGLE` when a query builder encounters it.
+
+    Args:
+        property_descriptor (List[P]): The property descriptor to wrap.
 
     Raises:
         QueryError: If the provided descriptor is not valid.

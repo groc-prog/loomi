@@ -1,14 +1,8 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Union
+from typing import Any, Dict, List, Union
 
 from loomi._core.types import NumericValue, QueryModelType
 from loomi.exceptions import QueryError
-from loomi.query._templates import (
-    ExpressionTemplate,
-    LogicalExpressionTemplate,
-    UnaryExpressionTemplate,
-)
-from loomi.query.descriptors import FieldDescriptor
-from loomi.query.expressions import (
+from loomi.query_api._core.expressions import (
     CompoundExpression,
     CustomCypherExpression,
     Expression,
@@ -16,19 +10,20 @@ from loomi.query.expressions import (
     NullExpression,
     _BaseExpression,
 )
+from loomi.query_api._core.protocols import CompilableDbFunction, CompilableDescriptor
+from loomi.query_api._core.templates import (
+    ExpressionTemplate,
+    LogicalExpressionTemplate,
+    UnaryExpressionTemplate,
+)
 
-if TYPE_CHECKING:
-    from loomi.query.db_function import DbFunction
-else:
-    DbFunction = object
 
-
-def equals(property_descriptor: Any, value: Any) -> Expression:
+def equals(to_wrap: Any, value: Any) -> Expression:
     """
     Builds a `=` expression for a query builder.
 
     Args:
-        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
+        to_wrap (Any): The descriptor or DB function to build the expression for.
         value (Any): The value used in the expression.
 
     Raises:
@@ -37,22 +32,22 @@ def equals(property_descriptor: Any, value: Any) -> Expression:
     Returns:
         Expression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
+    if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
             f"Descriptor must be a valid field descriptor or db function. "
-            f"Expected {FieldDescriptor.__name__} or {DbFunction.__name__}, got "
-            f"{property_descriptor}"
+            f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
+            f"{to_wrap}"
         )
 
-    return Expression(property_descriptor, ExpressionTemplate.EQ, value)
+    return Expression(to_wrap, ExpressionTemplate.EQ, value)
 
 
-def not_equals(property_descriptor: Any, value: Any) -> Expression:
+def not_equals(to_wrap: Any, value: Any) -> Expression:
     """
     Builds a `<>` expression for a query builder.
 
     Args:
-        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
+        to_wrap (Any): The descriptor or DB function to build the expression for.
         value (Any): The value used in the expression.
 
     Raises:
@@ -61,22 +56,22 @@ def not_equals(property_descriptor: Any, value: Any) -> Expression:
     Returns:
         Expression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
+    if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
             f"Descriptor must be a valid field descriptor or db function. "
-            f"Expected {FieldDescriptor.__name__} or {DbFunction.__name__}, got "
-            f"{property_descriptor}"
+            f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
+            f"{to_wrap}"
         )
 
-    return Expression(property_descriptor, ExpressionTemplate.NEQ, value)
+    return Expression(to_wrap, ExpressionTemplate.NEQ, value)
 
 
-def greater_than(property_descriptor: Any, value: Union[NumericValue, DbFunction]) -> Expression:
+def greater_than(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Expression:
     """
     Builds a `>` expression for a query builder.
 
     Args:
-        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
+        to_wrap (Any): The descriptor or DB function to build the expression for.
         value (Union[int, float]): The (numeric) value used in the expression.
 
     Raises:
@@ -85,24 +80,24 @@ def greater_than(property_descriptor: Any, value: Union[NumericValue, DbFunction
     Returns:
         Expression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
+    if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
             f"Descriptor must be a valid field descriptor or db function. "
-            f"Expected {FieldDescriptor.__name__} or {DbFunction.__name__}, got "
-            f"{property_descriptor}"
+            f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
+            f"{to_wrap}"
         )
 
-    return Expression(property_descriptor, ExpressionTemplate.GT, value)
+    return Expression(to_wrap, ExpressionTemplate.GT, value)
 
 
 def greater_than_or_equal(
-    property_descriptor: Any, value: Union[NumericValue, DbFunction]
+    to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]
 ) -> Expression:
     """
     Builds a `>=` expression for a query builder.
 
     Args:
-        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
+        to_wrap (Any): The descriptor or DB function to build the expression for.
         value (Union[int, float]): The (numeric) value used in the expression.
 
     Raises:
@@ -111,22 +106,22 @@ def greater_than_or_equal(
     Returns:
         Expression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
+    if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
             f"Descriptor must be a valid field descriptor or db function. "
-            f"Expected {FieldDescriptor.__name__} or {DbFunction.__name__}, got "
-            f"{property_descriptor}"
+            f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
+            f"{to_wrap}"
         )
 
-    return Expression(property_descriptor, ExpressionTemplate.GTE, value)
+    return Expression(to_wrap, ExpressionTemplate.GTE, value)
 
 
-def less_than(property_descriptor: Any, value: Union[NumericValue, DbFunction]) -> Expression:
+def less_than(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Expression:
     """
     Builds a `<` expression for a query builder.
 
     Args:
-        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
+        to_wrap (Any): The descriptor or DB function to build the expression for.
         value (Union[int, float]): The (numeric) value used in the expression.
 
     Raises:
@@ -135,24 +130,24 @@ def less_than(property_descriptor: Any, value: Union[NumericValue, DbFunction]) 
     Returns:
         Expression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
+    if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
             f"Descriptor must be a valid field descriptor or db function. "
-            f"Expected {FieldDescriptor.__name__} or {DbFunction.__name__}, got "
-            f"{property_descriptor}"
+            f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
+            f"{to_wrap}"
         )
 
-    return Expression(property_descriptor, ExpressionTemplate.LT, value)
+    return Expression(to_wrap, ExpressionTemplate.LT, value)
 
 
 def less_than_or_equal(
-    property_descriptor: Any, value: Union[NumericValue, DbFunction]
+    to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]
 ) -> Expression:
     """
     Builds a `<=` expression for a query builder.
 
     Args:
-        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
+        to_wrap (Any): The descriptor or DB function to build the expression for.
         value (Union[int, float]): The (numeric) value used in the expression.
 
     Raises:
@@ -161,14 +156,14 @@ def less_than_or_equal(
     Returns:
         Expression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
+    if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
             f"Descriptor must be a valid field descriptor or db function. "
-            f"Expected {FieldDescriptor.__name__} or {DbFunction.__name__}, got "
-            f"{property_descriptor}"
+            f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
+            f"{to_wrap}"
         )
 
-    return Expression(property_descriptor, ExpressionTemplate.LTE, value)
+    return Expression(to_wrap, ExpressionTemplate.LTE, value)
 
 
 def not_(
@@ -235,12 +230,12 @@ def xor(
     return CompoundExpression(LogicalExpressionTemplate.XOR, [*expressions])
 
 
-def is_null(property_descriptor: Any) -> NullExpression:
+def is_null(to_wrap: Any) -> NullExpression:
     """
     Builds a `IS NULL` expression for a query builder.
 
     Args:
-        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
+        to_wrap (Any): The descriptor or DB function to build the expression for.
 
     Raises:
         QueryError: If the provided descriptor is not valid.
@@ -248,24 +243,24 @@ def is_null(property_descriptor: Any) -> NullExpression:
     Returns:
         UnaryQueryExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, FieldDescriptor):
+    if not isinstance(to_wrap, CompilableDescriptor):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
-            f", got {property_descriptor}"
+            f"Descriptor must be a valid field descriptor. Expected {CompilableDescriptor.__name__} "
+            f", got {to_wrap}"
         )
 
     return NullExpression(
-        property_descriptor,
+        to_wrap,
         UnaryExpressionTemplate.IS_NULL,
     )
 
 
-def is_not_null(property_descriptor: Any) -> NullExpression:
+def is_not_null(to_wrap: Any) -> NullExpression:
     """
     Builds a `IS NOT NULL` expression for a query builder.
 
     Args:
-        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
+        to_wrap (Any): The descriptor or DB function to build the expression for.
 
     Raises:
         QueryError: If the provided descriptor is not valid.
@@ -273,24 +268,24 @@ def is_not_null(property_descriptor: Any) -> NullExpression:
     Returns:
         UnaryQueryExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, FieldDescriptor):
+    if not isinstance(to_wrap, CompilableDescriptor):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
-            f", got {property_descriptor}"
+            f"Descriptor must be a valid field descriptor. Expected {CompilableDescriptor.__name__} "
+            f", got {to_wrap}"
         )
 
     return NullExpression(
-        property_descriptor,
+        to_wrap,
         UnaryExpressionTemplate.IS_NOT_NULL,
     )
 
 
-def in_(property_descriptor: Any, value: Union[List[Any], DbFunction]) -> Expression:
+def in_(to_wrap: Any, value: Union[List[Any], CompilableDbFunction]) -> Expression:
     """
     Builds a `IN` expression for a query builder.
 
     Args:
-        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
+        to_wrap (Any): The descriptor or DB function to build the expression for.
         value (List[Any]): The (list) value used in the expression.
 
     Raises:
@@ -299,22 +294,22 @@ def in_(property_descriptor: Any, value: Union[List[Any], DbFunction]) -> Expres
     Returns:
         Expression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
+    if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
             f"Descriptor must be a valid field descriptor or db function. "
-            f"Expected {FieldDescriptor.__name__} or {DbFunction.__name__}, got "
-            f"{property_descriptor}"
+            f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
+            f"{to_wrap}"
         )
 
-    return Expression(property_descriptor, ExpressionTemplate.IN, value)
+    return Expression(to_wrap, ExpressionTemplate.IN, value)
 
 
-def starts_with(property_descriptor: Any, value: Union[str, DbFunction]) -> Expression:
+def starts_with(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> Expression:
     """
     Builds a `STARTS WITH` expression for a query builder.
 
     Args:
-        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
+        to_wrap (Any): The descriptor or DB function to build the expression for.
         value (str): The (string) value used in the expression.
 
     Raises:
@@ -323,22 +318,22 @@ def starts_with(property_descriptor: Any, value: Union[str, DbFunction]) -> Expr
     Returns:
         Expression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
+    if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
             f"Descriptor must be a valid field descriptor or db function. "
-            f"Expected {FieldDescriptor.__name__} or {DbFunction.__name__}, got "
-            f"{property_descriptor}"
+            f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
+            f"{to_wrap}"
         )
 
-    return Expression(property_descriptor, ExpressionTemplate.STARTS_WITH, value)
+    return Expression(to_wrap, ExpressionTemplate.STARTS_WITH, value)
 
 
-def ends_with(property_descriptor: Any, value: Union[str, DbFunction]) -> Expression:
+def ends_with(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> Expression:
     """
     Builds a `ENDS WITH` expression for a query builder.
 
     Args:
-        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
+        to_wrap (Any): The descriptor or DB function to build the expression for.
         value (str): The (string) value used in the expression.
 
     Raises:
@@ -347,22 +342,22 @@ def ends_with(property_descriptor: Any, value: Union[str, DbFunction]) -> Expres
     Returns:
         Expression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
+    if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
             f"Descriptor must be a valid field descriptor or db function. "
-            f"Expected {FieldDescriptor.__name__} or {DbFunction.__name__}, got "
-            f"{property_descriptor}"
+            f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
+            f"{to_wrap}"
         )
 
-    return Expression(property_descriptor, ExpressionTemplate.ENDS_WITH, value)
+    return Expression(to_wrap, ExpressionTemplate.ENDS_WITH, value)
 
 
-def contains(property_descriptor: Any, value: Union[str, DbFunction]) -> Expression:
+def contains(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> Expression:
     """
     Builds a `CONTAINS` expression for a query builder.
 
     Args:
-        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
+        to_wrap (Any): The descriptor or DB function to build the expression for.
         value (str): The (string) value used in the expression.
 
     Raises:
@@ -371,22 +366,22 @@ def contains(property_descriptor: Any, value: Union[str, DbFunction]) -> Express
     Returns:
         Expression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
+    if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
             f"Descriptor must be a valid field descriptor or db function. "
-            f"Expected {FieldDescriptor.__name__} or {DbFunction.__name__}, got "
-            f"{property_descriptor}"
+            f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
+            f"{to_wrap}"
         )
 
-    return Expression(property_descriptor, ExpressionTemplate.CONTAINS, value)
+    return Expression(to_wrap, ExpressionTemplate.CONTAINS, value)
 
 
-def regex(property_descriptor: Any, value: Union[str, DbFunction]) -> Expression:
+def regex(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> Expression:
     """
     Builds a `=~` expression for a query builder.
 
     Args:
-        property_descriptor (PropertyDescriptor): The descriptor to build the expression for.
+        to_wrap (Any): The descriptor or DB function to build the expression for.
         value (str): The (string) value used in the expression.
 
     Raises:
@@ -395,14 +390,14 @@ def regex(property_descriptor: Any, value: Union[str, DbFunction]) -> Expression
     Returns:
         Expression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(property_descriptor, (FieldDescriptor, DbFunction)):
+    if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
             f"Descriptor must be a valid field descriptor or db function. "
-            f"Expected {FieldDescriptor.__name__} or {DbFunction.__name__}, got "
-            f"{property_descriptor}"
+            f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
+            f"{to_wrap}"
         )
 
-    return Expression(property_descriptor, ExpressionTemplate.REGEX, value)
+    return Expression(to_wrap, ExpressionTemplate.REGEX, value)
 
 
 def cypher(

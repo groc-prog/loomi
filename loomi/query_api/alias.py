@@ -19,7 +19,7 @@ class AliasedModel(Generic[T]):
     _model_type: T
 
     def __getattribute__(self, name: str) -> Any:
-        from loomi.query.descriptors import FieldDescriptor
+        from loomi.query_api._core.descriptors import FieldDescriptor
 
         if name.startswith("_"):
             return super().__getattribute__(name)
