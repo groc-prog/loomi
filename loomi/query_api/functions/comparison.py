@@ -7,18 +7,16 @@ from loomi.query_api._core.expressions import (
     CustomCypherExpression,
     Expression,
     InvertExpression,
-    NullExpression,
-    _BaseExpression,
 )
-from loomi.query_api._core.protocols import CompilableDbFunction, CompilableDescriptor
-from loomi.query_api._core.templates import (
-    ExpressionTemplate,
-    LogicalExpressionTemplate,
-    UnaryExpressionTemplate,
+from loomi.query_api._core.protocols import (
+    CompilableAndRunnableExpression,
+    CompilableDbFunction,
+    CompilableDescriptor,
 )
+from loomi.query_api._core.templates import ExpressionTemplate, LogicalExpressionTemplate
 
 
-def equals(to_wrap: Any, value: Any) -> Expression:
+def equals(to_wrap: Any, value: Any) -> CompilableAndRunnableExpression:
     """
     Builds a `=` expression for a query builder.
 
@@ -30,7 +28,7 @@ def equals(to_wrap: Any, value: Any) -> Expression:
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        Expression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
@@ -42,7 +40,7 @@ def equals(to_wrap: Any, value: Any) -> Expression:
     return Expression(to_wrap, ExpressionTemplate.EQ, value)
 
 
-def not_equals(to_wrap: Any, value: Any) -> Expression:
+def not_equals(to_wrap: Any, value: Any) -> CompilableAndRunnableExpression:
     """
     Builds a `<>` expression for a query builder.
 
@@ -54,7 +52,7 @@ def not_equals(to_wrap: Any, value: Any) -> Expression:
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        Expression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
@@ -66,7 +64,9 @@ def not_equals(to_wrap: Any, value: Any) -> Expression:
     return Expression(to_wrap, ExpressionTemplate.NEQ, value)
 
 
-def greater_than(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Expression:
+def greater_than(
+    to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]
+) -> CompilableAndRunnableExpression:
     """
     Builds a `>` expression for a query builder.
 
@@ -78,7 +78,7 @@ def greater_than(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction])
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        Expression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
@@ -92,7 +92,7 @@ def greater_than(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction])
 
 def greater_than_or_equal(
     to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]
-) -> Expression:
+) -> CompilableAndRunnableExpression:
     """
     Builds a `>=` expression for a query builder.
 
@@ -104,7 +104,7 @@ def greater_than_or_equal(
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        Expression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
@@ -116,7 +116,9 @@ def greater_than_or_equal(
     return Expression(to_wrap, ExpressionTemplate.GTE, value)
 
 
-def less_than(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Expression:
+def less_than(
+    to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]
+) -> CompilableAndRunnableExpression:
     """
     Builds a `<` expression for a query builder.
 
@@ -128,7 +130,7 @@ def less_than(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) ->
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        Expression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
@@ -142,7 +144,7 @@ def less_than(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) ->
 
 def less_than_or_equal(
     to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]
-) -> Expression:
+) -> CompilableAndRunnableExpression:
     """
     Builds a `<=` expression for a query builder.
 
@@ -154,7 +156,7 @@ def less_than_or_equal(
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        Expression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
@@ -167,8 +169,8 @@ def less_than_or_equal(
 
 
 def not_(
-    expression: Union[CompoundExpression, _BaseExpression],
-) -> InvertExpression:
+    expression: Union[CompoundExpression, CompilableAndRunnableExpression],
+) -> CompilableAndRunnableExpression:
     """
     Builds a `NOT(...)` expression for a query builder.
 
@@ -177,13 +179,13 @@ def not_(
         to invert.
 
     Returns:
-        InvertExpression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     return InvertExpression(expression)
 
 
 def and_(
-    *expressions: Union[CompoundExpression, _BaseExpression],
+    *expressions: Union[CompoundExpression, CompilableAndRunnableExpression],
 ) -> CompoundExpression:
     """
     Builds a `AND(...)` expression for a query builder.
@@ -199,7 +201,7 @@ def and_(
 
 
 def or_(
-    *expressions: Union[CompoundExpression, _BaseExpression],
+    *expressions: Union[CompoundExpression, CompilableAndRunnableExpression],
 ) -> CompoundExpression:
     """
     Builds a `OR(...)` expression for a query builder.
@@ -215,7 +217,7 @@ def or_(
 
 
 def xor(
-    *expressions: Union[CompoundExpression, _BaseExpression],
+    *expressions: Union[CompoundExpression, CompilableAndRunnableExpression],
 ) -> CompoundExpression:
     """
     Builds a `XOR(...)` expression for a query builder.
@@ -230,7 +232,7 @@ def xor(
     return CompoundExpression(LogicalExpressionTemplate.XOR, [*expressions])
 
 
-def is_null(to_wrap: Any) -> NullExpression:
+def is_null(to_wrap: Any) -> CompilableAndRunnableExpression:
     """
     Builds a `IS NULL` expression for a query builder.
 
@@ -241,7 +243,7 @@ def is_null(to_wrap: Any) -> NullExpression:
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        UnaryQueryExpression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(to_wrap, CompilableDescriptor):
         raise QueryError(
@@ -249,13 +251,10 @@ def is_null(to_wrap: Any) -> NullExpression:
             f", got {to_wrap}"
         )
 
-    return NullExpression(
-        to_wrap,
-        UnaryExpressionTemplate.IS_NULL,
-    )
+    return Expression(to_wrap, ExpressionTemplate.IS_NULL, None)
 
 
-def is_not_null(to_wrap: Any) -> NullExpression:
+def is_not_null(to_wrap: Any) -> CompilableAndRunnableExpression:
     """
     Builds a `IS NOT NULL` expression for a query builder.
 
@@ -266,7 +265,7 @@ def is_not_null(to_wrap: Any) -> NullExpression:
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        UnaryQueryExpression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(to_wrap, CompilableDescriptor):
         raise QueryError(
@@ -274,13 +273,12 @@ def is_not_null(to_wrap: Any) -> NullExpression:
             f", got {to_wrap}"
         )
 
-    return NullExpression(
-        to_wrap,
-        UnaryExpressionTemplate.IS_NOT_NULL,
-    )
+    return Expression(to_wrap, ExpressionTemplate.IS_NOT_NULL, None)
 
 
-def in_(to_wrap: Any, value: Union[List[Any], CompilableDbFunction]) -> Expression:
+def in_(
+    to_wrap: Any, value: Union[List[Any], CompilableDbFunction]
+) -> CompilableAndRunnableExpression:
     """
     Builds a `IN` expression for a query builder.
 
@@ -292,7 +290,7 @@ def in_(to_wrap: Any, value: Union[List[Any], CompilableDbFunction]) -> Expressi
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        Expression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
@@ -304,7 +302,9 @@ def in_(to_wrap: Any, value: Union[List[Any], CompilableDbFunction]) -> Expressi
     return Expression(to_wrap, ExpressionTemplate.IN, value)
 
 
-def starts_with(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> Expression:
+def starts_with(
+    to_wrap: Any, value: Union[str, CompilableDbFunction]
+) -> CompilableAndRunnableExpression:
     """
     Builds a `STARTS WITH` expression for a query builder.
 
@@ -316,7 +316,7 @@ def starts_with(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> Expres
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        Expression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
@@ -328,7 +328,9 @@ def starts_with(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> Expres
     return Expression(to_wrap, ExpressionTemplate.STARTS_WITH, value)
 
 
-def ends_with(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> Expression:
+def ends_with(
+    to_wrap: Any, value: Union[str, CompilableDbFunction]
+) -> CompilableAndRunnableExpression:
     """
     Builds a `ENDS WITH` expression for a query builder.
 
@@ -340,7 +342,7 @@ def ends_with(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> Expressi
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        Expression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
@@ -352,7 +354,9 @@ def ends_with(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> Expressi
     return Expression(to_wrap, ExpressionTemplate.ENDS_WITH, value)
 
 
-def contains(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> Expression:
+def contains(
+    to_wrap: Any, value: Union[str, CompilableDbFunction]
+) -> CompilableAndRunnableExpression:
     """
     Builds a `CONTAINS` expression for a query builder.
 
@@ -364,7 +368,7 @@ def contains(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> Expressio
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        Expression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
@@ -376,7 +380,7 @@ def contains(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> Expressio
     return Expression(to_wrap, ExpressionTemplate.CONTAINS, value)
 
 
-def regex(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> Expression:
+def regex(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> CompilableAndRunnableExpression:
     """
     Builds a `=~` expression for a query builder.
 
@@ -388,7 +392,7 @@ def regex(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> Expression:
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        Expression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
@@ -402,7 +406,7 @@ def regex(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> Expression:
 
 def cypher(
     template: str, model_map: Dict[str, QueryModelType], parameter_map: Dict[str, Any]
-) -> CustomCypherExpression:
+) -> CompilableAndRunnableExpression:
     """
     Builds a special query expression which can contain custom Cypher expressions. The resulting
     expression can contain any valid Cypher expressions.
@@ -419,6 +423,6 @@ def cypher(
         parameter names.
 
     Returns:
-        Expression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     return CustomCypherExpression(template, model_map, parameter_map)

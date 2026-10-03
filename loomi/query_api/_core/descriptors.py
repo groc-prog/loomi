@@ -1,7 +1,7 @@
 import re
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, get_args, get_origin
+from typing import TYPE_CHECKING, Any, Dict, List, Union, get_args, get_origin
 
 from pydantic import BaseModel
 
@@ -11,11 +11,7 @@ from loomi._core.types import NumericValue, QueryModelType
 from loomi._logger import logger
 from loomi.constants import ServerType
 from loomi.exceptions import ModelError
-from loomi.query_api._core.protocols import (
-    CompilableDbFunction,
-    CompilableDescriptor,
-    CompiledDescriptor,
-)
+from loomi.query_api._core.protocols import CompilableDescriptor, CompiledDescriptor
 from loomi.query_api._core.templates import EntityIdExpressionTemplate
 
 if TYPE_CHECKING:
@@ -156,33 +152,15 @@ class FieldDescriptor(CompilableDescriptor):
 
         return FieldDescriptor(f"{self._full_path}[{index}]", inner_type, self._model_type)
 
-    def _compile_descriptor(
-        self, ctx: CompilationContext, expression_template: str, value: Optional[Any]
-    ) -> CompiledDescriptor:
-        # TODO: This currently generates 2 loops when filtering 2 list expressions which are
-        # combined by any logical operator. Check if combining them into a single loop improves
-        # performance
-        # Current:
-        # `ANY(v1 IN v0.tags WHERE v1.name = "t1") OR ANY(v1 IN v0.tags WHERE v1.name = "t2")`
-        # To check:
-        # `ANY(v1 IN v0.tags WHERE v1.name = "t1" OR v1.name = "t2")`
+    def _compile_descriptor(self, ctx: CompilationContext) -> CompiledDescriptor:
         logger.debug(
-            "Compiling descriptor for model %s with path %s. Template: %s",
+            "Compiling descriptor for model %s with path %s",
             self._model_type,
             self._full_path,
-            expression_template,
         )
 
         list_operators = {op.value for op in ListPathOperator}  # Set for O(1) lookup
         model_variable = ctx.get_variable(self._model_type)
-
-        if isinstance(value, CompilableDbFunction):
-            compiled_db_function = value._compile_db_function(ctx)
-            parameter_name = compiled_db_function.template.format(
-                wrapped=compiled_db_function.wrapped_path
-            )
-        else:
-            parameter_name = f"${ctx.add_parameter(value)}" if value is not None else None
 
         # Split the path to be able to handle any list operators
         path_parts = re.split(r"(\$all|\$any|\$none|\$single)", self._full_path)
@@ -191,9 +169,11 @@ class FieldDescriptor(CompilableDescriptor):
         # If we don't have any list operators, we can return directly
         if not any(p in list_operators for p in parts):
             logger.debug("Descriptor does not contain any list paths, compiling final output")
-            template = expression_template.format(variable="{path}", parameter="{parameter}")
             return CompiledDescriptor(
-                template, f"{model_variable}.{'.'.join(parts)}", parameter_name
+                full_template="{innermost_template}",
+                variable_path=f"{{variable}}.{self._full_path}",
+                variable=model_variable,
+                full_path=self._full_path,
             )
 
         # Get the path parts and their index so we can use them to build the full
@@ -203,13 +183,10 @@ class FieldDescriptor(CompilableDescriptor):
         start_var_id = ctx.get_variable_count()
         ctx.force_increment_variable_counter(len(operators))
 
-        # Build the inner-most expression first, as this will be the template part which
-        # the rest of the expression will wrap around
+        # Build the inner-most template first, as this will be the template part which
+        # the rest of the templates will wrap around
         inner_var_id = start_var_id + len(operators) - 1
-        current_template = expression_template.format(variable="{path}", parameter="{parameter}")
-
-        # The inner-most variable needs to be returned so it can be used by other expressions
-        target_path = f"v{inner_var_id}"
+        full_template = "{innermost_template}"
 
         # Iterate through the remaining paths to build in reverse order, so the rest of the
         # expression is also build from the inside-out
@@ -224,59 +201,60 @@ class FieldDescriptor(CompilableDescriptor):
             path_segment = parts[index - 1]
             operator_name = operator.lstrip("$")
 
-            current_template = (
+            full_template = (
                 f"{operator_name}({iter_variable} IN {parent_variable}.{path_segment} "
-                f"WHERE {current_template})"
+                f"WHERE {full_template})"
             )
 
         # If there is any part of the path remaining after the last list operator, we have to append
         # it to the final target path
+        variable_path = "{variable}"
+
         last_operator_index = operators[-1][0]
         if last_operator_index < (len(parts) - 1):
             cutoff_index = last_operator_index + 1
             remaining_paths = ".".join(parts[cutoff_index:])
 
-            target_path = f"{target_path}.{remaining_paths}"
+            variable_path = f"{variable_path}.{remaining_paths}"
 
-        return CompiledDescriptor(current_template, target_path, parameter_name)
+        return CompiledDescriptor(
+            full_template=full_template,
+            variable_path=variable_path,
+            variable=f"v{inner_var_id}",
+            full_path=self._full_path,
+        )
 
 
 @dataclass(frozen=True)
 class EntityIdDescriptor(CompilableDescriptor):
     """Descriptor class used to apply entity ID functions."""
 
-    model_type: QueryModelType
-    template: EntityIdExpressionTemplate
+    _model_type: QueryModelType
+    _template: EntityIdExpressionTemplate
 
-    def _compile_descriptor(
-        self, ctx: CompilationContext, expression_template: str, value: Optional[Any]
-    ) -> CompiledDescriptor:
+    def _compile_descriptor(self, ctx: CompilationContext) -> CompiledDescriptor:
         logger.debug(
-            "Compiling entity ID descriptor for model %s. Template: %s",
-            self.model_type,
-            expression_template,
+            "Compiling entity ID descriptor for model %s with template %s",
+            self._model_type,
+            self._template,
         )
-        model_variable = ctx.get_variable(self.model_type)
+        model_variable = ctx.get_variable(self._model_type)
 
         if ctx.server_type == ServerType.MEMGRAPH:
             logger.debug(
                 "Server type defined as %s, which is not compatible with template %s. "
                 "Falling back to %s",
                 ctx.server_type.value,
-                self.template.name,
+                self._template.name,
                 EntityIdExpressionTemplate.ID.name,
             )
-            entity_id_path = EntityIdExpressionTemplate.ID.format(variable=model_variable)
+            variable_path = EntityIdExpressionTemplate.ID.format(variable="{variable}")
         else:
-            entity_id_path = self.template.format(variable=model_variable)
+            variable_path = self._template.format(variable="{variable}")
 
-        if isinstance(value, CompilableDbFunction):
-            compiled_db_function = value._compile_db_function(ctx)
-            parameter_name = compiled_db_function.template.format(
-                wrapped=compiled_db_function.wrapped_path
-            )
-        else:
-            parameter_name = f"${ctx.add_parameter(value)}" if value is not None else None
-
-        template = expression_template.format(variable="{path}", parameter="{parameter}")
-        return CompiledDescriptor(template, entity_id_path, parameter_name)
+        return CompiledDescriptor(
+            full_template="{innermost_template}",
+            variable_path=variable_path,
+            variable=model_variable,
+            full_path=None,
+        )

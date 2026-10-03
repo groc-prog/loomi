@@ -15,6 +15,8 @@ class ExpressionTemplate(StrEnum):
     ENDS_WITH = "{variable} ENDS WITH {parameter}"
     CONTAINS = "{variable} CONTAINS {parameter}"
     REGEX = "{variable} =~ {parameter}"
+    IS_NULL = "{variable} IS NULL"
+    IS_NOT_NULL = "{variable} IS NOT NULL"
 
 
 class ArithmeticExpressionTemplate(StrEnum):
@@ -32,13 +34,6 @@ class ArithmeticExpressionTemplate(StrEnum):
     R_MODULO = "{parameter} % {variable}"
     POW = "{variable} ^ {parameter}"
     R_POW = "{parameter} ^ {variable}"
-
-
-class UnaryExpressionTemplate(StrEnum):
-    """Templates for unary query expressions."""
-
-    IS_NULL = "{variable} IS NULL"
-    IS_NOT_NULL = "{variable} IS NOT NULL"
 
 
 class LogicalExpressionTemplate(StrEnum):

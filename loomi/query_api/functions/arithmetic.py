@@ -3,11 +3,17 @@ from typing import Any, Union
 from loomi._core.types import NumericValue
 from loomi.exceptions import QueryError
 from loomi.query_api._core.expressions import Expression
-from loomi.query_api._core.protocols import CompilableDbFunction, CompilableDescriptor
+from loomi.query_api._core.protocols import (
+    CompilableAndRunnableExpression,
+    CompilableDbFunction,
+    CompilableDescriptor,
+)
 from loomi.query_api._core.templates import ArithmeticExpressionTemplate
 
 
-def add(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Expression:
+def add(
+    to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]
+) -> CompilableAndRunnableExpression:
     """
     Builds a `+` expression for a query builder.
 
@@ -19,7 +25,7 @@ def add(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Expre
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        Expression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
@@ -31,7 +37,9 @@ def add(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Expre
     return Expression(to_wrap, ArithmeticExpressionTemplate.ADD, value)
 
 
-def reflected_add(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Expression:
+def reflected_add(
+    to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]
+) -> CompilableAndRunnableExpression:
     """
     Builds a reflected `+` expression for a query builder.
 
@@ -43,7 +51,7 @@ def reflected_add(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        Expression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
@@ -55,7 +63,9 @@ def reflected_add(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]
     return Expression(to_wrap, ArithmeticExpressionTemplate.R_ADD, value)
 
 
-def subtract(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Expression:
+def subtract(
+    to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]
+) -> CompilableAndRunnableExpression:
     """
     Builds a `-` expression for a query builder.
 
@@ -67,7 +77,7 @@ def subtract(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> 
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        Expression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
@@ -81,7 +91,7 @@ def subtract(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> 
 
 def reflected_subtract(
     to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]
-) -> Expression:
+) -> CompilableAndRunnableExpression:
     """
     Builds a reflected `-` expression for a query builder.
 
@@ -93,7 +103,7 @@ def reflected_subtract(
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        Expression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
@@ -105,7 +115,9 @@ def reflected_subtract(
     return Expression(to_wrap, ArithmeticExpressionTemplate.R_SUBTRACT, value)
 
 
-def multiply(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Expression:
+def multiply(
+    to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]
+) -> CompilableAndRunnableExpression:
     """
     Builds a `*` expression for a query builder.
 
@@ -117,7 +129,7 @@ def multiply(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> 
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        Expression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
@@ -131,7 +143,7 @@ def multiply(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> 
 
 def reflected_multiply(
     to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]
-) -> Expression:
+) -> CompilableAndRunnableExpression:
     """
     Builds a reflected `*` expression for a query builder.
 
@@ -143,7 +155,7 @@ def reflected_multiply(
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        Expression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
@@ -155,7 +167,9 @@ def reflected_multiply(
     return Expression(to_wrap, ArithmeticExpressionTemplate.R_MULTIPLY, value)
 
 
-def divide(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Expression:
+def divide(
+    to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]
+) -> CompilableAndRunnableExpression:
     """
     Builds a `/` expression for a query builder.
 
@@ -167,7 +181,7 @@ def divide(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Ex
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        Expression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
@@ -179,7 +193,9 @@ def divide(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Ex
     return Expression(to_wrap, ArithmeticExpressionTemplate.DIVIDE, value)
 
 
-def reflected_divide(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Expression:
+def reflected_divide(
+    to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]
+) -> CompilableAndRunnableExpression:
     """
     Builds a reflected `/` expression for a query builder.
 
@@ -191,7 +207,7 @@ def reflected_divide(to_wrap: Any, value: Union[NumericValue, CompilableDbFuncti
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        Expression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
@@ -203,7 +219,9 @@ def reflected_divide(to_wrap: Any, value: Union[NumericValue, CompilableDbFuncti
     return Expression(to_wrap, ArithmeticExpressionTemplate.R_DIVIDE, value)
 
 
-def modulo(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Expression:
+def modulo(
+    to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]
+) -> CompilableAndRunnableExpression:
     """
     Builds a `%` expression for a query builder.
 
@@ -215,7 +233,7 @@ def modulo(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Ex
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        Expression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
@@ -227,7 +245,9 @@ def modulo(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Ex
     return Expression(to_wrap, ArithmeticExpressionTemplate.MODULO, value)
 
 
-def reflected_modulo(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Expression:
+def reflected_modulo(
+    to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]
+) -> CompilableAndRunnableExpression:
     """
     Builds a reflected `%` expression for a query builder.
 
@@ -239,7 +259,7 @@ def reflected_modulo(to_wrap: Any, value: Union[NumericValue, CompilableDbFuncti
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        Expression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
@@ -251,7 +271,9 @@ def reflected_modulo(to_wrap: Any, value: Union[NumericValue, CompilableDbFuncti
     return Expression(to_wrap, ArithmeticExpressionTemplate.R_MODULO, value)
 
 
-def pow_(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Expression:
+def pow_(
+    to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]
+) -> CompilableAndRunnableExpression:
     """
     Builds a `^` expression for a query builder.
 
@@ -263,7 +285,7 @@ def pow_(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Expr
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        Expression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
@@ -275,7 +297,9 @@ def pow_(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Expr
     return Expression(to_wrap, ArithmeticExpressionTemplate.POW, value)
 
 
-def reflected_pow(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Expression:
+def reflected_pow(
+    to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]
+) -> CompilableAndRunnableExpression:
     """
     Builds a reflected `^` expression for a query builder.
 
@@ -287,7 +311,7 @@ def reflected_pow(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]
         QueryError: If the provided descriptor is not valid.
 
     Returns:
-        Expression: A expression which can be compiled by a query builder.
+        CompilableAndRunnableExpression: A expression which can be compiled by a query builder.
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
