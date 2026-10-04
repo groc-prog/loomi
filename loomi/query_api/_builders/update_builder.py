@@ -1,14 +1,18 @@
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Generic, List, Self, Tuple, TypeVar, cast
+from typing import Any, Callable, Dict, Generic, List, Self, Tuple, TypeVar, Union, cast
 
 from loomi._core.types import ModelType
 from loomi._logger import logger
 from loomi.constants import ServerType
 from loomi.exceptions import QueryError
 from loomi.query_api._core.context import CompilationContext
-from loomi.query_api._core.db_function import DbFunction
 from loomi.query_api._core.descriptors import FieldDescriptor
-from loomi.query_api._core.protocols import CompilableExpression
+from loomi.query_api._core.expressions import CompoundExpression
+from loomi.query_api._core.protocols import (
+    CompilableDbFunction,
+    CompilableExpression,
+    CompiledDbFunction,
+)
 
 R = TypeVar("R")
 
@@ -24,7 +28,9 @@ class UpdateResult:
 @dataclass
 class _UpdateQueryState:
     model_type: ModelType
-    filter_expressions: List[CompilableExpression] = field(default_factory=list)
+    filter_expressions: List[Union[CompoundExpression, CompilableExpression]] = field(
+        default_factory=list
+    )
     update_expressions: Dict[FieldDescriptor, Any] = field(default_factory=dict)
 
 
@@ -41,8 +47,8 @@ class UpdateQueryBuilder(Generic[R]):
         Adds filter expression for a WHERE clause.
 
         Args:
-            expression (CompilableExpression): A expression which can be compiled by the query
-            compiler.
+            expression (Union[CompoundExpression, CompilableExpression]): A expression which can be compiled by the
+            query compiler.
 
         Raises:
             QueryError: If any invalid expression is provided.
@@ -111,36 +117,40 @@ class UpdateQueryBuilder(Generic[R]):
             type_ = cast(Relationship, self._state.model_type)._get_type()
             query = f"MATCH ()-[{model_variable}:{type_}]->()"
 
-        compiled_filter_expressions = [
-            expression._compile_expression(self._compilation_ctx)
-            for expression in self._state.filter_expressions
-        ]
-        if len(compiled_filter_expressions) != 0:
-            query += f" WHERE {' AND '.join(compiled_filter_expressions)}"
+        filter_query_strings = []
+        for expression in self._state.filter_expressions:
+            if isinstance(expression, CompoundExpression):
+                filter_query_strings.append(expression.to_query_string(self._compilation_ctx))
+            else:
+                compiled_expression = expression._compile_expression(self._compilation_ctx)
+                filter_query_strings.append(compiled_expression.to_query_string())
 
-        compiled_set_clauses: List[str] = []
+        if len(filter_query_strings) != 0:
+            query += f" WHERE {' AND '.join(filter_query_strings)}"
+
+        set_query_strings: List[str] = []
         for model_field, expression_or_value in self._state.update_expressions.items():
-            if isinstance(expression_or_value, DbFunction):
-                compiled = expression_or_value._compile_db_function(
-                    self._compilation_ctx, "{variable}", None
-                )
-                set_value = compiled.template.format(wrapped=compiled.wrapped_path)
-                compiled_set_clauses.append(
-                    f"{model_variable}.{model_field._full_path} = {set_value}"
-                )
-                continue
+            value_assignment: str
 
-            if isinstance(expression_or_value, CompilableExpression):
+            if isinstance(expression_or_value, CompilableDbFunction):
+                compiled = expression_or_value._compile_db_function(self._compilation_ctx)
+
+                if isinstance(compiled, CompiledDbFunction):
+                    value_assignment = compiled.to_query_string()
+                else:
+                    value_assignment = compiled.variable_path.format(variable=compiled.variable)
+            elif isinstance(expression_or_value, CompilableExpression):
                 compiled = expression_or_value._compile_expression(self._compilation_ctx)
-                compiled_set_clauses.append(
-                    f"{model_variable}.{model_field._full_path} = {compiled}"
-                )
-                continue
+                value_assignment = compiled.to_query_string()
+            else:
+                parameter = self._compilation_ctx.add_parameter(expression_or_value)
+                value_assignment = f"${parameter}"
 
-            parameter = self._compilation_ctx.add_parameter(expression_or_value)
-            compiled_set_clauses.append(f"{model_variable}.{model_field._full_path} = ${parameter}")
+            set_query_strings.append(
+                f"{model_variable}.{model_field._full_path} = {value_assignment}"
+            )
 
-        query += f" SET {', '.join(compiled_set_clauses)}"
+        query += f" SET {', '.join(set_query_strings)}"
 
         if self._compilation_ctx.server_type == ServerType.NEO4J:
             query += f" RETURN DISTINCT elementId({model_variable}), id({model_variable})"

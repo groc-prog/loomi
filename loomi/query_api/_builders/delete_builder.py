@@ -1,10 +1,23 @@
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Callable, Dict, Generic, List, Self, Tuple, TypeVar, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    List,
+    Self,
+    Tuple,
+    TypeVar,
+    Union,
+    cast,
+)
 
 from loomi._core.types import ModelType
 from loomi.constants import ServerType
 from loomi.exceptions import QueryError
 from loomi.query_api._core.context import CompilationContext
+from loomi.query_api._core.expressions import CompoundExpression
 from loomi.query_api._core.protocols import CompilableExpression
 
 if TYPE_CHECKING:
@@ -26,7 +39,7 @@ class DeleteResult:
 @dataclass
 class _DeleteQueryState:
     model_type: ModelType
-    expressions: List[CompilableExpression] = field(default_factory=list)
+    expressions: List[Union[CompoundExpression, CompilableExpression]] = field(default_factory=list)
 
 
 @dataclass
@@ -42,16 +55,16 @@ class DeleteQueryBuilder(Generic[R]):
         Adds filter expression for a WHERE clause.
 
         Args:
-            expression (CompilableExpression): A expression which can be compiled by the query
-            compiler.
+            expression (Union[CompoundExpression, CompilableExpression]): A expression which can be compiled by the
+            query compiler.
 
         Raises:
             QueryError: If any invalid expression is provided.
         """
-        if not isinstance(expression, CompilableExpression):
+        if not isinstance(expression, (CompoundExpression, CompilableExpression)):
             raise QueryError(
-                f"Invalid expression found. Expected {CompilableExpression.__name__}, "
-                f"got {expression}"
+                f"Invalid expression found. Expected {CompilableExpression.__name__} "
+                f"or {CompoundExpression.__name__}, got {expression}"
             )
 
         self._state.expressions.append(expression)
@@ -78,12 +91,16 @@ class DeleteQueryBuilder(Generic[R]):
             type_ = cast(Relationship, self._state.model_type)._get_type()
             query = f"MATCH ()-[{model_variable}:{type_}]->()"
 
-        compiled_expressions = [
-            expression._compile_expression(self._compilation_ctx)
-            for expression in self._state.expressions
-        ]
-        if len(compiled_expressions) != 0:
-            query += f" WHERE {' AND '.join(compiled_expressions)}"
+        query_strings = []
+        for expression in self._state.expressions:
+            if isinstance(expression, CompoundExpression):
+                query_strings.append(expression.to_query_string(self._compilation_ctx))
+            else:
+                compiled_expression = expression._compile_expression(self._compilation_ctx)
+                query_strings.append(compiled_expression.to_query_string())
+
+        if len(query_strings) != 0:
+            query += f" WHERE {' AND '.join(query_strings)}"
 
         if is_node:
             query += f" DETACH DELETE {model_variable}"

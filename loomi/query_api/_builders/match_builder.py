@@ -21,6 +21,7 @@ from loomi._logger import logger
 from loomi.exceptions import QueryError
 from loomi.query_api._core.context import CompilationContext
 from loomi.query_api._core.descriptors import FieldDescriptor
+from loomi.query_api._core.expressions import CompoundExpression
 from loomi.query_api._core.protocols import CompilableExpression
 
 if TYPE_CHECKING:
@@ -40,7 +41,7 @@ R = TypeVar("R")
 @dataclass
 class _MatchQueryState:
     model_type: ModelType
-    expressions: List[CompilableExpression] = field(default_factory=list)
+    expressions: List[Union[CompoundExpression, CompilableExpression]] = field(default_factory=list)
     projection: Optional[Dict[str, Any]] = None
     order_by: Dict[str, Optional[OrderBy]] = field(default_factory=dict)
     limit: Optional[int] = None
@@ -60,16 +61,16 @@ class MatchQueryBuilder(Generic[T, R]):
         Adds filter expression for a WHERE clause.
 
         Args:
-            expression (CompilableExpression): A expression which can be compiled by the query
-            compiler.
+            expression (Union[CompoundExpression, CompilableExpression]): A expression which can be compiled by the
+            query compiler.
 
         Raises:
             QueryError: If any invalid expression is provided.
         """
-        if not isinstance(expression, CompilableExpression):
+        if not isinstance(expression, (CompoundExpression, CompilableExpression)):
             raise QueryError(
-                f"Invalid expression found. Expected {CompilableExpression.__name__}, "
-                f"got {expression}"
+                f"Invalid expression found. Expected {CompilableExpression.__name__} "
+                f"or {CompoundExpression.__name__}, got {expression}"
             )
 
         self._state.expressions.append(expression)
@@ -214,12 +215,16 @@ class MatchQueryBuilder(Generic[T, R]):
         else:
             query = f"MATCH ()-[{model_variable}:{self._state.model_type._get_type()}]->()"
 
-        compiled_expressions = [
-            expression._compile_expression(self._compilation_ctx)
-            for expression in self._state.expressions
-        ]
-        if len(compiled_expressions) != 0:
-            query += f" WHERE {' AND '.join(compiled_expressions)}"
+        query_strings = []
+        for expression in self._state.expressions:
+            if isinstance(expression, CompoundExpression):
+                query_strings.append(expression.to_query_string(self._compilation_ctx))
+            else:
+                compiled_expression = expression._compile_expression(self._compilation_ctx)
+                query_strings.append(compiled_expression.to_query_string())
+
+        if len(query_strings) != 0:
+            query += f" WHERE {' AND '.join(query_strings)}"
 
         if self._state.projection is not None:
             projected = [

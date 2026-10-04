@@ -1,18 +1,17 @@
 # pylint: disable=missing-function-docstring
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Union, cast
 
 from loomi._core.types import QueryModelType
 from loomi._logger import logger
 from loomi.query_api._core.context import CompilationContext
 from loomi.query_api._core.protocols import (
-    CompilableAndRunnableExpression,
     CompilableDbFunction,
     CompilableDescriptor,
+    CompilableExpression,
     CompiledDbFunction,
     CompiledExpression,
-    RunnableExpression,
 )
 from loomi.query_api._core.templates import (
     ArithmeticExpressionTemplate,
@@ -30,29 +29,29 @@ else:
 class ExpressionMixin:
     """Expression mixin providing shared overloads for common magic methods."""
 
-    def __invert__(self) -> CompilableAndRunnableExpression:
+    def __invert__(self) -> CompilableExpression:
         from loomi.query_api.functions.comparison import not_
 
-        return not_(cast(CompilableAndRunnableExpression, self))
+        return not_(cast(CompilableExpression, self))
 
     def __and__(self, other: "Expression") -> "CompoundExpression":
         from loomi.query_api.functions.comparison import and_
 
-        return and_(cast(CompilableAndRunnableExpression, self), other)
+        return and_(cast(CompilableExpression, self), other)
 
     def __or__(self, other: "Expression") -> "CompoundExpression":
         from loomi.query_api.functions.comparison import or_
 
-        return or_(cast(CompilableAndRunnableExpression, self), other)
+        return or_(cast(CompilableExpression, self), other)
 
     def __xor__(self, other: "Expression") -> "CompoundExpression":
         from loomi.query_api.functions.comparison import xor
 
-        return xor(cast(CompilableAndRunnableExpression, self), other)
+        return xor(cast(CompilableExpression, self), other)
 
 
 @dataclass(frozen=True)
-class Expression(ExpressionMixin, CompilableAndRunnableExpression):
+class Expression(ExpressionMixin, CompilableExpression):
     """A expression which can be compiled by a query builder."""
 
     descriptor: Union[CompilableDescriptor, CompilableDbFunction]
@@ -95,19 +94,12 @@ class Expression(ExpressionMixin, CompilableAndRunnableExpression):
             full_path=compiled_descriptor.full_path,
         )
 
-    def _compile_query(
-        self, ctx: CompilationContext, precompiled: Optional[CompiledExpression] = None
-    ) -> str:
-        logger.debug("Compiling %s to query string", self.__class__.__name__)
-        compiled = precompiled or self._compile_expression(ctx)
-        return compiled.to_query_string()
-
 
 @dataclass(frozen=True)
-class InvertExpression(CompilableAndRunnableExpression):
+class InvertExpression(CompilableExpression):
     """A invert expression which can be compiled by a query builder."""
 
-    expression: Union["CompoundExpression", CompilableAndRunnableExpression]
+    expression: Union["CompoundExpression", CompilableExpression]
 
     def _compile_expression(self, ctx: CompilationContext) -> CompiledExpression:
         logger.debug("Compiling %s", self.__class__.__name__)
@@ -115,7 +107,7 @@ class InvertExpression(CompilableAndRunnableExpression):
             # `CompiledExpression` objects are only needed to be able to optimize in compound expressions
             # If we apply a NOT to a compound expression, no optimization is needed at this level and we can
             # compile the compound expression here directly
-            compiled_query = self.expression._compile_query(ctx)
+            compiled_query = self.expression.to_query_string(ctx)
             return CompiledExpression(
                 outer_template="{innermost_template}",
                 expression_template="NOT({variable})",
@@ -131,23 +123,16 @@ class InvertExpression(CompilableAndRunnableExpression):
             full_path=compiled.full_path,
         )
 
-    def _compile_query(
-        self, ctx: CompilationContext, precompiled: Optional[CompiledExpression] = None
-    ) -> str:
-        logger.debug("Compiling %s to query string", self.__class__.__name__)
-        compiled = precompiled or self._compile_expression(ctx)
-        return compiled.to_query_string()
-
 
 @dataclass(frozen=True)
-class CompoundExpression(RunnableExpression):
+class CompoundExpression:
     """A compound expression which can be compiled by a query builder."""
 
     operator: LogicalExpressionTemplate
-    expressions: List[Union["CompoundExpression", CompilableAndRunnableExpression]]
+    expressions: List[Union["CompoundExpression", CompilableExpression]]
 
     def __and__(
-        self, other: Union["CompoundExpression", CompilableAndRunnableExpression]
+        self, other: Union["CompoundExpression", CompilableExpression]
     ) -> "CompoundExpression":
         from loomi.query_api.functions.comparison import and_
 
@@ -157,7 +142,7 @@ class CompoundExpression(RunnableExpression):
         return and_(self, other)
 
     def __or__(
-        self, other: Union["CompoundExpression", CompilableAndRunnableExpression]
+        self, other: Union["CompoundExpression", CompilableExpression]
     ) -> "CompoundExpression":
         from loomi.query_api.functions.comparison import or_
 
@@ -167,7 +152,7 @@ class CompoundExpression(RunnableExpression):
         return or_(self, other)
 
     def __xor__(
-        self, other: Union["CompoundExpression", CompilableAndRunnableExpression]
+        self, other: Union["CompoundExpression", CompilableExpression]
     ) -> "CompoundExpression":
         from loomi.query_api.functions.comparison import xor
 
@@ -176,14 +161,22 @@ class CompoundExpression(RunnableExpression):
 
         return xor(self, other)
 
-    def __invert__(self) -> CompilableAndRunnableExpression:
+    def __invert__(self) -> CompilableExpression:
         from loomi.query_api.functions.comparison import not_
 
         return not_(self)
 
-    def _compile_query(
-        self, ctx: CompilationContext, precompiled: Optional[CompiledExpression] = None
-    ) -> str:
+    def to_query_string(self, ctx: CompilationContext) -> str:
+        """
+        Generates a query string from the compound expression.
+
+        Args:
+            ctx (CompilationContext): The compilation context to use for generating the
+            query string.
+
+        Returns:
+            str: The part of the query string represented by this compiled expression.
+        """
         logger.debug("Compiling %s to query string", self.__class__.__name__)
 
         query_strings: List[str] = []
@@ -191,12 +184,12 @@ class CompoundExpression(RunnableExpression):
 
         for expression in self.expressions:
             if isinstance(expression, CompoundExpression):
-                query_strings.append(expression._compile_query(ctx))
+                query_strings.append(expression.to_query_string(ctx))
                 continue
 
             compiled_expression = expression._compile_expression(ctx)
             if compiled_expression.full_path is None:
-                query_strings.append(expression._compile_query(ctx))
+                query_strings.append(compiled_expression.to_query_string())
                 continue
 
             path_map.setdefault(compiled_expression.full_path, [])
@@ -225,7 +218,7 @@ class CompoundExpression(RunnableExpression):
 
 
 @dataclass(frozen=True)
-class CustomCypherExpression(CompilableAndRunnableExpression):
+class CustomCypherExpression(CompilableExpression):
     """A custom cypher expression which can be compiled by a query builder."""
 
     template: str
@@ -248,10 +241,3 @@ class CustomCypherExpression(CompilableAndRunnableExpression):
             expression_variable=self.template.format(**models_map, **parameters_map),
             full_path=None,
         )
-
-    def _compile_query(
-        self, ctx: CompilationContext, precompiled: Optional[CompiledExpression] = None
-    ) -> str:
-        logger.debug("Compiling %s to query string", self.__class__.__name__)
-        compiled = precompiled or self._compile_expression(ctx)
-        return compiled.to_query_string()

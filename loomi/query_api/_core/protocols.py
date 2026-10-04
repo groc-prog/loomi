@@ -46,6 +46,15 @@ class CompiledDbFunction:
     full_template: str
     inserted_parameter: Optional[str]
 
+    def to_query_string(self) -> str:
+        """
+        Generates a query string from the compiled expression.
+
+        Returns:
+            str: The part of the query string represented by this compiled expression.
+        """
+        return self.full_template.format(variable_or_value=f"${self.inserted_parameter}")
+
 
 @runtime_checkable
 class CompilableDescriptor(Protocol):
@@ -62,22 +71,9 @@ class CompilableExpression(Protocol):
 
 
 @runtime_checkable
-class RunnableExpression(Protocol):
-    """Protocol implemented by expressions making them transformable to a query string."""
-
-    def _compile_query(
-        self, ctx: CompilationContext, precompiled: Optional[CompiledExpression] = None
-    ) -> str: ...
-
-
-@runtime_checkable
 class CompilableDbFunction(Protocol):
     """Protocol implemented by DB functions making them compilable."""
 
     def _compile_db_function(
         self, ctx: CompilationContext
     ) -> Union[CompiledDescriptor, CompiledDbFunction]: ...
-
-
-class CompilableAndRunnableExpression(CompilableExpression, RunnableExpression):
-    """Expressions which can both be compiled to a `CompiledExpression` and query string"""
