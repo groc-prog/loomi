@@ -27,7 +27,7 @@ def add(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Compi
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor or db function. "
+            f"Value must be a valid field descriptor or db function. "
             f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
             f"{to_wrap}"
         )
@@ -53,7 +53,7 @@ def reflected_add(
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor or db function. "
+            f"Value must be a valid field descriptor or db function. "
             f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
             f"{to_wrap}"
         )
@@ -79,7 +79,7 @@ def subtract(
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor or db function. "
+            f"Value must be a valid field descriptor or db function. "
             f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
             f"{to_wrap}"
         )
@@ -105,7 +105,7 @@ def reflected_subtract(
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor or db function. "
+            f"Value must be a valid field descriptor or db function. "
             f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
             f"{to_wrap}"
         )
@@ -131,7 +131,7 @@ def multiply(
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor or db function. "
+            f"Value must be a valid field descriptor or db function. "
             f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
             f"{to_wrap}"
         )
@@ -157,7 +157,7 @@ def reflected_multiply(
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor or db function. "
+            f"Value must be a valid field descriptor or db function. "
             f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
             f"{to_wrap}"
         )
@@ -181,7 +181,7 @@ def divide(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Co
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor or db function. "
+            f"Value must be a valid field descriptor or db function. "
             f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
             f"{to_wrap}"
         )
@@ -207,7 +207,7 @@ def reflected_divide(
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor or db function. "
+            f"Value must be a valid field descriptor or db function. "
             f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
             f"{to_wrap}"
         )
@@ -231,7 +231,7 @@ def modulo(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Co
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor or db function. "
+            f"Value must be a valid field descriptor or db function. "
             f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
             f"{to_wrap}"
         )
@@ -257,7 +257,7 @@ def reflected_modulo(
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor or db function. "
+            f"Value must be a valid field descriptor or db function. "
             f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
             f"{to_wrap}"
         )
@@ -281,7 +281,7 @@ def pow_(to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]) -> Comp
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor or db function. "
+            f"Value must be a valid field descriptor or db function. "
             f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
             f"{to_wrap}"
         )
@@ -307,7 +307,7 @@ def reflected_pow(
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor or db function. "
+            f"Value must be a valid field descriptor or db function. "
             f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
             f"{to_wrap}"
         )

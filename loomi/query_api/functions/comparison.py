@@ -32,7 +32,7 @@ def equals(to_wrap: Any, value: Any) -> CompilableExpression:
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor or db function. "
+            f"Value must be a valid field descriptor or db function. "
             f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
             f"{to_wrap}"
         )
@@ -56,7 +56,7 @@ def not_equals(to_wrap: Any, value: Any) -> CompilableExpression:
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor or db function. "
+            f"Value must be a valid field descriptor or db function. "
             f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
             f"{to_wrap}"
         )
@@ -82,7 +82,7 @@ def greater_than(
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor or db function. "
+            f"Value must be a valid field descriptor or db function. "
             f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
             f"{to_wrap}"
         )
@@ -108,7 +108,7 @@ def greater_than_or_equal(
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor or db function. "
+            f"Value must be a valid field descriptor or db function. "
             f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
             f"{to_wrap}"
         )
@@ -134,7 +134,7 @@ def less_than(
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor or db function. "
+            f"Value must be a valid field descriptor or db function. "
             f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
             f"{to_wrap}"
         )
@@ -160,7 +160,7 @@ def less_than_or_equal(
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor or db function. "
+            f"Value must be a valid field descriptor or db function. "
             f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
             f"{to_wrap}"
         )
@@ -247,7 +247,7 @@ def is_null(to_wrap: Any) -> CompilableExpression:
     """
     if not isinstance(to_wrap, CompilableDescriptor):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor. Expected {CompilableDescriptor.__name__} "
+            f"Descriptor must be a valid field descriptor. Expected {CompilableDescriptor.__name__}"
             f", got {to_wrap}"
         )
 
@@ -269,7 +269,7 @@ def is_not_null(to_wrap: Any) -> CompilableExpression:
     """
     if not isinstance(to_wrap, CompilableDescriptor):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor. Expected {CompilableDescriptor.__name__} "
+            f"Descriptor must be a valid field descriptor. Expected {CompilableDescriptor.__name__}"
             f", got {to_wrap}"
         )
 
@@ -292,7 +292,7 @@ def in_(to_wrap: Any, value: Union[List[Any], CompilableDbFunction]) -> Compilab
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor or db function. "
+            f"Value must be a valid field descriptor or db function. "
             f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
             f"{to_wrap}"
         )
@@ -316,7 +316,7 @@ def starts_with(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> Compil
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor or db function. "
+            f"Value must be a valid field descriptor or db function. "
             f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
             f"{to_wrap}"
         )
@@ -340,7 +340,7 @@ def ends_with(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> Compilab
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor or db function. "
+            f"Value must be a valid field descriptor or db function. "
             f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
             f"{to_wrap}"
         )
@@ -364,7 +364,7 @@ def contains(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> Compilabl
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor or db function. "
+            f"Value must be a valid field descriptor or db function. "
             f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
             f"{to_wrap}"
         )
@@ -388,7 +388,7 @@ def regex(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> CompilableEx
     """
     if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor or db function. "
+            f"Value must be a valid field descriptor or db function. "
             f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
             f"{to_wrap}"
         )

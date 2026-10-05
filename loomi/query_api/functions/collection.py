@@ -21,7 +21,7 @@ def all_(property_descriptor: List[P]) -> P:
     """
     if not isinstance(property_descriptor, FieldDescriptor):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
+            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__}"
             f", got {property_descriptor}"
         )
 
@@ -59,7 +59,7 @@ def any_(property_descriptor: List[P]) -> P:
     """
     if not isinstance(property_descriptor, FieldDescriptor):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
+            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__}"
             f", got {property_descriptor}"
         )
 
@@ -96,7 +96,7 @@ def none(property_descriptor: List[P]) -> P:
     """
     if not isinstance(property_descriptor, FieldDescriptor):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
+            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__}"
             f", got {property_descriptor}"
         )
 
@@ -133,7 +133,7 @@ def single(property_descriptor: List[P]) -> P:
     """
     if not isinstance(property_descriptor, FieldDescriptor):
         raise QueryError(
-            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__} "
+            f"Descriptor must be a valid field descriptor. Expected {FieldDescriptor.__name__}"
             f", got {property_descriptor}"
         )
 
