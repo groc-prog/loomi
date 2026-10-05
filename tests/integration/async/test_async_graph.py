@@ -26,14 +26,14 @@ class GraphKnows(Relationship):
 
 
 @pytest.fixture
-async def async_graph_client(async_driver: neo4j.AsyncDriver):
+async def async_graph_client(async_driver):
     client = AsyncClient(async_driver)
     await client.initialize()
     client.register(GraphPerson, GraphKnows)
     return client
 
 
-async def create_graph_fixture(async_driver: neo4j.AsyncDriver) -> None:
+async def create_graph_fixture(async_driver) -> None:
     async with async_driver.session() as session:
         await session.run(
             """
@@ -69,7 +69,7 @@ class TestAsyncGraph:
         assert graph.relationship_type("UNREGISTERED") is relationship_type
 
     async def test_result_graph_exposes_transformed_node_relationship_and_registered_type(
-        self, async_driver: neo4j.AsyncDriver, async_graph_client
+        self, async_driver, async_graph_client
     ):
         await create_graph_fixture(async_driver)
 
@@ -83,7 +83,7 @@ class TestAsyncGraph:
         assert graph.relationship_type("GRAPH_KNOWS") is GraphKnows
 
     async def test_pickled_graph_restores_nodes_relationships_and_relationship_type(
-        self, async_driver: neo4j.AsyncDriver, async_graph_client
+        self, async_driver, async_graph_client
     ):
         await create_graph_fixture(async_driver)
         graph = await fetch_transformed_graph(async_graph_client)

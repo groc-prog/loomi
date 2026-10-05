@@ -144,14 +144,14 @@ class FailingListSerializerKnows(Relationship):
 
 
 @pytest.fixture
-async def transform_client(async_driver: neo4j.AsyncDriver):
+async def transform_client(async_driver):
     client = AsyncClient(async_driver, serialize_nested=True)
     await client.initialize()
     client.register(TransformPerson, TransformKnows)
     return client
 
 
-async def create_transform_graph(async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec) -> None:
+async def create_transform_graph(async_driver, driver_spec: DriverSpec) -> None:
     async with async_driver.session() as session:
         if driver_spec.name.value == "Neo4j":
             await session.run(
@@ -195,7 +195,7 @@ async def create_transform_graph(async_driver: neo4j.AsyncDriver, driver_spec: D
             )
 
 
-async def get_transform_graph_counts(async_driver: neo4j.AsyncDriver) -> tuple[int, int]:
+async def get_transform_graph_counts(async_driver) -> tuple[int, int]:
     async with async_driver.session() as session:
         nodes = await session.run("MATCH (person:TransformPerson) RETURN count(person) AS count")
         node_record = await nodes.single()
@@ -211,7 +211,7 @@ async def get_transform_graph_counts(async_driver: neo4j.AsyncDriver) -> tuple[i
 
 class TestAsyncModelTransformation:
     async def test_registered_node_deserialization_maps_alias_and_skips_unknown_fields(
-        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec, transform_client
+        self, async_driver, driver_spec: DriverSpec, transform_client
     ):
         await create_transform_graph(async_driver, driver_spec)
 
@@ -225,7 +225,7 @@ class TestAsyncModelTransformation:
         assert alice.entries == [{"kind": "work", "rank": 1}, {"kind": "play", "rank": 2}]
 
     async def test_registered_relationship_deserialization_restores_nested_properties(
-        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec, transform_client
+        self, async_driver, driver_spec: DriverSpec, transform_client
     ):
         await create_transform_graph(async_driver, driver_spec)
 
@@ -236,9 +236,7 @@ class TestAsyncModelTransformation:
         assert relationships[0].metadata == {"since": 2024, "source": "manual"}
         assert relationships[0].history == [{"year": 2024, "level": "first"}]
 
-    async def test_unregistered_node_raises_when_transformations_are_strict(
-        self, async_driver: neo4j.AsyncDriver
-    ):
+    async def test_unregistered_node_raises_when_transformations_are_strict(self, async_driver):
         client = AsyncClient(async_driver)
         await client.initialize()
         async with async_driver.session() as session:
@@ -250,7 +248,7 @@ class TestAsyncModelTransformation:
             await client.query(UnregisteredTransformNode).execute()
 
     async def test_unregistered_relationship_raises_when_transformations_are_strict(
-        self, async_driver: neo4j.AsyncDriver
+        self, async_driver
     ):
         client = AsyncClient(async_driver)
         await client.initialize()
@@ -272,7 +270,7 @@ class TestAsyncModelTransformation:
             await client.query(UnregisteredTransformRelationship).execute()
 
     async def test_unregistered_node_is_returned_as_native_entity_when_not_strict(
-        self, async_driver: neo4j.AsyncDriver, caplog
+        self, async_driver, caplog
     ):
         client = AsyncClient(async_driver, strict_transformations=False)
         await client.initialize()
@@ -286,7 +284,7 @@ class TestAsyncModelTransformation:
         assert "No model with labels UnregisteredTransformNode registered" in caplog.text
 
     async def test_unregistered_relationship_is_returned_as_native_entity_when_not_strict(
-        self, async_driver: neo4j.AsyncDriver, caplog
+        self, async_driver, caplog
     ):
         client = AsyncClient(async_driver, strict_transformations=False)
         await client.initialize()
@@ -312,7 +310,7 @@ class TestAsyncModelTransformation:
 
 class TestAsyncModelSerialization:
     async def test_nested_node_serialization_and_deserialization_with_client_option(
-        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
+        self, async_driver, driver_spec: DriverSpec
     ):
         client = AsyncClient(async_driver, serialize_nested=True)
         await client.initialize()
@@ -337,7 +335,7 @@ class TestAsyncModelSerialization:
         assert people[0].display_name == "A. Example"
 
     async def test_nested_relationship_serialization_and_deserialization(
-        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
+        self, async_driver, driver_spec: DriverSpec
     ):
         client = AsyncClient(async_driver, serialize_nested=True)
         await client.initialize()
@@ -358,7 +356,7 @@ class TestAsyncModelSerialization:
         assert loaded[0].history == [{"year": 2024, "level": "first"}]
 
     async def test_nested_node_serialization_rejects_disabled_client_option_on_neo4j(
-        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
+        self, async_driver, driver_spec: DriverSpec
     ):
         client = AsyncClient(async_driver, serialize_nested=False)
         await client.initialize()
@@ -390,7 +388,7 @@ class TestAsyncModelSerialization:
             assert loaded[0].payload == {"city": "Paris"}
 
     async def test_nested_list_serialization_rejects_disabled_client_option_on_neo4j(
-        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
+        self, async_driver, driver_spec: DriverSpec
     ):
         client = AsyncClient(async_driver, serialize_nested=False)
         await client.initialize()
@@ -416,7 +414,7 @@ class TestAsyncModelSerialization:
             assert loaded[0].entries == [{"kind": "work", "rank": 1}]
 
     async def test_nested_relationship_serialization_respects_client_option(
-        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
+        self, async_driver, driver_spec: DriverSpec
     ):
         client = AsyncClient(async_driver, serialize_nested=False)
         await client.initialize()
@@ -443,7 +441,7 @@ class TestAsyncModelSerialization:
             assert loaded[0].history == [{"year": 2024, "level": "first"}]
 
     async def test_model_serializer_and_deserializer_config_round_trip_node_and_relationship(
-        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
+        self, async_driver, driver_spec: DriverSpec
     ):
         client = AsyncClient(async_driver, serialize_nested=True)
         await client.initialize()
@@ -471,7 +469,7 @@ class TestAsyncModelSerialization:
         assert relationships[0].events == [{"year": 2024}]
 
     async def test_serializer_callback_is_used_only_for_neo4j_nested_values(
-        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
+        self, async_driver, driver_spec: DriverSpec
     ):
         class FailingSerializerPerson(Node):
             name: str
@@ -502,9 +500,7 @@ class TestAsyncModelSerialization:
                 await session.change_tracker.flush()
             assert await get_model_count(async_driver, "FailingSerializerPerson") == 1
 
-    async def test_model_without_serializer_config_raises_serialization_error(
-        self, async_driver: neo4j.AsyncDriver
-    ):
+    async def test_model_without_serializer_config_raises_serialization_error(self, async_driver):
         client = AsyncClient(async_driver, serialize_nested=True)
         await client.initialize()
         client.register(MissingSerializerPerson)
@@ -519,7 +515,7 @@ class TestAsyncModelSerialization:
         assert await get_model_count(async_driver, "MissingSerializerPerson") == 0
 
     async def test_model_without_deserializer_config_raises_during_database_transformation(
-        self, async_driver: neo4j.AsyncDriver
+        self, async_driver
     ):
         client = AsyncClient(async_driver)
         await client.initialize()
@@ -531,7 +527,7 @@ class TestAsyncModelSerialization:
             await client.query(MissingDeserializerPerson).execute()
 
     async def test_deserializer_callback_is_used_only_for_neo4j_nested_values(
-        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
+        self, async_driver, driver_spec: DriverSpec
     ):
         client = AsyncClient(async_driver, serialize_nested=True)
         await client.initialize()
@@ -558,7 +554,7 @@ class TestAsyncModelSerialization:
             assert result[0].payload == {"data": 1}
 
     async def test_list_item_deserializer_failure_is_wrapped_for_neo4j(
-        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
+        self, async_driver, driver_spec: DriverSpec
     ):
         client = AsyncClient(async_driver, serialize_nested=True)
         await client.initialize()
@@ -585,9 +581,7 @@ class TestAsyncModelSerialization:
             result = await client.query(FailingDeserializerListPerson).execute()
             assert result[0].events == [{"event": "native"}]
 
-    async def test_deserialization_skips_unknown_database_properties(
-        self, async_driver: neo4j.AsyncDriver
-    ):
+    async def test_deserialization_skips_unknown_database_properties(self, async_driver):
         client = AsyncClient(async_driver)
         await client.initialize()
         client.register(TransformPerson)
@@ -614,7 +608,7 @@ async def async_client_session(client: AsyncClient) -> AsyncIterator[Any]:
         yield session
 
 
-async def get_custom_graph_counts(async_driver: neo4j.AsyncDriver) -> tuple[int, int]:
+async def get_custom_graph_counts(async_driver) -> tuple[int, int]:
     async with async_driver.session() as session:
         nodes = await session.run(
             "MATCH (person:CustomSerializedPerson) RETURN count(person) AS count"
@@ -631,7 +625,7 @@ async def get_custom_graph_counts(async_driver: neo4j.AsyncDriver) -> tuple[int,
     return node_record["count"], relationship_record["count"]
 
 
-async def get_model_count(async_driver: neo4j.AsyncDriver, label: str) -> int:
+async def get_model_count(async_driver, label: str) -> int:
     async with async_driver.session() as session:
         result = await session.run(f"MATCH (entity:{label}) RETURN count(entity) AS count")  # type: ignore
         record = await result.single()
@@ -639,7 +633,7 @@ async def get_model_count(async_driver: neo4j.AsyncDriver, label: str) -> int:
     return record["count"]
 
 
-async def get_relationship_count(async_driver: neo4j.AsyncDriver, relationship_type: str) -> int:
+async def get_relationship_count(async_driver, relationship_type: str) -> int:
     async with async_driver.session() as session:
         result = await session.run(
             f"MATCH ()-[relationship:{relationship_type}]->() RETURN count(relationship) AS count"
@@ -650,9 +644,7 @@ async def get_relationship_count(async_driver: neo4j.AsyncDriver, relationship_t
 
 
 class TestAsyncUnsupportedModelValues:
-    async def test_unsupported_node_field_type_raises_and_does_not_persist(
-        self, async_driver: neo4j.AsyncDriver
-    ):
+    async def test_unsupported_node_field_type_raises_and_does_not_persist(self, async_driver):
         client = AsyncClient(async_driver)
         await client.initialize()
         client.register(UnsupportedValuePerson)
@@ -669,7 +661,7 @@ class TestAsyncUnsupportedModelValues:
         assert await get_model_count(async_driver, "UnsupportedValuePerson") == 0
 
     async def test_unsupported_relationship_field_type_raises_and_rolls_back_endpoints(
-        self, async_driver: neo4j.AsyncDriver
+        self, async_driver
     ):
         client = AsyncClient(async_driver)
         await client.initialize()
@@ -691,7 +683,7 @@ class TestAsyncUnsupportedModelValues:
 
 class TestAsyncNestedListSerializerFailures:
     async def test_node_list_item_serializer_failure_is_wrapped_on_neo4j(
-        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
+        self, async_driver, driver_spec: DriverSpec
     ):
         client = AsyncClient(async_driver, serialize_nested=True)
         await client.initialize()
@@ -718,7 +710,7 @@ class TestAsyncNestedListSerializerFailures:
             assert loaded[0].events == [{"kind": "event"}]
 
     async def test_relationship_list_item_serializer_failure_is_wrapped_on_neo4j(
-        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
+        self, async_driver, driver_spec: DriverSpec
     ):
         client = AsyncClient(async_driver, serialize_nested=True)
         await client.initialize()

@@ -4,7 +4,6 @@ from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import Mock
 
-import neo4j
 import pytest
 
 from loomi._sync.client import Client
@@ -21,14 +20,14 @@ class WrapperPerson(Node):
 
 
 @pytest.fixture
-def sync_wrapper_client(sync_driver: neo4j.Driver):
+def sync_wrapper_client(sync_driver):
     client = Client(sync_driver)
     client.initialize()
     client.register(WrapperPerson)
     return client
 
 
-def get_wrapper_person_tags(sync_driver: neo4j.Driver) -> list[list[str]]:
+def get_wrapper_person_tags(sync_driver) -> list[list[str]]:
     with sync_driver.session() as session:
         result = session.run(
             "MATCH (person:WrapperPerson) RETURN person.tags AS tags ORDER BY person.tags[0]"
@@ -38,7 +37,7 @@ def get_wrapper_person_tags(sync_driver: neo4j.Driver) -> list[list[str]]:
 
 class TestSyncSession:
     def test_session_context_manager_runs_and_transforms_database_results(
-        self, sync_driver: neo4j.Driver, sync_wrapper_client
+        self, sync_driver, sync_wrapper_client
     ):
         with sync_wrapper_client.session() as session:
             assert isinstance(session, Session)
@@ -49,7 +48,7 @@ class TestSyncSession:
         assert record["answer"] == 42
 
     def test_session_run_tracking_persists_transformed_node_on_flush(
-        self, sync_driver: neo4j.Driver, sync_wrapper_client
+        self, sync_driver, sync_wrapper_client
     ):
         with sync_driver.session() as native_session:
             native_session.run("CREATE (:WrapperPerson {name: 'Alice', tags: ['before']})")
@@ -65,7 +64,7 @@ class TestSyncSession:
         assert get_wrapper_person_tags(sync_driver) == [["after"]]
 
     def test_session_begin_transaction_returns_wrapper_and_commits_on_context_exit(
-        self, sync_driver: neo4j.Driver, sync_wrapper_client
+        self, sync_driver, sync_wrapper_client
     ):
         with sync_wrapper_client.session() as session:
             with session.begin_transaction(metadata={"source": "test"}) as tx:
@@ -80,9 +79,7 @@ class TestSyncSession:
 
         assert get_wrapper_person_tags(sync_driver) == [["transaction"]]
 
-    def test_session_begin_transaction_forwards_timeout(
-        self, sync_driver: neo4j.Driver, sync_wrapper_client
-    ):
+    def test_session_begin_transaction_forwards_timeout(self, sync_driver, sync_wrapper_client):
         with sync_wrapper_client.session() as session:
             transaction = session.begin_transaction(timeout=30.0)
             assert isinstance(transaction, Transaction)

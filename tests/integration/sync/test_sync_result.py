@@ -27,7 +27,7 @@ class ResultKnows(Relationship):
 
 
 @pytest.fixture
-def sync_result_client(sync_driver: neo4j.Driver):
+def sync_result_client(sync_driver):
     client = Client(sync_driver)
     client.initialize()
     client.register(ResultPerson, ResultKnows)
@@ -40,7 +40,7 @@ def sync_result_session(sync_result_client):
         yield session
 
 
-def create_result_people(sync_driver: neo4j.Driver) -> None:
+def create_result_people(sync_driver) -> None:
     with sync_driver.session() as session:
         session.run(
             """
@@ -50,7 +50,7 @@ def create_result_people(sync_driver: neo4j.Driver) -> None:
         )
 
 
-def create_result_graph(sync_driver: neo4j.Driver) -> None:
+def create_result_graph(sync_driver) -> None:
     with sync_driver.session() as session:
         session.run(
             """
@@ -61,7 +61,7 @@ def create_result_graph(sync_driver: neo4j.Driver) -> None:
         )
 
 
-def get_result_person_tags(sync_driver: neo4j.Driver) -> list[list[str]]:
+def get_result_person_tags(sync_driver) -> list[list[str]]:
     with sync_driver.session() as session:
         result = session.run(
             "MATCH (person:SyncResultPerson) "
@@ -70,7 +70,7 @@ def get_result_person_tags(sync_driver: neo4j.Driver) -> list[list[str]]:
         return [record["tags"] for record in result.data()]
 
 
-def get_result_relationship_history(sync_driver: neo4j.Driver) -> list[list[int]]:
+def get_result_relationship_history(sync_driver) -> list[list[int]]:
     with sync_driver.session() as session:
         result = session.run(
             "MATCH ()-[relationship:SYNC_RESULT_KNOWS]->() "

@@ -12,7 +12,6 @@ from loomi._async.session import AsyncSession
 from loomi.exceptions import ClientError, SerializationError
 from loomi.graph.node import Node
 from loomi.graph.relationship import Relationship
-from tests.conftest import DriverSpec
 
 
 class Person(Node):
@@ -31,7 +30,7 @@ class Knows(Relationship):
 
 class TestAsyncClientInitialize:
     async def test_initialize_sets_server_type_and_version_for_configured_driver(
-        self, async_driver: neo4j.AsyncDriver, driver_spec: DriverSpec
+        self, async_driver, driver_spec
     ):
         client = AsyncClient(async_driver)
 
@@ -79,7 +78,7 @@ class TestAsyncClientInitialize:
 
 class TestAsyncClientSession:
     async def test_session_returns_native_and_loomi_sessions_after_initialization(
-        self, async_driver: neo4j.AsyncDriver
+        self, async_driver
     ):
         client = AsyncClient(async_driver)
         await client.initialize()
@@ -90,9 +89,7 @@ class TestAsyncClientSession:
         assert isinstance(native_session, neo4j.AsyncSession)
         assert isinstance(loomi_session, AsyncSession)
 
-    async def test_session_raises_client_error_before_client_is_initialized(
-        self, async_driver: neo4j.AsyncDriver
-    ):
+    async def test_session_raises_client_error_before_client_is_initialized(self, async_driver):
         client = AsyncClient(async_driver)
 
         with pytest.raises(
@@ -103,7 +100,7 @@ class TestAsyncClientSession:
 
 class TestAsyncClientRegistration:
     async def test_register_skips_invalid_model_and_continues_with_valid_models(
-        self, async_driver: neo4j.AsyncDriver, caplog
+        self, async_driver, caplog
     ):
         client = AsyncClient(async_driver)
 
@@ -121,7 +118,7 @@ class TestAsyncClientRegistration:
         assert isinstance(results[0], Person)
 
     async def test_relationship_type_to_model_returns_none_when_not_strict(
-        self, async_driver: neo4j.AsyncDriver, caplog
+        self, async_driver, caplog
     ):
         client = AsyncClient(async_driver, strict_transformations=False)
         await client.initialize()
@@ -129,9 +126,7 @@ class TestAsyncClientRegistration:
         assert client._relationship_type_to_model("UNREGISTERED") is None
         assert "No model with type UNREGISTERED registered" in caplog.text
 
-    async def test_relationship_type_to_model_raises_when_strict(
-        self, async_driver: neo4j.AsyncDriver
-    ):
+    async def test_relationship_type_to_model_raises_when_strict(self, async_driver):
         client = AsyncClient(async_driver)
         await client.initialize()
 

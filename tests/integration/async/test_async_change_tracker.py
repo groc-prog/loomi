@@ -1,6 +1,5 @@
 # pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, missing-function-docstring, unused-argument, line-too-long, unused-variable
 
-import neo4j
 import pytest
 
 from loomi._async.change_tracker import AsyncChangeTracker
@@ -26,7 +25,7 @@ class TrackerKnows(Relationship):
 
 
 @pytest.fixture
-async def async_tracker_client(async_driver: neo4j.AsyncDriver):
+async def async_tracker_client(async_driver):
     """Provide an initialized client registered for the tracker test models."""
     client = AsyncClient(async_driver)
     await client.initialize()
@@ -35,25 +34,25 @@ async def async_tracker_client(async_driver: neo4j.AsyncDriver):
 
 
 @pytest.fixture
-async def async_change_tracker(async_driver: neo4j.AsyncDriver, async_tracker_client):
+async def async_change_tracker(async_driver, async_tracker_client):
     """Provide a tracker backed by the configured async session fixture."""
     async with async_driver.session() as session:
         yield AsyncChangeTracker(session, async_tracker_client)
 
 
-async def get_tracker_person_count(async_driver: neo4j.AsyncDriver) -> int:
+async def get_tracker_person_count(async_driver) -> int:
     async with async_driver.session() as session:
         result = await session.run("MATCH (person:TrackerPerson) RETURN person")
         return len(await result.values())
 
 
-async def get_tracker_relationship_count(async_driver: neo4j.AsyncDriver) -> int:
+async def get_tracker_relationship_count(async_driver) -> int:
     async with async_driver.session() as session:
         result = await session.run("MATCH ()-[relationship:TRACKER_KNOWS]->() RETURN relationship")
         return len(await result.values())
 
 
-async def get_tracker_person_tags(async_driver: neo4j.AsyncDriver) -> list[list[str] | None]:
+async def get_tracker_person_tags(async_driver) -> list[list[str] | None]:
     async with async_driver.session() as session:
         result = await session.run(
             "MATCH (person:TrackerPerson) " + "RETURN person.tags AS tags ORDER BY person.tags[0]"
@@ -62,7 +61,7 @@ async def get_tracker_person_tags(async_driver: neo4j.AsyncDriver) -> list[list[
 
 
 async def get_tracker_relationship_history(
-    async_driver: neo4j.AsyncDriver,
+    async_driver,
 ) -> list[list[int] | None]:
     async with async_driver.session() as session:
         result = await session.run(
@@ -72,7 +71,7 @@ async def get_tracker_relationship_history(
 
 
 async def get_tracker_relationships(
-    async_driver: neo4j.AsyncDriver,
+    async_driver,
 ) -> list[tuple[list[str] | None, list[str] | None, list[int] | None]]:
     async with async_driver.session() as session:
         result = await session.run(
@@ -88,7 +87,7 @@ async def get_tracker_relationships(
 
 class TestAsyncChangeTrackerAdd:
     async def test_add_unsaved_node_inserts_it_when_flushed(
-        self, async_driver: neo4j.AsyncDriver, async_change_tracker
+        self, async_driver, async_change_tracker
     ):
         node = TrackerPerson(name="Alice", tags=["tracked"])
 
@@ -99,7 +98,7 @@ class TestAsyncChangeTrackerAdd:
         assert await get_tracker_person_tags(async_driver) == [["tracked"]]
 
     async def test_add_persisted_node_updates_it_when_flushed(
-        self, async_driver: neo4j.AsyncDriver, async_tracker_client, async_change_tracker
+        self, async_driver, async_tracker_client, async_change_tracker
     ):
         async with async_driver.session() as session:
             await session.run("CREATE (:TrackerPerson {name: 'Alice', tags: ['before']})")
@@ -113,7 +112,7 @@ class TestAsyncChangeTrackerAdd:
         assert await get_tracker_person_tags(async_driver) == [["after"]]
 
     async def test_add_persisted_node_twice_applies_latest_change_once(
-        self, async_driver: neo4j.AsyncDriver, async_tracker_client, async_change_tracker, caplog
+        self, async_driver, async_tracker_client, async_change_tracker, caplog
     ):
         async with async_driver.session() as session:
             await session.run("CREATE (:TrackerPerson {name: 'Alice', tags: ['before']})")
@@ -129,7 +128,7 @@ class TestAsyncChangeTrackerAdd:
         assert "Entity has already been added to the change tracker" in caplog.text
 
     async def test_add_node_with_cleared_element_id_cancels_pending_delete(
-        self, async_driver: neo4j.AsyncDriver, async_tracker_client, async_change_tracker
+        self, async_driver, async_tracker_client, async_change_tracker
     ):
         async with async_driver.session() as session:
             await session.run("CREATE (:TrackerPerson {name: 'Alice', tags: ['alice']})")
@@ -144,7 +143,7 @@ class TestAsyncChangeTrackerAdd:
         assert await get_tracker_person_tags(async_driver) == [["alice"]]
 
     async def test_add_relationship_with_cleared_element_id_cancels_pending_delete(
-        self, async_driver: neo4j.AsyncDriver, async_tracker_client, async_change_tracker
+        self, async_driver, async_tracker_client, async_change_tracker
     ):
         async with async_driver.session() as session:
             await session.run(
@@ -166,7 +165,7 @@ class TestAsyncChangeTrackerAdd:
         assert await get_tracker_relationships(async_driver) == [(["start"], ["end"], [2024])]
 
     async def test_add_unsaved_relationship_without_end_node_raises_and_flushes_no_data(
-        self, async_driver: neo4j.AsyncDriver, async_change_tracker
+        self, async_driver, async_change_tracker
     ):
         relationship = TrackerKnows(since=2024)
         start_node = TrackerPerson(name="Alice")
@@ -179,7 +178,7 @@ class TestAsyncChangeTrackerAdd:
         assert await get_tracker_relationship_count(async_driver) == 0
 
     async def test_add_unsaved_relationship_without_start_node_raises_and_flushes_no_data(
-        self, async_driver: neo4j.AsyncDriver, async_change_tracker
+        self, async_driver, async_change_tracker
     ):
         relationship = TrackerKnows(since=2024)
         end_node = TrackerPerson(name="Bob")
@@ -192,7 +191,7 @@ class TestAsyncChangeTrackerAdd:
         assert await get_tracker_relationship_count(async_driver) == 0
 
     async def test_add_unsaved_relationship_without_endpoints_raises_and_flushes_no_data(
-        self, async_driver: neo4j.AsyncDriver, async_change_tracker
+        self, async_driver, async_change_tracker
     ):
         relationship = TrackerKnows(since=2024)
         with pytest.raises(ChangeTrackerError, match="Both start and end nodes have to be defined"):
@@ -203,7 +202,7 @@ class TestAsyncChangeTrackerAdd:
         assert await get_tracker_relationship_count(async_driver) == 0
 
     async def test_add_unsaved_relationship_inserts_relationship_and_both_endpoints(
-        self, async_driver: neo4j.AsyncDriver, async_change_tracker
+        self, async_driver, async_change_tracker
     ):
         relationship = TrackerKnows(since=2024, history=[2024])
         start_node = TrackerPerson(name="Alice", tags=["start"])
@@ -219,7 +218,7 @@ class TestAsyncChangeTrackerAdd:
 
 class TestAsyncChangeTrackerNodeDeleteEmptyFlush:
     async def test_flush_with_no_pending_node_deletions_preserves_nodes(
-        self, async_driver: neo4j.AsyncDriver, async_change_tracker
+        self, async_driver, async_change_tracker
     ):
         async with async_driver.session() as session:
             await session.run("CREATE (:TrackerPerson {name: 'Alice', tags: ['alice']})")
@@ -233,7 +232,7 @@ class TestAsyncChangeTrackerNodeDeleteEmptyFlush:
 class TestAsyncChangeTrackerTransactionFlush:
     async def test_flush_on_transaction_persists_node_and_relationship_on_commit(
         self,
-        async_driver: neo4j.AsyncDriver,
+        async_driver,
         async_tracker_client,
     ):
         async with async_driver.session() as session:
@@ -268,7 +267,7 @@ class TestAsyncChangeTrackerTransactionFlush:
 
     async def test_flush_on_transaction_does_not_commit_before_caller_rolls_back(
         self,
-        async_driver: neo4j.AsyncDriver,
+        async_driver,
         async_tracker_client,
     ):
         async with async_driver.session() as session:
@@ -292,7 +291,7 @@ class TestAsyncChangeTrackerTransactionFlush:
 
 class TestAsyncChangeTrackerNodeDelete:
     async def test_remove_persisted_node_deletes_it_and_detaches_relationships(
-        self, async_driver: neo4j.AsyncDriver, async_tracker_client, async_change_tracker
+        self, async_driver, async_tracker_client, async_change_tracker
     ):
         async with async_driver.session() as session:
             await session.run(
@@ -316,7 +315,7 @@ class TestAsyncChangeTrackerNodeDelete:
         assert await get_tracker_relationship_count(async_driver) == 0
 
     async def test_remove_multiple_persisted_nodes_deletes_all_of_them(
-        self, async_driver: neo4j.AsyncDriver, async_tracker_client, async_change_tracker
+        self, async_driver, async_tracker_client, async_change_tracker
     ):
         async with async_driver.session() as session:
             await session.run(
@@ -336,7 +335,7 @@ class TestAsyncChangeTrackerNodeDelete:
         assert await get_tracker_person_tags(async_driver) == []
 
     async def test_remove_node_after_adding_it_still_deletes_it(
-        self, async_driver: neo4j.AsyncDriver, async_tracker_client, async_change_tracker
+        self, async_driver, async_tracker_client, async_change_tracker
     ):
         async with async_driver.session() as session:
             await session.run("CREATE (:TrackerPerson {name: 'Alice', tags: ['alice']})")
@@ -350,7 +349,7 @@ class TestAsyncChangeTrackerNodeDelete:
         assert await get_tracker_person_tags(async_driver) == []
 
     async def test_flush_rejects_deleted_node_missing_element_id_and_preserves_database(
-        self, async_driver: neo4j.AsyncDriver, async_tracker_client, async_change_tracker
+        self, async_driver, async_tracker_client, async_change_tracker
     ):
         async with async_driver.session() as session:
             await session.run("CREATE (:TrackerPerson {name: 'Alice', tags: ['alice']})")
@@ -368,7 +367,7 @@ class TestAsyncChangeTrackerNodeDelete:
 
 class TestAsyncChangeTrackerRelationshipDelete:
     async def test_remove_persisted_relationship_deletes_edge_and_preserves_endpoints(
-        self, async_driver: neo4j.AsyncDriver, async_tracker_client, async_change_tracker
+        self, async_driver, async_tracker_client, async_change_tracker
     ):
         async with async_driver.session() as session:
             await session.run(
@@ -388,7 +387,7 @@ class TestAsyncChangeTrackerRelationshipDelete:
         assert await get_tracker_person_tags(async_driver) == [["end"], ["start"]]
 
     async def test_flush_rejects_deleted_relationship_missing_element_id(
-        self, async_driver: neo4j.AsyncDriver, async_tracker_client, async_change_tracker
+        self, async_driver, async_tracker_client, async_change_tracker
     ):
         async with async_driver.session() as session:
             await session.run(
@@ -411,7 +410,7 @@ class TestAsyncChangeTrackerRelationshipDelete:
         assert await get_tracker_relationship_history(async_driver) == [[2024]]
 
     async def test_flush_rejects_deleted_relationship_missing_numeric_id(
-        self, async_driver: neo4j.AsyncDriver, async_tracker_client, async_change_tracker
+        self, async_driver, async_tracker_client, async_change_tracker
     ):
         async with async_driver.session() as session:
             await session.run(
@@ -434,7 +433,7 @@ class TestAsyncChangeTrackerRelationshipDelete:
         assert await get_tracker_relationship_history(async_driver) == [[2024]]
 
     async def test_remove_relationship_after_adding_persisted_edge_deletes_it(
-        self, async_driver: neo4j.AsyncDriver, async_tracker_client, async_change_tracker
+        self, async_driver, async_tracker_client, async_change_tracker
     ):
         async with async_driver.session() as session:
             await session.run(
@@ -455,7 +454,7 @@ class TestAsyncChangeTrackerRelationshipDelete:
         assert await get_tracker_person_tags(async_driver) == [["end"], ["start"]]
 
     async def test_flush_rejects_deleted_node_missing_numeric_id_and_preserves_database(
-        self, async_driver: neo4j.AsyncDriver, async_tracker_client, async_change_tracker
+        self, async_driver, async_tracker_client, async_change_tracker
     ):
         async with async_driver.session() as session:
             await session.run("CREATE (:TrackerPerson {name: 'Alice', tags: ['alice']})")
@@ -473,7 +472,7 @@ class TestAsyncChangeTrackerRelationshipDelete:
 
 class TestAsyncChangeTrackerAddRelationships:
     async def test_add_unchanged_persisted_relationship_leaves_database_unchanged(
-        self, async_driver: neo4j.AsyncDriver, async_tracker_client, async_change_tracker
+        self, async_driver, async_tracker_client, async_change_tracker
     ):
         async with async_driver.session() as session:
             await session.run(
@@ -494,7 +493,7 @@ class TestAsyncChangeTrackerAddRelationships:
         assert await get_tracker_relationships(async_driver) == [(["start"], ["end"], [2024])]
 
     async def test_add_relationship_omits_edge_when_unsaved_start_endpoint_is_removed(
-        self, async_driver: neo4j.AsyncDriver, async_change_tracker
+        self, async_driver, async_change_tracker
     ):
         start_node = TrackerPerson(name="Alice", tags=["start"])
         end_node = TrackerPerson(name="Bob", tags=["end"])
@@ -509,7 +508,7 @@ class TestAsyncChangeTrackerAddRelationships:
         assert await get_tracker_relationship_count(async_driver) == 0
 
     async def test_add_relationship_omits_edge_when_unsaved_end_endpoint_is_removed(
-        self, async_driver: neo4j.AsyncDriver, async_change_tracker
+        self, async_driver, async_change_tracker
     ):
         start_node = TrackerPerson(name="Alice", tags=["start"])
         end_node = TrackerPerson(name="Bob", tags=["end"])
@@ -524,7 +523,7 @@ class TestAsyncChangeTrackerAddRelationships:
         assert await get_tracker_relationship_count(async_driver) == 0
 
     async def test_add_relationship_omits_edge_when_persisted_start_endpoint_is_removed(
-        self, async_driver: neo4j.AsyncDriver, async_tracker_client, async_change_tracker
+        self, async_driver, async_tracker_client, async_change_tracker
     ):
         async with async_driver.session() as session:
             await session.run("CREATE (:TrackerPerson {name: 'Alice', tags: ['persisted-start']})")
@@ -541,7 +540,7 @@ class TestAsyncChangeTrackerAddRelationships:
         assert await get_tracker_relationship_count(async_driver) == 0
 
     async def test_add_relationship_omits_edge_when_persisted_end_endpoint_is_removed(
-        self, async_driver: neo4j.AsyncDriver, async_tracker_client, async_change_tracker
+        self, async_driver, async_tracker_client, async_change_tracker
     ):
         async with async_driver.session() as session:
             await session.run("CREATE (:TrackerPerson {name: 'Bob', tags: ['persisted-end']})")
@@ -558,7 +557,7 @@ class TestAsyncChangeTrackerAddRelationships:
         assert await get_tracker_relationship_count(async_driver) == 0
 
     async def test_add_unsaved_relationship_with_persisted_start_inserts_and_updates(
-        self, async_driver: neo4j.AsyncDriver, async_tracker_client, async_change_tracker
+        self, async_driver, async_tracker_client, async_change_tracker
     ):
         async with async_driver.session() as session:
             await session.run("CREATE (:TrackerPerson {name: 'Alice', tags: ['persisted-start']})")
@@ -578,7 +577,7 @@ class TestAsyncChangeTrackerAddRelationships:
         ]
 
     async def test_add_unsaved_relationship_reuses_previously_tracked_persisted_start(
-        self, async_driver: neo4j.AsyncDriver, async_tracker_client, async_change_tracker
+        self, async_driver, async_tracker_client, async_change_tracker
     ):
         async with async_driver.session() as session:
             await session.run("CREATE (:TrackerPerson {name: 'Alice', tags: ['before']})")
@@ -597,7 +596,7 @@ class TestAsyncChangeTrackerAddRelationships:
         assert await get_tracker_relationships(async_driver) == [(["after"], ["new-end"], [2024])]
 
     async def test_add_unsaved_relationship_with_persisted_end_inserts_and_updates(
-        self, async_driver: neo4j.AsyncDriver, async_tracker_client, async_change_tracker
+        self, async_driver, async_tracker_client, async_change_tracker
     ):
         async with async_driver.session() as session:
             await session.run("CREATE (:TrackerPerson {name: 'Bob', tags: ['persisted-end']})")
@@ -617,7 +616,7 @@ class TestAsyncChangeTrackerAddRelationships:
         ]
 
     async def test_add_unsaved_relationship_reuses_previously_tracked_persisted_end(
-        self, async_driver: neo4j.AsyncDriver, async_tracker_client, async_change_tracker
+        self, async_driver, async_tracker_client, async_change_tracker
     ):
         async with async_driver.session() as session:
             await session.run("CREATE (:TrackerPerson {name: 'Bob', tags: ['before']})")
@@ -636,7 +635,7 @@ class TestAsyncChangeTrackerAddRelationships:
         assert await get_tracker_relationships(async_driver) == [(["new-start"], ["after"], [2024])]
 
     async def test_add_unsaved_relationship_with_both_persisted_endpoints_inserts_relationship(
-        self, async_driver: neo4j.AsyncDriver, async_tracker_client, async_change_tracker
+        self, async_driver, async_tracker_client, async_change_tracker
     ):
         async with async_driver.session() as session:
             await session.run(
@@ -658,7 +657,7 @@ class TestAsyncChangeTrackerAddRelationships:
         assert await get_tracker_relationships(async_driver) == [(["start"], ["end"], [2024])]
 
     async def test_add_unsaved_self_relationship_inserts_one_endpoint_and_self_edge(
-        self, async_driver: neo4j.AsyncDriver, async_change_tracker
+        self, async_driver, async_change_tracker
     ):
         node = TrackerPerson(name="Self", tags=["self"])
         relationship = TrackerKnows(since=2024, history=[2024])
@@ -672,7 +671,7 @@ class TestAsyncChangeTrackerAddRelationships:
         assert await get_tracker_relationships(async_driver) == [(["self"], ["self"], [2024])]
 
     async def test_add_persisted_relationship_updates_it_when_flushed(
-        self, async_driver: neo4j.AsyncDriver, async_tracker_client, async_change_tracker
+        self, async_driver, async_tracker_client, async_change_tracker
     ):
         async with async_driver.session() as session:
             await session.run(
@@ -693,7 +692,7 @@ class TestAsyncChangeTrackerAddRelationships:
         assert await get_tracker_relationships(async_driver) == [(["start"], ["end"], [2024])]
 
     async def test_add_duplicate_unsaved_node_persists_only_one_copy(
-        self, async_driver: neo4j.AsyncDriver, async_change_tracker, caplog
+        self, async_driver, async_change_tracker, caplog
     ):
         node = TrackerPerson(name="Alice", tags=["tracked"])
 
@@ -706,7 +705,7 @@ class TestAsyncChangeTrackerAddRelationships:
         assert await get_tracker_person_tags(async_driver) == [["tracked"]]
 
     async def test_add_duplicate_unsaved_relationship_persists_only_one_copy(
-        self, async_driver: neo4j.AsyncDriver, async_change_tracker, caplog
+        self, async_driver, async_change_tracker, caplog
     ):
         relationship = TrackerKnows(since=2024, history=[2024])
         start_node = TrackerPerson(name="Alice", tags=["start"])
@@ -722,7 +721,7 @@ class TestAsyncChangeTrackerAddRelationships:
         assert "Entity has already been added to the change tracker" in caplog.text
 
     async def test_add_distinct_relationships_reuses_persisted_endpoints(
-        self, async_driver: neo4j.AsyncDriver, async_change_tracker
+        self, async_driver, async_change_tracker
     ):
         start_node = TrackerPerson(name="Alice")
         end_node = TrackerPerson(name="Bob")
@@ -743,7 +742,7 @@ class TestAsyncChangeTrackerAddRelationships:
         ]
 
     async def test_add_duplicate_persisted_relationship_updates_it_once(
-        self, async_driver: neo4j.AsyncDriver, async_tracker_client, async_change_tracker, caplog
+        self, async_driver, async_tracker_client, async_change_tracker, caplog
     ):
         async with async_driver.session() as session:
             await session.run(
@@ -766,7 +765,7 @@ class TestAsyncChangeTrackerAddRelationships:
         assert "Entity has already been added to the change tracker" in caplog.text
 
     async def test_add_after_removing_persisted_node_restores_update(
-        self, async_driver: neo4j.AsyncDriver, async_tracker_client, async_change_tracker
+        self, async_driver, async_tracker_client, async_change_tracker
     ):
         async with async_driver.session() as session:
             await session.run("CREATE (:TrackerPerson {name: 'Alice', tags: ['before']})")
@@ -781,7 +780,7 @@ class TestAsyncChangeTrackerAddRelationships:
         assert await get_tracker_person_tags(async_driver) == [["after"]]
 
     async def test_add_after_removing_persisted_relationship_restores_update(
-        self, async_driver: neo4j.AsyncDriver, async_tracker_client, async_change_tracker
+        self, async_driver, async_tracker_client, async_change_tracker
     ):
         async with async_driver.session() as session:
             await session.run(
@@ -803,7 +802,7 @@ class TestAsyncChangeTrackerAddRelationships:
         assert await get_tracker_relationships(async_driver) == [(["start"], ["end"], [2024])]
 
     async def test_add_after_removing_unsaved_node_inserts_it_when_flushed(
-        self, async_driver: neo4j.AsyncDriver, async_change_tracker
+        self, async_driver, async_change_tracker
     ):
         node = TrackerPerson(name="Alice", tags=["tracked"])
 
@@ -816,7 +815,7 @@ class TestAsyncChangeTrackerAddRelationships:
         assert await get_tracker_person_tags(async_driver) == [["tracked"]]
 
     async def test_add_after_removing_unsaved_relationship_inserts_it_when_flushed(
-        self, async_driver: neo4j.AsyncDriver, async_change_tracker
+        self, async_driver, async_change_tracker
     ):
         relationship = TrackerKnows(since=2024, history=[2024])
         start_node = TrackerPerson(name="Alice", tags=["start"])

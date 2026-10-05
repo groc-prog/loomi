@@ -27,7 +27,7 @@ class Knows(Relationship):
 
 
 class TestSyncClientQuery:
-    def test_query_where_filters_registered_nodes(self, sync_driver: neo4j.Driver):
+    def test_query_where_filters_registered_nodes(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person)
@@ -47,7 +47,7 @@ class TestSyncClientQuery:
         assert {person.name for person in results} == {"Bob", "Charlie"}
         assert all(isinstance(person, Person) for person in results)
 
-    def test_query_returns_empty_list_when_no_match_is_found(self, sync_driver: neo4j.Driver):
+    def test_query_returns_empty_list_when_no_match_is_found(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person)
@@ -60,7 +60,7 @@ class TestSyncClientQuery:
 
         assert results == []
 
-    def test_query_returns_registered_relationship_models(self, sync_driver: neo4j.Driver):
+    def test_query_returns_registered_relationship_models(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person, Knows)
@@ -81,7 +81,7 @@ class TestSyncClientQuery:
         assert isinstance(relationships[0], Knows)
         assert relationships[0].since == 2024
 
-    def test_query_returns_projected_records_using_transaction(self, sync_driver: neo4j.Driver):
+    def test_query_returns_projected_records_using_transaction(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person)
@@ -101,7 +101,7 @@ class TestSyncClientQuery:
 
         assert sorted(item["name"] for item in results) == ["Alice", "Bob"]
 
-    def test_query_order_by_accepts_field_order_mapping_for_nodes(self, sync_driver: neo4j.Driver):
+    def test_query_order_by_accepts_field_order_mapping_for_nodes(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person)
@@ -121,7 +121,7 @@ class TestSyncClientQuery:
         assert [person.name for person in results] == ["Alice", "Bob", "Charlie"]
         assert all(isinstance(person, Person) for person in results)
 
-    def test_query_order_by_accepts_field_name_for_nodes(self, sync_driver: neo4j.Driver):
+    def test_query_order_by_accepts_field_name_for_nodes(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person)
@@ -140,7 +140,7 @@ class TestSyncClientQuery:
 
         assert [person.name for person in results] == ["Alice", "Bob", "Charlie"]
 
-    def test_query_project_returns_selected_node_fields(self, sync_driver: neo4j.Driver):
+    def test_query_project_returns_selected_node_fields(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person)
@@ -163,9 +163,7 @@ class TestSyncClientQuery:
             "Bob": 40,
         }
 
-    def test_query_order_by_accepts_field_descriptor_for_relationships(
-        self, sync_driver: neo4j.Driver
-    ):
+    def test_query_order_by_accepts_field_descriptor_for_relationships(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person, Knows)
@@ -187,7 +185,7 @@ class TestSyncClientQuery:
         assert [relationship.since for relationship in results] == [2023, 2025]
         assert all(isinstance(relationship, Knows) for relationship in results)
 
-    def test_query_project_returns_selected_relationship_fields(self, sync_driver: neo4j.Driver):
+    def test_query_project_returns_selected_relationship_fields(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person, Knows)
@@ -206,7 +204,7 @@ class TestSyncClientQuery:
 
         assert results == [{"relationship_since": 2023}]
 
-    def test_query_skip_skips_node_results(self, sync_driver: neo4j.Driver):
+    def test_query_skip_skips_node_results(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person)
@@ -226,7 +224,7 @@ class TestSyncClientQuery:
         assert len(results) == 2
         assert all(isinstance(person, Person) for person in results)
 
-    def test_query_limit_limits_node_results(self, sync_driver: neo4j.Driver):
+    def test_query_limit_limits_node_results(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person)
@@ -246,7 +244,7 @@ class TestSyncClientQuery:
         assert len(results) == 1
         assert isinstance(results[0], Person)
 
-    def test_query_skip_skips_relationship_results(self, sync_driver: neo4j.Driver):
+    def test_query_skip_skips_relationship_results(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person, Knows)
@@ -268,7 +266,7 @@ class TestSyncClientQuery:
         assert len(results) == 1
         assert isinstance(results[0], Knows)
 
-    def test_query_limit_limits_relationship_results(self, sync_driver: neo4j.Driver):
+    def test_query_limit_limits_relationship_results(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person, Knows)
@@ -290,7 +288,7 @@ class TestSyncClientQuery:
         assert len(results) == 1
         assert isinstance(results[0], Knows)
 
-    def test_query_raises_for_invalid_expression(self, sync_driver: neo4j.Driver):
+    def test_query_raises_for_invalid_expression(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person)
@@ -298,7 +296,7 @@ class TestSyncClientQuery:
         with pytest.raises(QueryError, match="Invalid expression found"):
             client.query(Person).where("not-a-compilable-expression")
 
-    def test_query_raises_for_invalid_order_by_field(self, sync_driver: neo4j.Driver):
+    def test_query_raises_for_invalid_order_by_field(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person)
@@ -306,7 +304,7 @@ class TestSyncClientQuery:
         with pytest.raises(QueryError, match="is not a valid field to order by"):
             client.query(Person).order_by("missing_field")
 
-    def test_query_raises_for_negative_limit(self, sync_driver: neo4j.Driver):
+    def test_query_raises_for_negative_limit(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person)
@@ -314,7 +312,7 @@ class TestSyncClientQuery:
         with pytest.raises(QueryError, match="limit must be a positive integer if defined"):
             client.query(Person).limit(-1)
 
-    def test_query_raises_for_negative_skip(self, sync_driver: neo4j.Driver):
+    def test_query_raises_for_negative_skip(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person)
@@ -322,9 +320,7 @@ class TestSyncClientQuery:
         with pytest.raises(QueryError, match="skip must be a positive integer if defined"):
             client.query(Person).skip(-1)
 
-    def test_query_returns_native_nodes_when_model_is_not_registered(
-        self, sync_driver: neo4j.Driver
-    ):
+    def test_query_returns_native_nodes_when_model_is_not_registered(self, sync_driver):
         client = Client(sync_driver, strict_transformations=False)
         client.initialize()
 

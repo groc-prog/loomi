@@ -1,6 +1,5 @@
 # pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, missing-function-docstring, unused-argument, line-too-long, unused-variable
 
-import neo4j
 import pytest
 
 from loomi._async.client import AsyncClient
@@ -24,7 +23,7 @@ class Knows(Relationship):
 
 
 class TestAsyncClientDelete:
-    async def test_delete_where_filters_node_deletions(self, async_driver: neo4j.AsyncDriver):
+    async def test_delete_where_filters_node_deletions(self, async_driver):
         client = AsyncClient(async_driver)
         await client.initialize()
         client.register(Person)
@@ -52,9 +51,7 @@ class TestAsyncClientDelete:
 
         assert count == 2
 
-    async def test_delete_where_filters_relationship_deletions(
-        self, async_driver: neo4j.AsyncDriver
-    ):
+    async def test_delete_where_filters_relationship_deletions(self, async_driver):
         client = AsyncClient(async_driver)
         await client.initialize()
         client.register(Person, Knows)
@@ -84,9 +81,7 @@ class TestAsyncClientDelete:
 
         assert count == 1
 
-    async def test_delete_execute_removes_all_nodes_and_detaches_relationships(
-        self, async_driver: neo4j.AsyncDriver
-    ):
+    async def test_delete_execute_removes_all_nodes_and_detaches_relationships(self, async_driver):
         client = AsyncClient(async_driver)
         await client.initialize()
         client.register(Person, Knows)
@@ -119,7 +114,7 @@ class TestAsyncClientDelete:
         assert node_count == 0
         assert relationship_count == 0
 
-    async def test_delete_execute_removes_all_relationships(self, async_driver: neo4j.AsyncDriver):
+    async def test_delete_execute_removes_all_relationships(self, async_driver):
         client = AsyncClient(async_driver)
         await client.initialize()
         client.register(Person, Knows)
@@ -154,9 +149,7 @@ class TestAsyncClientDelete:
         assert relationship_count == 0
         assert node_count == 3
 
-    async def test_delete_execute_removes_nodes_using_transaction(
-        self, async_driver: neo4j.AsyncDriver
-    ):
+    async def test_delete_execute_removes_nodes_using_transaction(self, async_driver):
         client = AsyncClient(async_driver)
         await client.initialize()
         client.register(Person)
@@ -180,9 +173,7 @@ class TestAsyncClientDelete:
 
         assert node_count == 0
 
-    async def test_delete_execute_removes_relationships_using_transaction(
-        self, async_driver: neo4j.AsyncDriver
-    ):
+    async def test_delete_execute_removes_relationships_using_transaction(self, async_driver):
         client = AsyncClient(async_driver)
         await client.initialize()
         client.register(Person, Knows)
@@ -212,7 +203,7 @@ class TestAsyncClientDelete:
 
         assert relationship_count == 0
 
-    async def test_delete_where_rejects_invalid_expression(self, async_driver: neo4j.AsyncDriver):
+    async def test_delete_where_rejects_invalid_expression(self, async_driver):
         client = AsyncClient(async_driver)
         await client.initialize()
         client.register(Person)

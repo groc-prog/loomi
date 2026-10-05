@@ -27,7 +27,7 @@ class ResultKnows(Relationship):
 
 
 @pytest.fixture
-async def async_result_client(async_driver: neo4j.AsyncDriver):
+async def async_result_client(async_driver):
     client = AsyncClient(async_driver)
     await client.initialize()
     client.register(ResultPerson, ResultKnows)
@@ -40,7 +40,7 @@ async def async_result_session(async_result_client):
         yield session
 
 
-async def create_result_people(async_driver: neo4j.AsyncDriver) -> None:
+async def create_result_people(async_driver) -> None:
     async with async_driver.session() as session:
         await session.run(
             """
@@ -50,7 +50,7 @@ async def create_result_people(async_driver: neo4j.AsyncDriver) -> None:
         )
 
 
-async def create_result_graph(async_driver: neo4j.AsyncDriver) -> None:
+async def create_result_graph(async_driver) -> None:
     async with async_driver.session() as session:
         await session.run(
             """
@@ -61,7 +61,7 @@ async def create_result_graph(async_driver: neo4j.AsyncDriver) -> None:
         )
 
 
-async def get_result_person_tags(async_driver: neo4j.AsyncDriver) -> list[list[str]]:
+async def get_result_person_tags(async_driver) -> list[list[str]]:
     async with async_driver.session() as session:
         result = await session.run(
             "MATCH (person:AsyncResultPerson) "
@@ -70,7 +70,7 @@ async def get_result_person_tags(async_driver: neo4j.AsyncDriver) -> list[list[s
         return [record["tags"] for record in await result.data()]
 
 
-async def get_result_relationship_history(async_driver: neo4j.AsyncDriver) -> list[list[int]]:
+async def get_result_relationship_history(async_driver) -> list[list[int]]:
     async with async_driver.session() as session:
         result = await session.run(
             "MATCH ()-[relationship:ASYNC_RESULT_KNOWS]->() "

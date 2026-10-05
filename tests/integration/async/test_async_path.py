@@ -2,7 +2,6 @@
 
 from typing import cast
 
-import neo4j
 import pytest
 
 from loomi._async.client import AsyncClient
@@ -26,14 +25,14 @@ class PathKnows(Relationship):
 
 
 @pytest.fixture
-async def async_path_client(async_driver: neo4j.AsyncDriver):
+async def async_path_client(async_driver):
     client = AsyncClient(async_driver)
     await client.initialize()
     client.register(PathPerson, PathKnows)
     return client
 
 
-async def create_path_fixture(async_driver: neo4j.AsyncDriver) -> None:
+async def create_path_fixture(async_driver) -> None:
     async with async_driver.session() as session:
         await session.run(
             """
@@ -56,7 +55,7 @@ async def fetch_path(async_path_client) -> Path:
 
 class TestAsyncPath:
     async def test_nodes_property_returns_transformed_path_nodes(
-        self, async_driver: neo4j.AsyncDriver, async_path_client
+        self, async_driver, async_path_client
     ):
         await create_path_fixture(async_driver)
 
@@ -65,9 +64,7 @@ class TestAsyncPath:
         assert [cast(PathPerson, node).name for node in path.nodes] == ["Alice", "Bob"]
         assert all(isinstance(node, PathPerson) for node in path.nodes)
 
-    async def test_start_node_returns_first_path_node(
-        self, async_driver: neo4j.AsyncDriver, async_path_client
-    ):
+    async def test_start_node_returns_first_path_node(self, async_driver, async_path_client):
         await create_path_fixture(async_driver)
 
         path = await fetch_path(async_path_client)
@@ -75,9 +72,7 @@ class TestAsyncPath:
         assert isinstance(path.start_node, PathPerson)
         assert path.start_node.name == "Alice"
 
-    async def test_end_node_returns_last_path_node(
-        self, async_driver: neo4j.AsyncDriver, async_path_client
-    ):
+    async def test_end_node_returns_last_path_node(self, async_driver, async_path_client):
         await create_path_fixture(async_driver)
 
         path = await fetch_path(async_path_client)
@@ -86,7 +81,7 @@ class TestAsyncPath:
         assert path.end_node.name == "Bob"
 
     async def test_relationships_property_returns_transformed_relationships(
-        self, async_driver: neo4j.AsyncDriver, async_path_client
+        self, async_driver, async_path_client
     ):
         await create_path_fixture(async_driver)
 
@@ -96,18 +91,14 @@ class TestAsyncPath:
         assert isinstance(path.relationships[0], PathKnows)
         assert path.relationships[0].history == [2024]
 
-    async def test_len_returns_number_of_relationships(
-        self, async_driver: neo4j.AsyncDriver, async_path_client
-    ):
+    async def test_len_returns_number_of_relationships(self, async_driver, async_path_client):
         await create_path_fixture(async_driver)
 
         path = await fetch_path(async_path_client)
 
         assert len(path) == 1
 
-    async def test_iteration_yields_path_relationships(
-        self, async_driver: neo4j.AsyncDriver, async_path_client
-    ):
+    async def test_iteration_yields_path_relationships(self, async_driver, async_path_client):
         await create_path_fixture(async_driver)
 
         path = await fetch_path(async_path_client)
@@ -115,9 +106,7 @@ class TestAsyncPath:
         assert list(path) == list(path.relationships)
         assert all(isinstance(relationship, PathKnows) for relationship in path)
 
-    async def test_repr_includes_endpoints_and_path_size(
-        self, async_driver: neo4j.AsyncDriver, async_path_client
-    ):
+    async def test_repr_includes_endpoints_and_path_size(self, async_driver, async_path_client):
         await create_path_fixture(async_driver)
 
         path = await fetch_path(async_path_client)
@@ -154,7 +143,7 @@ class TestAsyncPath:
         assert isinstance(hash(path), int)
 
     async def test_graph_property_returns_graph_with_transformed_entities(
-        self, async_driver: neo4j.AsyncDriver, async_path_client
+        self, async_driver, async_path_client
     ):
         await create_path_fixture(async_driver)
 
@@ -169,7 +158,7 @@ class TestAsyncPath:
         assert graph.relationship_type("PATH_KNOWS") is PathKnows
 
     async def test_zero_length_path_has_same_start_and_end_node(
-        self, async_driver: neo4j.AsyncDriver, async_path_client
+        self, async_driver, async_path_client
     ):
         async with async_driver.session() as session:
             await session.run("CREATE (:PathPerson {name: 'Alice', tags: ['alice']})")

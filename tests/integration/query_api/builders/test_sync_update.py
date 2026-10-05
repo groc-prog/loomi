@@ -1,6 +1,5 @@
 # pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, missing-function-docstring, unused-argument, line-too-long, unused-variable
 
-import neo4j
 import pytest
 
 from loomi._sync.client import Client
@@ -24,7 +23,7 @@ class Knows(Relationship):
 
 
 class TestSyncClientUpdate:
-    def test_update_where_filters_node_updates(self, sync_driver: neo4j.Driver):
+    def test_update_where_filters_node_updates(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person)
@@ -49,7 +48,7 @@ class TestSyncClientUpdate:
 
         assert {row["name"]: row["active"] for row in data} == {"Alice": False, "Bob": True}
 
-    def test_update_where_filters_relationship_updates(self, sync_driver: neo4j.Driver):
+    def test_update_where_filters_relationship_updates(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person, Knows)
@@ -77,7 +76,7 @@ class TestSyncClientUpdate:
 
         assert sorted(row["since"] for row in data) == [2023, 2025]
 
-    def test_update_set_assigns_literal_to_node_field(self, sync_driver: neo4j.Driver):
+    def test_update_set_assigns_literal_to_node_field(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person)
@@ -101,7 +100,7 @@ class TestSyncClientUpdate:
 
         assert data == [{"active": False}, {"active": False}]
 
-    def test_update_set_assigns_literal_to_relationship_field(self, sync_driver: neo4j.Driver):
+    def test_update_set_assigns_literal_to_relationship_field(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person, Knows)
@@ -128,7 +127,7 @@ class TestSyncClientUpdate:
 
         assert data == [{"since": 2025}, {"since": 2025}]
 
-    def test_update_set_accepts_expression_for_node_field(self, sync_driver: neo4j.Driver):
+    def test_update_set_accepts_expression_for_node_field(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person)
@@ -152,7 +151,7 @@ class TestSyncClientUpdate:
 
         assert data == [{"age": 40}, {"age": 50}]
 
-    def test_update_set_accepts_expression_for_relationship_field(self, sync_driver: neo4j.Driver):
+    def test_update_set_accepts_expression_for_relationship_field(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person, Knows)
@@ -177,7 +176,7 @@ class TestSyncClientUpdate:
 
         assert data == [{"since": 2024}]
 
-    def test_update_set_accepts_database_function_for_node_field(self, sync_driver: neo4j.Driver):
+    def test_update_set_accepts_database_function_for_node_field(self, sync_driver):
         from loomi.query_api.functions.transformation import to_upper
 
         client = Client(sync_driver)
@@ -202,9 +201,7 @@ class TestSyncClientUpdate:
 
         assert data == [{"name": "ALICE"}]
 
-    def test_update_set_accepts_database_function_for_relationship_field(
-        self, sync_driver: neo4j.Driver
-    ):
+    def test_update_set_accepts_database_function_for_relationship_field(self, sync_driver):
         from loomi.query_api.functions.transformation import to_upper
 
         class KnowsWithStatus(Relationship):
@@ -241,7 +238,7 @@ class TestSyncClientUpdate:
         assert data == [{"status": "FRIEND"}]
 
     def test_update_set_overwrites_previous_value_for_same_node_field(
-        self, sync_driver: neo4j.Driver, caplog: pytest.LogCaptureFixture
+        self, sync_driver, caplog: pytest.LogCaptureFixture
     ):
         client = Client(sync_driver)
         client.initialize()
@@ -264,7 +261,7 @@ class TestSyncClientUpdate:
 
         assert data == [{"active": False}]
 
-    def test_update_set_rejects_field_from_different_model(self, sync_driver: neo4j.Driver):
+    def test_update_set_rejects_field_from_different_model(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person, Knows)
@@ -272,7 +269,7 @@ class TestSyncClientUpdate:
         with pytest.raises(QueryError, match="Expected a valid field of model Person"):
             client.update(Person).set_(Knows.since, 2025)
 
-    def test_update_execute_raises_when_no_fields_are_set(self, sync_driver: neo4j.Driver):
+    def test_update_execute_raises_when_no_fields_are_set(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person)
@@ -280,7 +277,7 @@ class TestSyncClientUpdate:
         with pytest.raises(QueryError, match="At least one update expression must be defined"):
             client.update(Person).execute()
 
-    def test_update_updates_nodes_using_transaction(self, sync_driver: neo4j.Driver):
+    def test_update_updates_nodes_using_transaction(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person)
@@ -302,7 +299,7 @@ class TestSyncClientUpdate:
 
         assert data == [{"age": 31}]
 
-    def test_update_updates_relationships_using_transaction(self, sync_driver: neo4j.Driver):
+    def test_update_updates_relationships_using_transaction(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person, Knows)

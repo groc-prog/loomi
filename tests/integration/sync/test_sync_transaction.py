@@ -4,7 +4,6 @@ from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import Mock
 
-import neo4j
 import pytest
 
 from loomi._sync.client import Client
@@ -20,14 +19,14 @@ class WrapperPerson(Node):
 
 
 @pytest.fixture
-def sync_wrapper_client(sync_driver: neo4j.Driver):
+def sync_wrapper_client(sync_driver):
     client = Client(sync_driver)
     client.initialize()
     client.register(WrapperPerson)
     return client
 
 
-def get_wrapper_person_tags(sync_driver: neo4j.Driver) -> list[list[str]]:
+def get_wrapper_person_tags(sync_driver) -> list[list[str]]:
     with sync_driver.session() as session:
         result = session.run(
             "MATCH (person:WrapperPerson) RETURN person.tags AS tags ORDER BY person.tags[0]"
@@ -37,7 +36,7 @@ def get_wrapper_person_tags(sync_driver: neo4j.Driver) -> list[list[str]]:
 
 class TestSyncTransaction:
     def test_transaction_context_manager_commits_wrapped_query(
-        self, sync_driver: neo4j.Driver, sync_wrapper_client
+        self, sync_driver, sync_wrapper_client
     ):
         with sync_wrapper_client.session() as session:
             transaction = session.begin_transaction()
@@ -55,7 +54,7 @@ class TestSyncTransaction:
         assert get_wrapper_person_tags(sync_driver) == [["committed"]]
 
     def test_transaction_context_manager_rolls_back_when_body_fails(
-        self, sync_driver: neo4j.Driver, sync_wrapper_client
+        self, sync_driver, sync_wrapper_client
     ):
         with sync_wrapper_client.session() as session:
             with pytest.raises(RuntimeError, match="abort transaction"):
@@ -70,7 +69,7 @@ class TestSyncTransaction:
         assert get_wrapper_person_tags(sync_driver) == []
 
     def test_transaction_run_tracking_flushes_changes_in_same_transaction(
-        self, sync_driver: neo4j.Driver, sync_wrapper_client
+        self, sync_driver, sync_wrapper_client
     ):
         with sync_driver.session() as native_session:
             native_session.run("CREATE (:WrapperPerson {name: 'Alice', tags: ['before']})")

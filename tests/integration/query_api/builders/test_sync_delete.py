@@ -1,6 +1,5 @@
 # pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, missing-function-docstring, unused-argument, line-too-long, unused-variable
 
-import neo4j
 import pytest
 
 from loomi._sync.client import Client
@@ -24,7 +23,7 @@ class Knows(Relationship):
 
 
 class TestSyncClientDelete:
-    def test_delete_where_filters_node_deletions(self, sync_driver: neo4j.Driver):
+    def test_delete_where_filters_node_deletions(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person)
@@ -52,7 +51,7 @@ class TestSyncClientDelete:
 
         assert count == 2
 
-    def test_delete_where_filters_relationship_deletions(self, sync_driver: neo4j.Driver):
+    def test_delete_where_filters_relationship_deletions(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person, Knows)
@@ -82,9 +81,7 @@ class TestSyncClientDelete:
 
         assert count == 1
 
-    def test_delete_execute_removes_all_nodes_and_detaches_relationships(
-        self, sync_driver: neo4j.Driver
-    ):
+    def test_delete_execute_removes_all_nodes_and_detaches_relationships(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person, Knows)
@@ -117,7 +114,7 @@ class TestSyncClientDelete:
         assert node_count == 0
         assert relationship_count == 0
 
-    def test_delete_execute_removes_all_relationships(self, sync_driver: neo4j.Driver):
+    def test_delete_execute_removes_all_relationships(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person, Knows)
@@ -152,7 +149,7 @@ class TestSyncClientDelete:
         assert relationship_count == 0
         assert node_count == 3
 
-    def test_delete_execute_removes_nodes_using_transaction(self, sync_driver: neo4j.Driver):
+    def test_delete_execute_removes_nodes_using_transaction(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person)
@@ -176,9 +173,7 @@ class TestSyncClientDelete:
 
         assert node_count == 0
 
-    def test_delete_execute_removes_relationships_using_transaction(
-        self, sync_driver: neo4j.Driver
-    ):
+    def test_delete_execute_removes_relationships_using_transaction(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person, Knows)
@@ -208,7 +203,7 @@ class TestSyncClientDelete:
 
         assert relationship_count == 0
 
-    def test_delete_where_rejects_invalid_expression(self, sync_driver: neo4j.Driver):
+    def test_delete_where_rejects_invalid_expression(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(Person)

@@ -144,14 +144,14 @@ class FailingListSerializerKnows(Relationship):
 
 
 @pytest.fixture
-def transform_client(sync_driver: neo4j.Driver):
+def transform_client(sync_driver):
     client = Client(sync_driver, serialize_nested=True)
     client.initialize()
     client.register(TransformPerson, TransformKnows)
     return client
 
 
-def create_transform_graph(sync_driver: neo4j.Driver, driver_spec: DriverSpec) -> None:
+def create_transform_graph(sync_driver, driver_spec: DriverSpec) -> None:
     with sync_driver.session() as session:
         if driver_spec.name.value == "Neo4j":
             session.run(
@@ -195,7 +195,7 @@ def create_transform_graph(sync_driver: neo4j.Driver, driver_spec: DriverSpec) -
             )
 
 
-def get_transform_graph_counts(sync_driver: neo4j.Driver) -> tuple[int, int]:
+def get_transform_graph_counts(sync_driver) -> tuple[int, int]:
     with sync_driver.session() as session:
         nodes = session.run("MATCH (person:TransformPerson) RETURN count(person) AS count")
         node_record = nodes.single()
@@ -211,7 +211,7 @@ def get_transform_graph_counts(sync_driver: neo4j.Driver) -> tuple[int, int]:
 
 class TestSyncModelTransformation:
     def test_registered_node_deserialization_maps_alias_and_skips_unknown_fields(
-        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec, transform_client
+        self, sync_driver, driver_spec: DriverSpec, transform_client
     ):
         create_transform_graph(sync_driver, driver_spec)
 
@@ -225,7 +225,7 @@ class TestSyncModelTransformation:
         assert alice.entries == [{"kind": "work", "rank": 1}, {"kind": "play", "rank": 2}]
 
     def test_registered_relationship_deserialization_restores_nested_properties(
-        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec, transform_client
+        self, sync_driver, driver_spec: DriverSpec, transform_client
     ):
         create_transform_graph(sync_driver, driver_spec)
 
@@ -236,9 +236,7 @@ class TestSyncModelTransformation:
         assert relationships[0].metadata == {"since": 2024, "source": "manual"}
         assert relationships[0].history == [{"year": 2024, "level": "first"}]
 
-    def test_unregistered_node_raises_when_transformations_are_strict(
-        self, sync_driver: neo4j.Driver
-    ):
+    def test_unregistered_node_raises_when_transformations_are_strict(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         with sync_driver.session() as session:
@@ -249,9 +247,7 @@ class TestSyncModelTransformation:
         ):
             client.query(UnregisteredTransformNode).execute()
 
-    def test_unregistered_relationship_raises_when_transformations_are_strict(
-        self, sync_driver: neo4j.Driver
-    ):
+    def test_unregistered_relationship_raises_when_transformations_are_strict(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         with sync_driver.session() as session:
@@ -272,7 +268,7 @@ class TestSyncModelTransformation:
             client.query(UnregisteredTransformRelationship).execute()
 
     def test_unregistered_node_is_returned_as_native_entity_when_not_strict(
-        self, sync_driver: neo4j.Driver, caplog
+        self, sync_driver, caplog
     ):
         client = Client(sync_driver, strict_transformations=False)
         client.initialize()
@@ -286,7 +282,7 @@ class TestSyncModelTransformation:
         assert "No model with labels UnregisteredTransformNode registered" in caplog.text
 
     def test_unregistered_relationship_is_returned_as_native_entity_when_not_strict(
-        self, sync_driver: neo4j.Driver, caplog
+        self, sync_driver, caplog
     ):
         client = Client(sync_driver, strict_transformations=False)
         client.initialize()
@@ -312,7 +308,7 @@ class TestSyncModelTransformation:
 
 class TestSyncModelSerialization:
     def test_nested_node_serialization_and_deserialization_with_client_option(
-        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+        self, sync_driver, driver_spec: DriverSpec
     ):
         client = Client(sync_driver, serialize_nested=True)
         client.initialize()
@@ -337,7 +333,7 @@ class TestSyncModelSerialization:
         assert people[0].display_name == "A. Example"
 
     def test_nested_relationship_serialization_and_deserialization(
-        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+        self, sync_driver, driver_spec: DriverSpec
     ):
         client = Client(sync_driver, serialize_nested=True)
         client.initialize()
@@ -358,7 +354,7 @@ class TestSyncModelSerialization:
         assert loaded[0].history == [{"year": 2024, "level": "first"}]
 
     def test_nested_node_serialization_rejects_disabled_client_option_on_neo4j(
-        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+        self, sync_driver, driver_spec: DriverSpec
     ):
         client = Client(sync_driver, serialize_nested=False)
         client.initialize()
@@ -390,7 +386,7 @@ class TestSyncModelSerialization:
             assert loaded[0].payload == {"city": "Paris"}
 
     def test_nested_list_serialization_rejects_disabled_client_option_on_neo4j(
-        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+        self, sync_driver, driver_spec: DriverSpec
     ):
         client = Client(sync_driver, serialize_nested=False)
         client.initialize()
@@ -416,7 +412,7 @@ class TestSyncModelSerialization:
             assert loaded[0].entries == [{"kind": "work", "rank": 1}]
 
     def test_nested_relationship_serialization_respects_client_option(
-        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+        self, sync_driver, driver_spec: DriverSpec
     ):
         client = Client(sync_driver, serialize_nested=False)
         client.initialize()
@@ -443,7 +439,7 @@ class TestSyncModelSerialization:
             assert loaded[0].history == [{"year": 2024, "level": "first"}]
 
     def test_model_serializer_and_deserializer_config_round_trip_node_and_relationship(
-        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+        self, sync_driver, driver_spec: DriverSpec
     ):
         client = Client(sync_driver, serialize_nested=True)
         client.initialize()
@@ -471,7 +467,7 @@ class TestSyncModelSerialization:
         assert relationships[0].events == [{"year": 2024}]
 
     def test_serializer_callback_is_used_only_for_neo4j_nested_values(
-        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+        self, sync_driver, driver_spec: DriverSpec
     ):
         class FailingSerializerPerson(Node):
             name: str
@@ -502,9 +498,7 @@ class TestSyncModelSerialization:
                 session.change_tracker.flush()
             assert get_model_count(sync_driver, "FailingSerializerPerson") == 1
 
-    def test_model_without_serializer_config_raises_serialization_error(
-        self, sync_driver: neo4j.Driver
-    ):
+    def test_model_without_serializer_config_raises_serialization_error(self, sync_driver):
         client = Client(sync_driver, serialize_nested=True)
         client.initialize()
         client.register(MissingSerializerPerson)
@@ -519,7 +513,7 @@ class TestSyncModelSerialization:
         assert get_model_count(sync_driver, "MissingSerializerPerson") == 0
 
     def test_model_without_deserializer_config_raises_during_database_transformation(
-        self, sync_driver: neo4j.Driver
+        self, sync_driver
     ):
         client = Client(sync_driver)
         client.initialize()
@@ -531,7 +525,7 @@ class TestSyncModelSerialization:
             client.query(MissingDeserializerPerson).execute()
 
     def test_deserializer_callback_is_used_only_for_neo4j_nested_values(
-        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+        self, sync_driver, driver_spec: DriverSpec
     ):
         client = Client(sync_driver, serialize_nested=True)
         client.initialize()
@@ -558,7 +552,7 @@ class TestSyncModelSerialization:
             assert result[0].payload == {"data": 1}
 
     def test_list_item_deserializer_failure_is_wrapped_for_neo4j(
-        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+        self, sync_driver, driver_spec: DriverSpec
     ):
         client = Client(sync_driver, serialize_nested=True)
         client.initialize()
@@ -585,7 +579,7 @@ class TestSyncModelSerialization:
             result = client.query(FailingDeserializerListPerson).execute()
             assert result[0].events == [{"event": "native"}]
 
-    def test_deserialization_skips_unknown_database_properties(self, sync_driver: neo4j.Driver):
+    def test_deserialization_skips_unknown_database_properties(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(TransformPerson)
@@ -612,7 +606,7 @@ def sync_client_session(client: Client) -> Iterator[Any]:
         yield session
 
 
-def get_custom_graph_counts(sync_driver: neo4j.Driver) -> tuple[int, int]:
+def get_custom_graph_counts(sync_driver) -> tuple[int, int]:
     with sync_driver.session() as session:
         nodes = session.run("MATCH (person:CustomSerializedPerson) RETURN count(person) AS count")
         node_record = nodes.single()
@@ -627,7 +621,7 @@ def get_custom_graph_counts(sync_driver: neo4j.Driver) -> tuple[int, int]:
     return node_record["count"], relationship_record["count"]
 
 
-def get_model_count(sync_driver: neo4j.Driver, label: str) -> int:
+def get_model_count(sync_driver, label: str) -> int:
     with sync_driver.session() as session:
         result = session.run(f"MATCH (entity:{label}) RETURN count(entity) AS count")  # type: ignore
         record = result.single()
@@ -635,7 +629,7 @@ def get_model_count(sync_driver: neo4j.Driver, label: str) -> int:
     return record["count"]
 
 
-def get_relationship_count(sync_driver: neo4j.Driver, relationship_type: str) -> int:
+def get_relationship_count(sync_driver, relationship_type: str) -> int:
     with sync_driver.session() as session:
         result = session.run(
             f"MATCH ()-[relationship:{relationship_type}]->() RETURN count(relationship) AS count"
@@ -646,9 +640,7 @@ def get_relationship_count(sync_driver: neo4j.Driver, relationship_type: str) ->
 
 
 class TestSyncUnsupportedModelValues:
-    def test_unsupported_node_field_type_raises_and_does_not_persist(
-        self, sync_driver: neo4j.Driver
-    ):
+    def test_unsupported_node_field_type_raises_and_does_not_persist(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(UnsupportedValuePerson)
@@ -664,9 +656,7 @@ class TestSyncUnsupportedModelValues:
 
         assert get_model_count(sync_driver, "UnsupportedValuePerson") == 0
 
-    def test_unsupported_relationship_field_type_raises_and_rolls_back_endpoints(
-        self, sync_driver: neo4j.Driver
-    ):
+    def test_unsupported_relationship_field_type_raises_and_rolls_back_endpoints(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
         client.register(TransformPerson, UnsupportedValueKnows)
@@ -687,7 +677,7 @@ class TestSyncUnsupportedModelValues:
 
 class TestSyncNestedListSerializerFailures:
     def test_node_list_item_serializer_failure_is_wrapped_on_neo4j(
-        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+        self, sync_driver, driver_spec: DriverSpec
     ):
         client = Client(sync_driver, serialize_nested=True)
         client.initialize()
@@ -714,7 +704,7 @@ class TestSyncNestedListSerializerFailures:
             assert loaded[0].events == [{"kind": "event"}]
 
     def test_relationship_list_item_serializer_failure_is_wrapped_on_neo4j(
-        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+        self, sync_driver, driver_spec: DriverSpec
     ):
         client = Client(sync_driver, serialize_nested=True)
         client.initialize()

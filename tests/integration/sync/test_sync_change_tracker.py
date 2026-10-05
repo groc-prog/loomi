@@ -1,6 +1,5 @@
 # pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, missing-function-docstring, unused-argument, line-too-long, unused-variable
 
-import neo4j
 import pytest
 
 from loomi._sync.change_tracker import ChangeTracker
@@ -26,7 +25,7 @@ class TrackerKnows(Relationship):
 
 
 @pytest.fixture
-def sync_tracker_client(sync_driver: neo4j.Driver):
+def sync_tracker_client(sync_driver):
     """Provide an initialized client registered for the tracker test models."""
     client = Client(sync_driver)
     client.initialize()
@@ -35,25 +34,25 @@ def sync_tracker_client(sync_driver: neo4j.Driver):
 
 
 @pytest.fixture
-def sync_change_tracker(sync_driver: neo4j.Driver, sync_tracker_client):
+def sync_change_tracker(sync_driver, sync_tracker_client):
     """Provide a tracker backed by the configured sync session fixture."""
     with sync_driver.session() as session:
         yield ChangeTracker(session, sync_tracker_client)
 
 
-def get_tracker_person_count(sync_driver: neo4j.Driver) -> int:
+def get_tracker_person_count(sync_driver) -> int:
     with sync_driver.session() as session:
         result = session.run("MATCH (person:TrackerPerson) RETURN person")
         return len(result.values())
 
 
-def get_tracker_relationship_count(sync_driver: neo4j.Driver) -> int:
+def get_tracker_relationship_count(sync_driver) -> int:
     with sync_driver.session() as session:
         result = session.run("MATCH ()-[relationship:TRACKER_KNOWS]->() RETURN relationship")
         return len(result.values())
 
 
-def get_tracker_person_tags(sync_driver: neo4j.Driver) -> list[list[str] | None]:
+def get_tracker_person_tags(sync_driver) -> list[list[str] | None]:
     with sync_driver.session() as session:
         result = session.run(
             "MATCH (person:TrackerPerson) " + "RETURN person.tags AS tags ORDER BY person.tags[0]"
@@ -62,7 +61,7 @@ def get_tracker_person_tags(sync_driver: neo4j.Driver) -> list[list[str] | None]
 
 
 def get_tracker_relationship_history(
-    sync_driver: neo4j.Driver,
+    sync_driver,
 ) -> list[list[int] | None]:
     with sync_driver.session() as session:
         result = session.run(
@@ -72,7 +71,7 @@ def get_tracker_relationship_history(
 
 
 def get_tracker_relationships(
-    sync_driver: neo4j.Driver,
+    sync_driver,
 ) -> list[tuple[list[str] | None, list[str] | None, list[int] | None]]:
     with sync_driver.session() as session:
         result = session.run(
@@ -87,9 +86,7 @@ def get_tracker_relationships(
 
 
 class TestSyncChangeTrackerAdd:
-    def test_add_unsaved_node_inserts_it_when_flushed(
-        self, sync_driver: neo4j.Driver, sync_change_tracker
-    ):
+    def test_add_unsaved_node_inserts_it_when_flushed(self, sync_driver, sync_change_tracker):
         node = TrackerPerson(name="Alice", tags=["tracked"])
 
         sync_change_tracker.add(node)
@@ -99,7 +96,7 @@ class TestSyncChangeTrackerAdd:
         assert get_tracker_person_tags(sync_driver) == [["tracked"]]
 
     def test_add_persisted_node_updates_it_when_flushed(
-        self, sync_driver: neo4j.Driver, sync_tracker_client, sync_change_tracker
+        self, sync_driver, sync_tracker_client, sync_change_tracker
     ):
         with sync_driver.session() as session:
             session.run("CREATE (:TrackerPerson {name: 'Alice', tags: ['before']})")
@@ -113,7 +110,7 @@ class TestSyncChangeTrackerAdd:
         assert get_tracker_person_tags(sync_driver) == [["after"]]
 
     def test_add_persisted_node_twice_applies_latest_change_once(
-        self, sync_driver: neo4j.Driver, sync_tracker_client, sync_change_tracker, caplog
+        self, sync_driver, sync_tracker_client, sync_change_tracker, caplog
     ):
         with sync_driver.session() as session:
             session.run("CREATE (:TrackerPerson {name: 'Alice', tags: ['before']})")
@@ -129,7 +126,7 @@ class TestSyncChangeTrackerAdd:
         assert "Entity has already been added to the change tracker" in caplog.text
 
     def test_add_node_with_cleared_element_id_cancels_pending_delete(
-        self, sync_driver: neo4j.Driver, sync_tracker_client, sync_change_tracker
+        self, sync_driver, sync_tracker_client, sync_change_tracker
     ):
         with sync_driver.session() as session:
             session.run("CREATE (:TrackerPerson {name: 'Alice', tags: ['alice']})")
@@ -144,7 +141,7 @@ class TestSyncChangeTrackerAdd:
         assert get_tracker_person_tags(sync_driver) == [["alice"]]
 
     def test_add_relationship_with_cleared_element_id_cancels_pending_delete(
-        self, sync_driver: neo4j.Driver, sync_tracker_client, sync_change_tracker
+        self, sync_driver, sync_tracker_client, sync_change_tracker
     ):
         with sync_driver.session() as session:
             session.run(
@@ -166,7 +163,7 @@ class TestSyncChangeTrackerAdd:
         assert get_tracker_relationships(sync_driver) == [(["start"], ["end"], [2024])]
 
     def test_add_unsaved_relationship_without_end_node_raises_and_flushes_no_data(
-        self, sync_driver: neo4j.Driver, sync_change_tracker
+        self, sync_driver, sync_change_tracker
     ):
         relationship = TrackerKnows(since=2024)
         start_node = TrackerPerson(name="Alice")
@@ -179,7 +176,7 @@ class TestSyncChangeTrackerAdd:
         assert get_tracker_relationship_count(sync_driver) == 0
 
     def test_add_unsaved_relationship_without_start_node_raises_and_flushes_no_data(
-        self, sync_driver: neo4j.Driver, sync_change_tracker
+        self, sync_driver, sync_change_tracker
     ):
         relationship = TrackerKnows(since=2024)
         end_node = TrackerPerson(name="Bob")
@@ -192,7 +189,7 @@ class TestSyncChangeTrackerAdd:
         assert get_tracker_relationship_count(sync_driver) == 0
 
     def test_add_unsaved_relationship_without_endpoints_raises_and_flushes_no_data(
-        self, sync_driver: neo4j.Driver, sync_change_tracker
+        self, sync_driver, sync_change_tracker
     ):
         relationship = TrackerKnows(since=2024)
         with pytest.raises(ChangeTrackerError, match="Both start and end nodes have to be defined"):
@@ -203,7 +200,7 @@ class TestSyncChangeTrackerAdd:
         assert get_tracker_relationship_count(sync_driver) == 0
 
     def test_add_unsaved_relationship_inserts_relationship_and_both_endpoints(
-        self, sync_driver: neo4j.Driver, sync_change_tracker
+        self, sync_driver, sync_change_tracker
     ):
         relationship = TrackerKnows(since=2024, history=[2024])
         start_node = TrackerPerson(name="Alice", tags=["start"])
@@ -219,7 +216,7 @@ class TestSyncChangeTrackerAdd:
 
 class TestSyncChangeTrackerNodeDeleteEmptyFlush:
     def test_flush_with_no_pending_node_deletions_preserves_nodes(
-        self, sync_driver: neo4j.Driver, sync_change_tracker
+        self, sync_driver, sync_change_tracker
     ):
         with sync_driver.session() as session:
             session.run("CREATE (:TrackerPerson {name: 'Alice', tags: ['alice']})")
@@ -233,7 +230,7 @@ class TestSyncChangeTrackerNodeDeleteEmptyFlush:
 class TestSyncChangeTrackerTransactionFlush:
     def test_flush_on_transaction_persists_node_and_relationship_on_commit(
         self,
-        sync_driver: neo4j.Driver,
+        sync_driver,
         sync_tracker_client,
     ):
         with sync_driver.session() as session:
@@ -268,7 +265,7 @@ class TestSyncChangeTrackerTransactionFlush:
 
     def test_flush_on_transaction_does_not_commit_before_caller_rolls_back(
         self,
-        sync_driver: neo4j.Driver,
+        sync_driver,
         sync_tracker_client,
     ):
         with sync_driver.session() as session:
@@ -290,7 +287,7 @@ class TestSyncChangeTrackerTransactionFlush:
 
 class TestSyncChangeTrackerNodeDelete:
     def test_remove_persisted_node_deletes_it_and_detaches_relationships(
-        self, sync_driver: neo4j.Driver, sync_tracker_client, sync_change_tracker
+        self, sync_driver, sync_tracker_client, sync_change_tracker
     ):
         with sync_driver.session() as session:
             session.run(
@@ -312,7 +309,7 @@ class TestSyncChangeTrackerNodeDelete:
         assert get_tracker_relationship_count(sync_driver) == 0
 
     def test_remove_multiple_persisted_nodes_deletes_all_of_them(
-        self, sync_driver: neo4j.Driver, sync_tracker_client, sync_change_tracker
+        self, sync_driver, sync_tracker_client, sync_change_tracker
     ):
         with sync_driver.session() as session:
             session.run(
@@ -332,7 +329,7 @@ class TestSyncChangeTrackerNodeDelete:
         assert get_tracker_person_tags(sync_driver) == []
 
     def test_remove_node_after_adding_it_still_deletes_it(
-        self, sync_driver: neo4j.Driver, sync_tracker_client, sync_change_tracker
+        self, sync_driver, sync_tracker_client, sync_change_tracker
     ):
         with sync_driver.session() as session:
             session.run("CREATE (:TrackerPerson {name: 'Alice', tags: ['alice']})")
@@ -346,7 +343,7 @@ class TestSyncChangeTrackerNodeDelete:
         assert get_tracker_person_tags(sync_driver) == []
 
     def test_flush_rejects_deleted_node_missing_element_id_and_preserves_database(
-        self, sync_driver: neo4j.Driver, sync_tracker_client, sync_change_tracker
+        self, sync_driver, sync_tracker_client, sync_change_tracker
     ):
         with sync_driver.session() as session:
             session.run("CREATE (:TrackerPerson {name: 'Alice', tags: ['alice']})")
@@ -364,7 +361,7 @@ class TestSyncChangeTrackerNodeDelete:
 
 class TestSyncChangeTrackerRelationshipDelete:
     def test_remove_persisted_relationship_deletes_edge_and_preserves_endpoints(
-        self, sync_driver: neo4j.Driver, sync_tracker_client, sync_change_tracker
+        self, sync_driver, sync_tracker_client, sync_change_tracker
     ):
         with sync_driver.session() as session:
             session.run(
@@ -384,7 +381,7 @@ class TestSyncChangeTrackerRelationshipDelete:
         assert get_tracker_person_tags(sync_driver) == [["end"], ["start"]]
 
     def test_flush_rejects_deleted_relationship_missing_element_id(
-        self, sync_driver: neo4j.Driver, sync_tracker_client, sync_change_tracker
+        self, sync_driver, sync_tracker_client, sync_change_tracker
     ):
         with sync_driver.session() as session:
             session.run(
@@ -407,7 +404,7 @@ class TestSyncChangeTrackerRelationshipDelete:
         assert get_tracker_relationship_history(sync_driver) == [[2024]]
 
     def test_flush_rejects_deleted_relationship_missing_numeric_id(
-        self, sync_driver: neo4j.Driver, sync_tracker_client, sync_change_tracker
+        self, sync_driver, sync_tracker_client, sync_change_tracker
     ):
         with sync_driver.session() as session:
             session.run(
@@ -430,7 +427,7 @@ class TestSyncChangeTrackerRelationshipDelete:
         assert get_tracker_relationship_history(sync_driver) == [[2024]]
 
     def test_remove_relationship_after_adding_persisted_edge_deletes_it(
-        self, sync_driver: neo4j.Driver, sync_tracker_client, sync_change_tracker
+        self, sync_driver, sync_tracker_client, sync_change_tracker
     ):
         with sync_driver.session() as session:
             session.run(
@@ -451,7 +448,7 @@ class TestSyncChangeTrackerRelationshipDelete:
         assert get_tracker_person_tags(sync_driver) == [["end"], ["start"]]
 
     def test_flush_rejects_deleted_node_missing_numeric_id_and_preserves_database(
-        self, sync_driver: neo4j.Driver, sync_tracker_client, sync_change_tracker
+        self, sync_driver, sync_tracker_client, sync_change_tracker
     ):
         with sync_driver.session() as session:
             session.run("CREATE (:TrackerPerson {name: 'Alice', tags: ['alice']})")
@@ -469,7 +466,7 @@ class TestSyncChangeTrackerRelationshipDelete:
 
 class TestSyncChangeTrackerAddRelationships:
     def test_add_unchanged_persisted_relationship_leaves_database_unchanged(
-        self, sync_driver: neo4j.Driver, sync_tracker_client, sync_change_tracker
+        self, sync_driver, sync_tracker_client, sync_change_tracker
     ):
         with sync_driver.session() as session:
             session.run(
@@ -490,7 +487,7 @@ class TestSyncChangeTrackerAddRelationships:
         assert get_tracker_relationships(sync_driver) == [(["start"], ["end"], [2024])]
 
     def test_add_relationship_omits_edge_when_unsaved_start_endpoint_is_removed(
-        self, sync_driver: neo4j.Driver, sync_change_tracker
+        self, sync_driver, sync_change_tracker
     ):
         start_node = TrackerPerson(name="Alice", tags=["start"])
         end_node = TrackerPerson(name="Bob", tags=["end"])
@@ -505,7 +502,7 @@ class TestSyncChangeTrackerAddRelationships:
         assert get_tracker_relationship_count(sync_driver) == 0
 
     def test_add_relationship_omits_edge_when_unsaved_end_endpoint_is_removed(
-        self, sync_driver: neo4j.Driver, sync_change_tracker
+        self, sync_driver, sync_change_tracker
     ):
         start_node = TrackerPerson(name="Alice", tags=["start"])
         end_node = TrackerPerson(name="Bob", tags=["end"])
@@ -520,7 +517,7 @@ class TestSyncChangeTrackerAddRelationships:
         assert get_tracker_relationship_count(sync_driver) == 0
 
     def test_add_relationship_omits_edge_when_persisted_start_endpoint_is_removed(
-        self, sync_driver: neo4j.Driver, sync_tracker_client, sync_change_tracker
+        self, sync_driver, sync_tracker_client, sync_change_tracker
     ):
         with sync_driver.session() as session:
             session.run("CREATE (:TrackerPerson {name: 'Alice', tags: ['persisted-start']})")
@@ -537,7 +534,7 @@ class TestSyncChangeTrackerAddRelationships:
         assert get_tracker_relationship_count(sync_driver) == 0
 
     def test_add_relationship_omits_edge_when_persisted_end_endpoint_is_removed(
-        self, sync_driver: neo4j.Driver, sync_tracker_client, sync_change_tracker
+        self, sync_driver, sync_tracker_client, sync_change_tracker
     ):
         with sync_driver.session() as session:
             session.run("CREATE (:TrackerPerson {name: 'Bob', tags: ['persisted-end']})")
@@ -554,7 +551,7 @@ class TestSyncChangeTrackerAddRelationships:
         assert get_tracker_relationship_count(sync_driver) == 0
 
     def test_add_unsaved_relationship_with_persisted_start_inserts_and_updates(
-        self, sync_driver: neo4j.Driver, sync_tracker_client, sync_change_tracker
+        self, sync_driver, sync_tracker_client, sync_change_tracker
     ):
         with sync_driver.session() as session:
             session.run("CREATE (:TrackerPerson {name: 'Alice', tags: ['persisted-start']})")
@@ -574,7 +571,7 @@ class TestSyncChangeTrackerAddRelationships:
         ]
 
     def test_add_unsaved_relationship_reuses_previously_tracked_persisted_start(
-        self, sync_driver: neo4j.Driver, sync_tracker_client, sync_change_tracker
+        self, sync_driver, sync_tracker_client, sync_change_tracker
     ):
         with sync_driver.session() as session:
             session.run("CREATE (:TrackerPerson {name: 'Alice', tags: ['before']})")
@@ -593,7 +590,7 @@ class TestSyncChangeTrackerAddRelationships:
         assert get_tracker_relationships(sync_driver) == [(["after"], ["new-end"], [2024])]
 
     def test_add_unsaved_relationship_with_persisted_end_inserts_and_updates(
-        self, sync_driver: neo4j.Driver, sync_tracker_client, sync_change_tracker
+        self, sync_driver, sync_tracker_client, sync_change_tracker
     ):
         with sync_driver.session() as session:
             session.run("CREATE (:TrackerPerson {name: 'Bob', tags: ['persisted-end']})")
@@ -613,7 +610,7 @@ class TestSyncChangeTrackerAddRelationships:
         ]
 
     def test_add_unsaved_relationship_reuses_previously_tracked_persisted_end(
-        self, sync_driver: neo4j.Driver, sync_tracker_client, sync_change_tracker
+        self, sync_driver, sync_tracker_client, sync_change_tracker
     ):
         with sync_driver.session() as session:
             session.run("CREATE (:TrackerPerson {name: 'Bob', tags: ['before']})")
@@ -632,7 +629,7 @@ class TestSyncChangeTrackerAddRelationships:
         assert get_tracker_relationships(sync_driver) == [(["new-start"], ["after"], [2024])]
 
     def test_add_unsaved_relationship_with_both_persisted_endpoints_inserts_relationship(
-        self, sync_driver: neo4j.Driver, sync_tracker_client, sync_change_tracker
+        self, sync_driver, sync_tracker_client, sync_change_tracker
     ):
         with sync_driver.session() as session:
             session.run(
@@ -654,7 +651,7 @@ class TestSyncChangeTrackerAddRelationships:
         assert get_tracker_relationships(sync_driver) == [(["start"], ["end"], [2024])]
 
     def test_add_unsaved_self_relationship_inserts_one_endpoint_and_self_edge(
-        self, sync_driver: neo4j.Driver, sync_change_tracker
+        self, sync_driver, sync_change_tracker
     ):
         node = TrackerPerson(name="Self", tags=["self"])
         relationship = TrackerKnows(since=2024, history=[2024])
@@ -668,7 +665,7 @@ class TestSyncChangeTrackerAddRelationships:
         assert get_tracker_relationships(sync_driver) == [(["self"], ["self"], [2024])]
 
     def test_add_persisted_relationship_updates_it_when_flushed(
-        self, sync_driver: neo4j.Driver, sync_tracker_client, sync_change_tracker
+        self, sync_driver, sync_tracker_client, sync_change_tracker
     ):
         with sync_driver.session() as session:
             session.run(
@@ -689,7 +686,7 @@ class TestSyncChangeTrackerAddRelationships:
         assert get_tracker_relationships(sync_driver) == [(["start"], ["end"], [2024])]
 
     def test_add_duplicate_unsaved_node_persists_only_one_copy(
-        self, sync_driver: neo4j.Driver, sync_change_tracker, caplog
+        self, sync_driver, sync_change_tracker, caplog
     ):
         node = TrackerPerson(name="Alice", tags=["tracked"])
 
@@ -702,7 +699,7 @@ class TestSyncChangeTrackerAddRelationships:
         assert get_tracker_person_tags(sync_driver) == [["tracked"]]
 
     def test_add_duplicate_unsaved_relationship_persists_only_one_copy(
-        self, sync_driver: neo4j.Driver, sync_change_tracker, caplog
+        self, sync_driver, sync_change_tracker, caplog
     ):
         relationship = TrackerKnows(since=2024, history=[2024])
         start_node = TrackerPerson(name="Alice", tags=["start"])
@@ -718,7 +715,7 @@ class TestSyncChangeTrackerAddRelationships:
         assert "Entity has already been added to the change tracker" in caplog.text
 
     def test_add_distinct_relationships_reuses_persisted_endpoints(
-        self, sync_driver: neo4j.Driver, sync_change_tracker
+        self, sync_driver, sync_change_tracker
     ):
         start_node = TrackerPerson(name="Alice")
         end_node = TrackerPerson(name="Bob")
@@ -739,7 +736,7 @@ class TestSyncChangeTrackerAddRelationships:
         ]
 
     def test_add_duplicate_persisted_relationship_updates_it_once(
-        self, sync_driver: neo4j.Driver, sync_tracker_client, sync_change_tracker, caplog
+        self, sync_driver, sync_tracker_client, sync_change_tracker, caplog
     ):
         with sync_driver.session() as session:
             session.run(
@@ -762,7 +759,7 @@ class TestSyncChangeTrackerAddRelationships:
         assert "Entity has already been added to the change tracker" in caplog.text
 
     def test_add_after_removing_persisted_node_restores_update(
-        self, sync_driver: neo4j.Driver, sync_tracker_client, sync_change_tracker
+        self, sync_driver, sync_tracker_client, sync_change_tracker
     ):
         with sync_driver.session() as session:
             session.run("CREATE (:TrackerPerson {name: 'Alice', tags: ['before']})")
@@ -777,7 +774,7 @@ class TestSyncChangeTrackerAddRelationships:
         assert get_tracker_person_tags(sync_driver) == [["after"]]
 
     def test_add_after_removing_persisted_relationship_restores_update(
-        self, sync_driver: neo4j.Driver, sync_tracker_client, sync_change_tracker
+        self, sync_driver, sync_tracker_client, sync_change_tracker
     ):
         with sync_driver.session() as session:
             session.run(
@@ -799,7 +796,7 @@ class TestSyncChangeTrackerAddRelationships:
         assert get_tracker_relationships(sync_driver) == [(["start"], ["end"], [2024])]
 
     def test_add_after_removing_unsaved_node_inserts_it_when_flushed(
-        self, sync_driver: neo4j.Driver, sync_change_tracker
+        self, sync_driver, sync_change_tracker
     ):
         node = TrackerPerson(name="Alice", tags=["tracked"])
 
@@ -812,7 +809,7 @@ class TestSyncChangeTrackerAddRelationships:
         assert get_tracker_person_tags(sync_driver) == [["tracked"]]
 
     def test_add_after_removing_unsaved_relationship_inserts_it_when_flushed(
-        self, sync_driver: neo4j.Driver, sync_change_tracker
+        self, sync_driver, sync_change_tracker
     ):
         relationship = TrackerKnows(since=2024, history=[2024])
         start_node = TrackerPerson(name="Alice", tags=["start"])

@@ -4,7 +4,6 @@ from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import AsyncMock
 
-import neo4j
 import pytest
 
 from loomi._async.client import AsyncClient
@@ -21,14 +20,14 @@ class WrapperPerson(Node):
 
 
 @pytest.fixture
-async def async_wrapper_client(async_driver: neo4j.AsyncDriver):
+async def async_wrapper_client(async_driver):
     client = AsyncClient(async_driver)
     await client.initialize()
     client.register(WrapperPerson)
     return client
 
 
-async def get_wrapper_person_tags(async_driver: neo4j.AsyncDriver) -> list[list[str]]:
+async def get_wrapper_person_tags(async_driver) -> list[list[str]]:
     async with async_driver.session() as session:
         result = await session.run(
             "MATCH (person:WrapperPerson) RETURN person.tags AS tags ORDER BY person.tags[0]"
@@ -38,7 +37,7 @@ async def get_wrapper_person_tags(async_driver: neo4j.AsyncDriver) -> list[list[
 
 class TestAsyncSession:
     async def test_session_context_manager_runs_and_transforms_database_results(
-        self, async_driver: neo4j.AsyncDriver, async_wrapper_client
+        self, async_driver, async_wrapper_client
     ):
         async with async_wrapper_client.session() as session:
             assert isinstance(session, AsyncSession)
@@ -49,7 +48,7 @@ class TestAsyncSession:
         assert record["answer"] == 42
 
     async def test_session_run_tracking_persists_transformed_node_on_flush(
-        self, async_driver: neo4j.AsyncDriver, async_wrapper_client
+        self, async_driver, async_wrapper_client
     ):
         async with async_driver.session() as native_session:
             await native_session.run("CREATE (:WrapperPerson {name: 'Alice', tags: ['before']})")
@@ -65,7 +64,7 @@ class TestAsyncSession:
         assert await get_wrapper_person_tags(async_driver) == [["after"]]
 
     async def test_session_begin_transaction_returns_wrapper_and_commits_on_context_exit(
-        self, async_driver: neo4j.AsyncDriver, async_wrapper_client
+        self, async_driver, async_wrapper_client
     ):
         async with async_wrapper_client.session() as session:
             async with await session.begin_transaction(metadata={"source": "test"}) as tx:
@@ -81,7 +80,7 @@ class TestAsyncSession:
         assert await get_wrapper_person_tags(async_driver) == [["transaction"]]
 
     async def test_session_begin_transaction_forwards_timeout(
-        self, async_driver: neo4j.AsyncDriver, async_wrapper_client
+        self, async_driver, async_wrapper_client
     ):
         async with async_wrapper_client.session() as session:
             transaction = await session.begin_transaction(timeout=30.0)

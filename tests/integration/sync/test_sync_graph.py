@@ -26,14 +26,14 @@ class GraphKnows(Relationship):
 
 
 @pytest.fixture
-def sync_graph_client(sync_driver: neo4j.Driver):
+def sync_graph_client(sync_driver):
     client = Client(sync_driver)
     client.initialize()
     client.register(GraphPerson, GraphKnows)
     return client
 
 
-def create_graph_fixture(sync_driver: neo4j.Driver) -> None:
+def create_graph_fixture(sync_driver) -> None:
     with sync_driver.session() as session:
         session.run(
             """
@@ -69,7 +69,7 @@ class TestSyncGraph:
         assert graph.relationship_type("UNREGISTERED") is relationship_type
 
     def test_result_graph_exposes_transformed_node_relationship_and_registered_type(
-        self, sync_driver: neo4j.Driver, sync_graph_client
+        self, sync_driver, sync_graph_client
     ):
         create_graph_fixture(sync_driver)
 
@@ -83,7 +83,7 @@ class TestSyncGraph:
         assert graph.relationship_type("GRAPH_KNOWS") is GraphKnows
 
     def test_pickled_graph_restores_nodes_relationships_and_relationship_type(
-        self, sync_driver: neo4j.Driver, sync_graph_client
+        self, sync_driver, sync_graph_client
     ):
         create_graph_fixture(sync_driver)
         graph = fetch_transformed_graph(sync_graph_client)

@@ -9,11 +9,9 @@ import pytest
 
 from loomi._sync.client import Client
 from loomi._sync.session import Session
-from loomi.exceptions import ClientError, QueryError, SerializationError
+from loomi.exceptions import ClientError, SerializationError
 from loomi.graph.node import Node
 from loomi.graph.relationship import Relationship
-from loomi.query_api.constants import OrderBy
-from tests.conftest import DriverSpec
 
 
 class Person(Node):
@@ -32,7 +30,7 @@ class Knows(Relationship):
 
 class TestSyncClientInitialize:
     def test_initialize_sets_server_type_and_version_for_configured_driver(
-        self, sync_driver: neo4j.Driver, driver_spec: DriverSpec
+        self, sync_driver, driver_spec
     ):
         client = Client(sync_driver)
 
@@ -79,9 +77,7 @@ class TestSyncClientInitialize:
 
 
 class TestSyncClientSession:
-    def test_session_returns_native_and_loomi_sessions_after_initialization(
-        self, sync_driver: neo4j.Driver
-    ):
+    def test_session_returns_native_and_loomi_sessions_after_initialization(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
 
@@ -91,9 +87,7 @@ class TestSyncClientSession:
         assert isinstance(native_session, neo4j.Session)
         assert isinstance(loomi_session, Session)
 
-    def test_session_raises_client_error_before_client_is_initialized(
-        self, sync_driver: neo4j.Driver
-    ):
+    def test_session_raises_client_error_before_client_is_initialized(self, sync_driver):
         client = Client(sync_driver)
 
         with pytest.raises(
@@ -104,7 +98,7 @@ class TestSyncClientSession:
 
 class TestSyncClientRegistration:
     def test_register_skips_invalid_model_and_continues_with_valid_models(
-        self, sync_driver: neo4j.Driver, caplog
+        self, sync_driver, caplog
     ):
         client = Client(sync_driver)
 
@@ -121,16 +115,14 @@ class TestSyncClientRegistration:
         assert len(results) == 1
         assert isinstance(results[0], Person)
 
-    def test_relationship_type_to_model_returns_none_when_not_strict(
-        self, sync_driver: neo4j.Driver, caplog
-    ):
+    def test_relationship_type_to_model_returns_none_when_not_strict(self, sync_driver, caplog):
         client = Client(sync_driver, strict_transformations=False)
         client.initialize()
 
         assert client._relationship_type_to_model("UNREGISTERED") is None
         assert "No model with type UNREGISTERED registered" in caplog.text
 
-    def test_relationship_type_to_model_raises_when_strict(self, sync_driver: neo4j.Driver):
+    def test_relationship_type_to_model_raises_when_strict(self, sync_driver):
         client = Client(sync_driver)
         client.initialize()
 

@@ -1,6 +1,5 @@
 # pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, missing-function-docstring, unused-argument, line-too-long, unused-variable
 
-import neo4j
 import pytest
 
 from loomi._async.client import AsyncClient
@@ -24,7 +23,7 @@ class Knows(Relationship):
 
 
 class TestAsyncClientUpdate:
-    async def test_update_where_filters_node_updates(self, async_driver: neo4j.AsyncDriver):
+    async def test_update_where_filters_node_updates(self, async_driver):
         client = AsyncClient(async_driver)
         await client.initialize()
         client.register(Person)
@@ -51,7 +50,7 @@ class TestAsyncClientUpdate:
 
         assert {row["name"]: row["active"] for row in data} == {"Alice": False, "Bob": True}
 
-    async def test_update_where_filters_relationship_updates(self, async_driver: neo4j.AsyncDriver):
+    async def test_update_where_filters_relationship_updates(self, async_driver):
         client = AsyncClient(async_driver)
         await client.initialize()
         client.register(Person, Knows)
@@ -81,7 +80,7 @@ class TestAsyncClientUpdate:
 
         assert sorted(row["since"] for row in data) == [2023, 2025]
 
-    async def test_update_set_assigns_literal_to_node_field(self, async_driver: neo4j.AsyncDriver):
+    async def test_update_set_assigns_literal_to_node_field(self, async_driver):
         client = AsyncClient(async_driver)
         await client.initialize()
         client.register(Person)
@@ -105,9 +104,7 @@ class TestAsyncClientUpdate:
 
         assert data == [{"active": False}, {"active": False}]
 
-    async def test_update_set_assigns_literal_to_relationship_field(
-        self, async_driver: neo4j.AsyncDriver
-    ):
+    async def test_update_set_assigns_literal_to_relationship_field(self, async_driver):
         client = AsyncClient(async_driver)
         await client.initialize()
         client.register(Person, Knows)
@@ -134,9 +131,7 @@ class TestAsyncClientUpdate:
 
         assert data == [{"since": 2025}, {"since": 2025}]
 
-    async def test_update_set_accepts_expression_for_node_field(
-        self, async_driver: neo4j.AsyncDriver
-    ):
+    async def test_update_set_accepts_expression_for_node_field(self, async_driver):
         client = AsyncClient(async_driver)
         await client.initialize()
         client.register(Person)
@@ -160,9 +155,7 @@ class TestAsyncClientUpdate:
 
         assert data == [{"age": 40}, {"age": 50}]
 
-    async def test_update_set_accepts_expression_for_relationship_field(
-        self, async_driver: neo4j.AsyncDriver
-    ):
+    async def test_update_set_accepts_expression_for_relationship_field(self, async_driver):
         client = AsyncClient(async_driver)
         await client.initialize()
         client.register(Person, Knows)
@@ -187,9 +180,7 @@ class TestAsyncClientUpdate:
 
         assert data == [{"since": 2024}]
 
-    async def test_update_set_accepts_database_function_for_node_field(
-        self, async_driver: neo4j.AsyncDriver
-    ):
+    async def test_update_set_accepts_database_function_for_node_field(self, async_driver):
         from loomi.query_api.functions.transformation import to_upper
 
         client = AsyncClient(async_driver)
@@ -214,9 +205,7 @@ class TestAsyncClientUpdate:
 
         assert data == [{"name": "ALICE"}]
 
-    async def test_update_set_accepts_database_function_for_relationship_field(
-        self, async_driver: neo4j.AsyncDriver
-    ):
+    async def test_update_set_accepts_database_function_for_relationship_field(self, async_driver):
         from loomi.query_api.functions.transformation import to_upper
 
         class KnowsWithStatus(Relationship):
@@ -253,7 +242,7 @@ class TestAsyncClientUpdate:
         assert data == [{"status": "FRIEND"}]
 
     async def test_update_set_overwrites_previous_value_for_same_node_field(
-        self, async_driver: neo4j.AsyncDriver, caplog: pytest.LogCaptureFixture
+        self, async_driver, caplog: pytest.LogCaptureFixture
     ):
         client = AsyncClient(async_driver)
         await client.initialize()
@@ -276,9 +265,7 @@ class TestAsyncClientUpdate:
 
         assert data == [{"active": False}]
 
-    async def test_update_set_rejects_field_from_different_model(
-        self, async_driver: neo4j.AsyncDriver
-    ):
+    async def test_update_set_rejects_field_from_different_model(self, async_driver):
         client = AsyncClient(async_driver)
         await client.initialize()
         client.register(Person, Knows)
@@ -286,9 +273,7 @@ class TestAsyncClientUpdate:
         with pytest.raises(QueryError, match="Expected a valid field of model Person"):
             client.update(Person).set_(Knows.since, 2025)
 
-    async def test_update_execute_raises_when_no_fields_are_set(
-        self, async_driver: neo4j.AsyncDriver
-    ):
+    async def test_update_execute_raises_when_no_fields_are_set(self, async_driver):
         client = AsyncClient(async_driver)
         await client.initialize()
         client.register(Person)
@@ -296,7 +281,7 @@ class TestAsyncClientUpdate:
         with pytest.raises(QueryError, match="At least one update expression must be defined"):
             await client.update(Person).execute()
 
-    async def test_update_updates_nodes_using_transaction(self, async_driver: neo4j.AsyncDriver):
+    async def test_update_updates_nodes_using_transaction(self, async_driver):
         client = AsyncClient(async_driver)
         await client.initialize()
         client.register(Person)
@@ -318,9 +303,7 @@ class TestAsyncClientUpdate:
 
         assert data == [{"age": 31}]
 
-    async def test_update_updates_relationships_using_transaction(
-        self, async_driver: neo4j.AsyncDriver
-    ):
+    async def test_update_updates_relationships_using_transaction(self, async_driver):
         client = AsyncClient(async_driver)
         await client.initialize()
         client.register(Person, Knows)

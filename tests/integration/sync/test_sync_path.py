@@ -2,7 +2,6 @@
 
 from typing import cast
 
-import neo4j
 import pytest
 
 from loomi._sync.client import Client
@@ -26,14 +25,14 @@ class PathKnows(Relationship):
 
 
 @pytest.fixture
-def sync_path_client(sync_driver: neo4j.Driver):
+def sync_path_client(sync_driver):
     client = Client(sync_driver)
     client.initialize()
     client.register(PathPerson, PathKnows)
     return client
 
 
-def create_path_fixture(sync_driver: neo4j.Driver) -> None:
+def create_path_fixture(sync_driver) -> None:
     with sync_driver.session() as session:
         session.run(
             """
@@ -55,9 +54,7 @@ def fetch_path(sync_path_client) -> Path:
 
 
 class TestSyncPath:
-    def test_nodes_property_returns_transformed_path_nodes(
-        self, sync_driver: neo4j.Driver, sync_path_client
-    ):
+    def test_nodes_property_returns_transformed_path_nodes(self, sync_driver, sync_path_client):
         create_path_fixture(sync_driver)
 
         path = fetch_path(sync_path_client)
@@ -65,7 +62,7 @@ class TestSyncPath:
         assert [cast(PathPerson, node).name for node in path.nodes] == ["Alice", "Bob"]
         assert all(isinstance(node, PathPerson) for node in path.nodes)
 
-    def test_start_node_returns_first_path_node(self, sync_driver: neo4j.Driver, sync_path_client):
+    def test_start_node_returns_first_path_node(self, sync_driver, sync_path_client):
         create_path_fixture(sync_driver)
 
         path = fetch_path(sync_path_client)
@@ -73,7 +70,7 @@ class TestSyncPath:
         assert isinstance(path.start_node, PathPerson)
         assert path.start_node.name == "Alice"
 
-    def test_end_node_returns_last_path_node(self, sync_driver: neo4j.Driver, sync_path_client):
+    def test_end_node_returns_last_path_node(self, sync_driver, sync_path_client):
         create_path_fixture(sync_driver)
 
         path = fetch_path(sync_path_client)
@@ -82,7 +79,7 @@ class TestSyncPath:
         assert path.end_node.name == "Bob"
 
     def test_relationships_property_returns_transformed_relationships(
-        self, sync_driver: neo4j.Driver, sync_path_client
+        self, sync_driver, sync_path_client
     ):
         create_path_fixture(sync_driver)
 
@@ -92,14 +89,14 @@ class TestSyncPath:
         assert isinstance(path.relationships[0], PathKnows)
         assert path.relationships[0].history == [2024]
 
-    def test_len_returns_number_of_relationships(self, sync_driver: neo4j.Driver, sync_path_client):
+    def test_len_returns_number_of_relationships(self, sync_driver, sync_path_client):
         create_path_fixture(sync_driver)
 
         path = fetch_path(sync_path_client)
 
         assert len(path) == 1
 
-    def test_iteration_yields_path_relationships(self, sync_driver: neo4j.Driver, sync_path_client):
+    def test_iteration_yields_path_relationships(self, sync_driver, sync_path_client):
         create_path_fixture(sync_driver)
 
         path = fetch_path(sync_path_client)
@@ -107,9 +104,7 @@ class TestSyncPath:
         assert list(path) == list(path.relationships)
         assert all(isinstance(relationship, PathKnows) for relationship in path)
 
-    def test_repr_includes_endpoints_and_path_size(
-        self, sync_driver: neo4j.Driver, sync_path_client
-    ):
+    def test_repr_includes_endpoints_and_path_size(self, sync_driver, sync_path_client):
         create_path_fixture(sync_driver)
 
         path = fetch_path(sync_path_client)
@@ -146,7 +141,7 @@ class TestSyncPath:
         assert isinstance(hash(path), int)
 
     def test_graph_property_returns_graph_with_transformed_entities(
-        self, sync_driver: neo4j.Driver, sync_path_client
+        self, sync_driver, sync_path_client
     ):
         create_path_fixture(sync_driver)
 
@@ -160,9 +155,7 @@ class TestSyncPath:
         assert all(isinstance(relationship, PathKnows) for relationship in graph.relationships)
         assert graph.relationship_type("PATH_KNOWS") is PathKnows
 
-    def test_zero_length_path_has_same_start_and_end_node(
-        self, sync_driver: neo4j.Driver, sync_path_client
-    ):
+    def test_zero_length_path_has_same_start_and_end_node(self, sync_driver, sync_path_client):
         with sync_driver.session() as session:
             session.run("CREATE (:PathPerson {name: 'Alice', tags: ['alice']})")
             result = session.run("MATCH route=(person:PathPerson)-[*0..0]->(person) RETURN route")
