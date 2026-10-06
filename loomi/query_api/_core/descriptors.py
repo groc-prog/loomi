@@ -147,10 +147,15 @@ class FieldDescriptor(CompilableDescriptor):
         inner_type = Any
         if origin in (list, List, Union):
             inner_type = next((a for a in args if not isinstance(a, type(None))), Any)
-        elif origin in (dict, Dict) and len(args) > 1:
-            inner_type = args[1] if len(args) > 1 else Any
+            return FieldDescriptor(f"{self._full_path}[{index}]", inner_type, self._model_type)
 
-        return FieldDescriptor(f"{self._full_path}[{index}]", inner_type, self._model_type)
+        if origin in (dict, Dict) and len(args) > 1:
+            inner_type = args[1] if len(args) > 1 else Any
+            return FieldDescriptor(f"{self._full_path}.{index}", inner_type, self._model_type)
+
+        # In some cases the inner type can not be determined (e.g. Dict[str, Any])
+        # In such cases, we just assume that a simple property access should be performed
+        return FieldDescriptor(f"{self._full_path}.{index}", Any, self._model_type)
 
     def _compile_descriptor(self, ctx: CompilationContext) -> CompiledDescriptor:
         logger.debug(
