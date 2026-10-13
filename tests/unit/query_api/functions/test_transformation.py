@@ -11,6 +11,7 @@ from loomi.query_api._core.protocols import CompiledDescriptor
 from loomi.query_api.functions.transformation import (
     abs_,
     ceil,
+    create_db_function,
     floor,
     ltrim,
     round_,
@@ -134,3 +135,16 @@ class TestToUpper:
         assert compiled.variable_path == "toUpper({variable}.name)"
         assert compiled.variable == "v0"
         assert len(compilation_context.get_parameters()) == 0
+
+
+class TestCreateDbFunction:
+    def test_custom_db_function(self, compilation_context):
+        db_function_factory = create_db_function(
+            "substring({variable_or_parameter}, {arg0}, {arg1})"
+        )
+        db_function = db_function_factory(Person.name, [2, 3])
+        compiled = cast(CompiledDescriptor, db_function._compile_db_function(compilation_context))
+
+        assert compiled.variable_path == "substring({variable}.name, $p0, $p1)"
+        assert compiled.variable == "v0"
+        assert compilation_context.get_parameters() == {"p0": 2, "p1": 3}

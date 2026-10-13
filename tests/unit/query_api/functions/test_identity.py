@@ -11,9 +11,7 @@ from loomi.query_api._core.protocols import CompiledDescriptor
 from loomi.query_api.functions.identity import element_id, id_
 
 
-class Person(Node):
-    name: str
-    age: int
+class Person(Node): ...
 
 
 @pytest.fixture
@@ -33,6 +31,17 @@ class TestElementId:
         assert compiled.variable_path == "elementId({variable})"
         assert compiled.variable == "v0"
         assert len(compilation_context.get_parameters()) == 0
+
+    def test_transforms_to_id_entity_descriptor_when_using_memgraph(self):
+        ctx = CompilationContext(ServerType.MEMGRAPH)
+        ctx.add_model(Person)
+
+        expression = element_id(Person)
+        compiled = cast(CompiledDescriptor, expression._compile_descriptor(ctx))
+
+        assert compiled.variable_path == "id({variable})"
+        assert compiled.variable == "v0"
+        assert len(ctx.get_parameters()) == 0
 
 
 class TestId:

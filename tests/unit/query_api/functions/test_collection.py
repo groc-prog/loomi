@@ -1,9 +1,8 @@
 # pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, missing-function-docstring, unused-argument, line-too-long, unused-variable
 
-from typing import List, cast
+from typing import List
 
 import pytest
-from pydantic import BaseModel
 
 from loomi.constants import ServerType
 from loomi.exceptions import QueryError

@@ -1,15 +1,17 @@
 # pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, missing-function-docstring, unused-argument, line-too-long, unused-variable
 
 import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, cast
 
 import pytest
 from pydantic import BaseModel
 
+from loomi.constants import ServerType
 from loomi.exceptions import ModelError
 from loomi.graph.node import Node
 from loomi.query_api._core.context import CompilationContext
 from loomi.query_api._core.descriptors import FieldDescriptor
+from loomi.query_api._core.expressions import Expression
 from loomi.query_api.functions.collection import all_, any_
 
 
@@ -50,6 +52,143 @@ class ListPropertyPerson(Node):
 class DictPropertyPerson(Node):
     stages: Dict[str, bool]
     metadata: Dict[str, Any]
+
+
+@pytest.fixture
+def compilation_context():
+    """Provide an initialized compilation context for query API test models."""
+    ctx = CompilationContext(ServerType.NEO4J)
+    ctx.add_model(SimplePerson)
+
+    return ctx
+
+
+class TestFieldDescriptorMagicMethods:
+    def test_field_descriptor_eq_magic_method(self, compilation_context):
+        expression = SimplePerson.name == "Bob"
+        compiled = cast(Expression, expression)._compile_expression(compilation_context)
+
+        assert compiled.to_query_string() == "v0.name = $p0"
+        assert compilation_context.get_parameters() == {"p0": "Bob"}
+
+    def test_field_descriptor_ne_magic_method(self, compilation_context):
+        expression = SimplePerson.name != "Bob"
+        compiled = cast(Expression, expression)._compile_expression(compilation_context)
+
+        assert compiled.to_query_string() == "v0.name <> $p0"
+        assert compilation_context.get_parameters() == {"p0": "Bob"}
+
+    def test_field_descriptor_gt_magic_method(self, compilation_context):
+        expression = SimplePerson.age > 20
+        compiled = cast(Expression, expression)._compile_expression(compilation_context)
+
+        assert compiled.to_query_string() == "v0.age > $p0"
+        assert compilation_context.get_parameters() == {"p0": 20}
+
+    def test_field_descriptor_ge_magic_method(self, compilation_context):
+        expression = SimplePerson.age >= 20
+        compiled = cast(Expression, expression)._compile_expression(compilation_context)
+
+        assert compiled.to_query_string() == "v0.age >= $p0"
+        assert compilation_context.get_parameters() == {"p0": 20}
+
+    def test_field_descriptor_lt_magic_method(self, compilation_context):
+        expression = SimplePerson.age < 20
+        compiled = cast(Expression, expression)._compile_expression(compilation_context)
+
+        assert compiled.to_query_string() == "v0.age < $p0"
+        assert compilation_context.get_parameters() == {"p0": 20}
+
+    def test_field_descriptor_le_magic_method(self, compilation_context):
+        expression = SimplePerson.age <= 20
+        compiled = cast(Expression, expression)._compile_expression(compilation_context)
+
+        assert compiled.to_query_string() == "v0.age <= $p0"
+        assert compilation_context.get_parameters() == {"p0": 20}
+
+    def test_field_descriptor_add_magic_method(self, compilation_context):
+        expression = SimplePerson.age + 5
+        compiled = cast(Expression, expression)._compile_expression(compilation_context)
+
+        assert compiled.to_query_string() == "v0.age + $p0"
+        assert compilation_context.get_parameters() == {"p0": 5}
+
+    def test_field_descriptor_radd_magic_method(self, compilation_context):
+        expression = 5 + SimplePerson.age
+        compiled = cast(Expression, expression)._compile_expression(compilation_context)
+
+        assert compiled.to_query_string() == "$p0 + v0.age"
+        assert compilation_context.get_parameters() == {"p0": 5}
+
+    def test_field_descriptor_sub_magic_method(self, compilation_context):
+        expression = SimplePerson.age - 5
+        compiled = cast(Expression, expression)._compile_expression(compilation_context)
+
+        assert compiled.to_query_string() == "v0.age - $p0"
+        assert compilation_context.get_parameters() == {"p0": 5}
+
+    def test_field_descriptor_rsub_magic_method(self, compilation_context):
+        expression = 5 - SimplePerson.age
+        compiled = cast(Expression, expression)._compile_expression(compilation_context)
+
+        assert compiled.to_query_string() == "$p0 - v0.age"
+        assert compilation_context.get_parameters() == {"p0": 5}
+
+    def test_field_descriptor_mul_magic_method(self, compilation_context):
+        expression = SimplePerson.age * 5
+        compiled = cast(Expression, expression)._compile_expression(compilation_context)
+
+        assert compiled.to_query_string() == "v0.age * $p0"
+        assert compilation_context.get_parameters() == {"p0": 5}
+
+    def test_field_descriptor_rmul_magic_method(self, compilation_context):
+        expression = 5 * SimplePerson.age
+        compiled = cast(Expression, expression)._compile_expression(compilation_context)
+
+        assert compiled.to_query_string() == "$p0 * v0.age"
+        assert compilation_context.get_parameters() == {"p0": 5}
+
+    def test_field_descriptor_truediv_magic_method(self, compilation_context):
+        expression = SimplePerson.age / 5
+        compiled = cast(Expression, expression)._compile_expression(compilation_context)
+
+        assert compiled.to_query_string() == "v0.age / $p0"
+        assert compilation_context.get_parameters() == {"p0": 5}
+
+    def test_field_descriptor_rtruediv_magic_method(self, compilation_context):
+        expression = 5 / SimplePerson.age
+        compiled = cast(Expression, expression)._compile_expression(compilation_context)
+
+        assert compiled.to_query_string() == "$p0 / v0.age"
+        assert compilation_context.get_parameters() == {"p0": 5}
+
+    def test_field_descriptor_mod_magic_method(self, compilation_context):
+        expression = SimplePerson.age % 5
+        compiled = cast(Expression, expression)._compile_expression(compilation_context)
+
+        assert compiled.to_query_string() == "v0.age % $p0"
+        assert compilation_context.get_parameters() == {"p0": 5}
+
+    def test_field_descriptor_rmod_magic_method(self, compilation_context):
+        expression = 5 % SimplePerson.age
+        compiled = cast(Expression, expression)._compile_expression(compilation_context)
+
+        assert compiled.to_query_string() == "$p0 % v0.age"
+        assert compilation_context.get_parameters() == {"p0": 5}
+
+    def test_field_descriptor_pow_magic_method(self, compilation_context):
+        expression = SimplePerson.age**5
+        compiled = cast(Expression, expression)._compile_expression(compilation_context)
+
+        assert compiled.to_query_string() == "v0.age ^ $p0"
+        assert compilation_context.get_parameters() == {"p0": 5}
+
+    def test_field_descriptor_rpow_magic_method(self, compilation_context):
+        expression = 5**SimplePerson.age
+        compiled = cast(Expression, expression)._compile_expression(compilation_context)
+
+        assert compiled.to_query_string() == "$p0 ^ v0.age"
+        assert compilation_context.get_parameters() == {"p0": 5}
 
 
 class TestFieldDescriptor:
