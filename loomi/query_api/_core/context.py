@@ -4,7 +4,6 @@ from loomi._core.types import QueryModelType
 from loomi._logger import logger
 from loomi.constants import ServerType
 from loomi.exceptions import QueryError
-from loomi.query_api.alias import AliasedModel
 
 
 class CompilationContext:
@@ -58,18 +57,9 @@ class CompilationContext:
         Raises:
             QueryError: If the variable used for the model already exists.
         """
-        logger.debug(
-            "Registering %s with expression context",
-            (
-                f"alias {model._alias}"
-                if isinstance(model, AliasedModel)
-                else f"model {model.__name__}"
-            ),
-        )
+        logger.debug("Registering %s with expression context", f"model {model.__name__}")
 
-        variable = (
-            model._alias if isinstance(model, AliasedModel) else f"v{self.__variable_counter}"
-        )
+        variable = f"v{self.__variable_counter}"
         if variable in set(self.__models_to_vars.values()):
             logger.warning(
                 "Variable %s has already been defined. If you are using a aliased model "
