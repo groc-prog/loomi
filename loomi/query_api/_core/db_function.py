@@ -42,7 +42,7 @@ class DbFunction(CompilableDbFunction):
         if isinstance(self.wrapped, CompilableDescriptor):
             compiled_descriptor = self.wrapped._compile_descriptor(ctx)
             compiled_variable_path = template_to_compile.format(
-                variable_or_parameter=compiled_descriptor.variable_path
+                variable_or_parameter=compiled_descriptor.variable_path, **parameter_map
             )
 
             return CompiledDescriptor(
@@ -59,7 +59,8 @@ class DbFunction(CompilableDbFunction):
 
             if isinstance(compiled_db_function_or_descriptor, CompiledDescriptor):
                 compiled_variable_path = template_to_compile.format(
-                    variable_or_parameter=compiled_db_function_or_descriptor.variable_path
+                    variable_or_parameter=compiled_db_function_or_descriptor.variable_path,
+                    **parameter_map,
                 )
 
                 return CompiledDescriptor(
@@ -69,12 +70,12 @@ class DbFunction(CompilableDbFunction):
                     full_path=compiled_db_function_or_descriptor.full_path,
                 )
 
-            compiled_template = template_to_compile.format(
-                variable_or_parameter="{variable_or_value}", **parameter_map
+            compiled_template = compiled_db_function_or_descriptor.full_template.format(
+                variable_or_value="{variable_or_value}"
             )
             return CompiledDbFunction(
-                full_template=compiled_db_function_or_descriptor.full_template.format(
-                    variable_or_value=compiled_template
+                full_template=template_to_compile.format(
+                    variable_or_parameter=compiled_template, **parameter_map
                 ),
                 inserted_parameter=compiled_db_function_or_descriptor.inserted_parameter,
             )
