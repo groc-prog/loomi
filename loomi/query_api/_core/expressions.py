@@ -184,7 +184,13 @@ class CompoundExpression:
 
         for expression in self.expressions:
             if isinstance(expression, CompoundExpression):
-                query_strings.append(expression.to_query_string(ctx))
+                compiled_compound_expression = expression.to_query_string(ctx)
+
+                if expression.operator != self.operator:
+                    query_strings.append(f"({compiled_compound_expression})")
+                else:
+                    query_strings.append(compiled_compound_expression)
+
                 continue
 
             compiled_expression = expression._compile_expression(ctx)

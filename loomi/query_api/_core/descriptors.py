@@ -185,6 +185,8 @@ class FieldDescriptor(CompilableDescriptor):
         # template in reverse order (from inner-most to outer-most)
         operators = [(index, part) for index, part in enumerate(parts) if part in list_operators]
 
+        # The variable ID defined here will not always be present in the final query since compound queries
+        # can be optimized later on, resulting in a variable being omitted
         start_var_id = ctx.get_variable_count()
         ctx.force_increment_variable_counter(len(operators))
 
