@@ -9,17 +9,6 @@ If you are new to loomi, consider checking out the [quickstart guide](../getting
 
 ---
 
-## Getting started
-
-If you are new to the project, start here to get up and running right away
-
-- **[Quickstart guide](../getting-started.md):** Get up and running with a basic working example in 5 minutes.
-- **[Async & sync clients](./clients.md):** How to get started with loomi's clients.
-- **[Models](./models.md):** How to define and configure your models.
-- **[Change tracker](./change-tracker.md):** How to define and configure your models.
-
----
-
 ## Core guides
 
 Explore the main components used in most common tasks:
@@ -34,7 +23,7 @@ Explore the main components used in most common tasks:
 
 Once you got the basics down, check these advanced features & use cases:
 
-- **[Query API](./query-api.md):** How to build queries and filters without writing your Cypher.
+- **[Query API](./query-api.md):** How to build queries and filters without writing your own Cypher queries.
 - **[Change tracker](./change-tracker.md):** How to automatically track new, updated or deleted entities.
 - **[Middleware](./middleware.md):** How to register and use middleware.
 - **[Logging configurations](./logging.md):** How loomi logs queries, additional metadata and how to configure it.

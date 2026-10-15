@@ -11,6 +11,7 @@ This guide will walk you through how our documentation is structured and how to 
 
 All documentation source files live in the `docs/` folder:
 
+```
 docs/
 ├── index.md               # Main docs entry point
 ├── getting-started.md     # Quickstart guide
@@ -19,8 +20,9 @@ docs/
     ├── index.md
     ├── dev-setup.md
     └── documentation-guide.md  <-- (You are here)
+```
 
---
+---
 
 ## Formatting guidelines
 

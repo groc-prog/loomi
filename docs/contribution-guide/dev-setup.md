@@ -18,15 +18,19 @@ Before you begin, make sure you have the following installed on your machine:
 Poetry will automatically create an virtual environment and install `loomi` along with all development and testing dependencies. You can check the full [Poetry ](https://python-poetry.org/docs/basic-usage/) and [Docker Compose](https://docs.docker.com/compose/) documentation for more info.
 
 Create a `.env` file containing the required variables:
-- NEO4J_AUTH
-- MEMGRAPH_USER
-- MEMGRAPH_PASSWORD
+- `NEO4J_AUTH`
+- `MEMGRAPH_USER`
+- `MEMGRAPH_PASSWORD`
 
 > [!NOTE]
 > You can choose any password you want. All containers are only running locally.
 
+> [!WARNING]
+> This project uses [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) to automatically generate change logs and determine release versions.
+
 ```bash
 poetry install
+poetry run pre-commit install
 docker compose up -d
 ```
 
@@ -35,14 +39,14 @@ docker compose up -d
 ## 3. Verify by running tests
 
 To ensure everything is installed correctly and all containers are running, you can run the test suite. For this, create a `.env.test` file and add the following environment variables:
-- NEO4J_URI
-- NEO4J_USER
-- NEO4J_PWD
-- MEMGRAPH_URI
-- MEMGRAPH_USER
-- MEMGRAPH_PWD
+- `NEO4J_URI`
+- `NEO4J_USER`
+- `NEO4J_PWD`
+- `MEMGRAPH_URI`
+- `MEMGRAPH_USER`
+- `MEMGRAPH_PWD`
 
-> [!IMPORTANT]
+> [!WARNING]
 > The authentication details in `.env.test` must match the ones in the `.env` file!
 
 ```bash
