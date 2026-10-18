@@ -8,9 +8,9 @@ from pydantic import BaseModel
 import loomi.query_api.functions.arithmetic as arithmetic_functions
 import loomi.query_api.functions.comparison as comparison_functions
 from loomi._core.types import NumericValue, QueryModelType
-from loomi._logger import logger
 from loomi.constants import ServerType
 from loomi.exceptions import ModelError
+from loomi.logger import get_logger
 from loomi.query_api._core.protocols import CompilableDescriptor, CompiledDescriptor
 from loomi.query_api._core.templates import EntityIdExpressionTemplate
 
@@ -18,6 +18,8 @@ if TYPE_CHECKING:
     from loomi.query_api._core.context import CompilationContext
 else:
     CompilationContext = object
+
+logger = get_logger("query_api")
 
 
 class ListPathOperator(StrEnum):
@@ -248,7 +250,7 @@ class EntityIdDescriptor(CompilableDescriptor):
         model_variable = ctx.get_variable(self._model_type)
 
         if ctx.server_type == ServerType.MEMGRAPH:
-            logger.debug(
+            logger.warning(
                 "Server type defined as %s, which is not compatible with template %s. "
                 "Falling back to %s",
                 ctx.server_type.value,

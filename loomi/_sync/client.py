@@ -15,12 +15,12 @@ from typing import (
 import neo4j
 
 from loomi._core.client_mixin import ClientMixin, require_server_metadata
-from loomi._logger import LogContext, logger, scoped_log_ctx
 from loomi._sync.session import Session
 from loomi.constants import ServerType
 from loomi.exceptions import ClientError
 from loomi.graph.node import Node
 from loomi.graph.relationship import Relationship
+from loomi.logger import LogContext, _scoped_log_ctx, get_logger
 from loomi.query_api._builders.delete_builder import (
     DeleteQueryBuilder,
     DeleteResult,
@@ -37,6 +37,9 @@ from loomi.query_api._core.context import CompilationContext
 T = TypeVar("T", bound=Union[Node, Relationship])
 
 
+logger = get_logger("driver")
+
+
 class Client(ClientMixin[neo4j.Driver]):
     """Sync database client for interacting with Loomi models."""
 
@@ -48,12 +51,12 @@ class Client(ClientMixin[neo4j.Driver]):
             ClientError: If the remote server can not be reached or does not return required
                 metadata.
         """
-        with scoped_log_ctx({LogContext.DRIVER: self._driver.__class__.__name__}):
+        with _scoped_log_ctx({LogContext.DRIVER: self._driver.__class__.__name__}):
             try:
-                logger.info("Verifying connectivity to remote")
+                logger.info("Verifying connectivity to server")
                 self._driver.verify_connectivity()
 
-                logger.info("Getting remote server metadata")
+                logger.debug("Getting server metadata")
                 server_info = self._driver.get_server_info()
 
                 self._server_type = (
@@ -106,7 +109,7 @@ class Client(ClientMixin[neo4j.Driver]):
             Loomi session. Defaults to `loomi`.
                 session_config: Key-word arguments passed to the session directly.
         """
-        with scoped_log_ctx(
+        with _scoped_log_ctx(
             {
                 LogContext.DRIVER: self._driver.__class__.__name__,
                 LogContext.SERVER_TYPE: self._server_type,

@@ -4,10 +4,10 @@ from typing import TYPE_CHECKING, Any, Dict, LiteralString, Optional, Union
 
 import neo4j
 
-from loomi._logger import logger
 from loomi._sync.change_tracker import ChangeTracker
 from loomi._sync.result import Result
 from loomi._sync.transaction import Transaction
+from loomi.logger import get_logger
 
 if TYPE_CHECKING:
     from loomi._sync.client import Client
@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 else:
     Client = object
     _Base = object
+
+logger = get_logger("driver")
 
 
 class Session(_Base):

@@ -19,11 +19,11 @@ from typing import (
 
 import neo4j
 
-from loomi._logger import LogContext, logger, scoped_log_ctx
 from loomi.constants import ServerType
 from loomi.exceptions import ChangeTrackerError, ModelError
 from loomi.graph.node import Node
 from loomi.graph.relationship import Relationship
+from loomi.logger import LogContext, _scoped_log_ctx, get_logger
 
 if TYPE_CHECKING:
     from loomi._async.client import AsyncClient
@@ -35,6 +35,8 @@ else:
 T = TypeVar(
     "T", bound=Union[neo4j.Session, neo4j.AsyncSession, neo4j.Transaction, neo4j.AsyncTransaction]
 )
+
+logger = get_logger("change_tracker")
 
 
 class NodeInsertItem(TypedDict):
@@ -131,10 +133,10 @@ class ChangeTrackerMixin(Generic[T]):
             TrackingOperation.UPDATE if model._element_id is not None else TrackingOperation.INSERT
         )
 
-        with scoped_log_ctx(
+        with _scoped_log_ctx(
             {
                 LogContext.MODEL_NAME: model.__class__.__name__,
-                LogContext.MODEL_IDENTIFIER: obj_id,
+                LogContext.MODEL_HASH: obj_id,
                 LogContext.CHANGE_TRACKER_OPERATION: operation.name,
             }
         ):
@@ -263,10 +265,10 @@ class ChangeTrackerMixin(Generic[T]):
             TrackingOperation.UPDATE if model._element_id is not None else TrackingOperation.INSERT
         )
 
-        with scoped_log_ctx(
+        with _scoped_log_ctx(
             {
                 LogContext.MODEL_NAME: model.__class__.__name__,
-                LogContext.MODEL_IDENTIFIER: obj_id,
+                LogContext.MODEL_HASH: obj_id,
                 LogContext.CHANGE_TRACKER_OPERATION: TrackingOperation.DELETE.name,
             }
         ):

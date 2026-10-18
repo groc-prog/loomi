@@ -6,7 +6,7 @@ import neo4j
 
 from loomi._async.change_tracker import AsyncChangeTracker
 from loomi._async.result import AsyncResult
-from loomi._logger import logger
+from loomi.logger import get_logger
 
 if TYPE_CHECKING:
     from loomi._async.client import AsyncClient
@@ -15,6 +15,9 @@ if TYPE_CHECKING:
 else:
     AsyncClient = object
     _Base = object
+
+
+logger = get_logger("driver")
 
 
 class AsyncTransaction(_Base):

@@ -21,15 +21,17 @@ import neo4j
 import neo4j.graph
 
 from loomi._core.types import ModelType
-from loomi._logger import LogContext, logger, scoped_log_ctx
 from loomi.constants import ServerType
 from loomi.exceptions import ClientError, ModelError, SerializationError
 from loomi.graph.node import Node
 from loomi.graph.path import Path
 from loomi.graph.relationship import Relationship
+from loomi.logger import LogContext, _scoped_log_ctx, get_logger
 
 T = TypeVar("T", bound=Union[neo4j.Driver, neo4j.AsyncDriver])
 U = TypeVar("U", bound=Callable[..., Any])
+
+logger = get_logger("driver")
 
 
 class ClientConfiguration(TypedDict, total=False):
@@ -105,7 +107,7 @@ class ClientMixin(Generic[T]):
         Raises:
             ModelError: If a model has not finished initialization.
         """
-        with scoped_log_ctx({LogContext.DRIVER: self._driver.__class__.__name__}):
+        with _scoped_log_ctx({LogContext.DRIVER: self._driver.__class__.__name__}):
             for model in models:
                 if not issubclass(model, (Node, Relationship)):
                     logger.warning(
@@ -127,12 +129,14 @@ class ClientMixin(Generic[T]):
 
     def _extract_version(self, version: str) -> None:
         self._server_version = tuple(int(part) for part in version.split("."))
+        logger.debug("Server version identifier as %s", self._server_version)
 
     def _transform_entity(self, entity: Any) -> Any:
-        with scoped_log_ctx(
+        with _scoped_log_ctx(
             {
                 LogContext.DRIVER: self._driver.__class__.__name__,
                 LogContext.SERVER_TYPE: self._server_type,
+                LogContext.SERVER_VERSION: self._server_version,
             }
         ):
             if isinstance(entity, (neo4j.graph.Node, neo4j.graph.Relationship)):
@@ -169,6 +173,7 @@ class ClientMixin(Generic[T]):
             if is_node
             else Relationship._generate_hash(entity.type)
         )
+        logger.debug("Transforming entity with model hash %s", model_hash)
 
         if model_hash not in self._models:
             identifiers = f"labels {", ".join(entity.labels)}" if is_node else f"type {entity.type}"
@@ -194,7 +199,7 @@ class ClientMixin(Generic[T]):
         return instance
 
     def _relationship_type_to_model(self, type_: str) -> Optional[Type[Relationship]]:
-        with scoped_log_ctx(
+        with _scoped_log_ctx(
             {
                 LogContext.DRIVER: self._driver.__class__.__name__,
                 LogContext.SERVER_TYPE: self._server_type,

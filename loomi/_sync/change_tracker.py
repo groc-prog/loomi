@@ -3,7 +3,9 @@ from typing import Dict, LiteralString, Union, cast
 import neo4j
 
 from loomi._core.change_tracker_mixin import ChangeTrackerMixin
-from loomi._logger import LogContext, logger, scoped_log_ctx
+from loomi.logger import LogContext, _scoped_log_ctx, get_logger
+
+logger = get_logger("change_tracker")
 
 
 class ChangeTracker(ChangeTrackerMixin[Union[neo4j.Session, neo4j.Transaction]]):
@@ -20,7 +22,7 @@ class ChangeTracker(ChangeTrackerMixin[Union[neo4j.Session, neo4j.Transaction]])
         """
         is_session = isinstance(self._session_or_tx, neo4j.Session)
 
-        with scoped_log_ctx(
+        with _scoped_log_ctx(
             {
                 LogContext.DRIVER: self._client.__class__.__name__,
                 LogContext.SERVER_TYPE: self._client._server_type,

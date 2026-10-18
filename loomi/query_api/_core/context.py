@@ -1,9 +1,11 @@
 from typing import Any, Dict
 
 from loomi._core.types import QueryModelType
-from loomi._logger import logger
 from loomi.constants import ServerType
 from loomi.exceptions import QueryError
+from loomi.logger import get_logger
+
+logger = get_logger("query_api")
 
 
 class CompilationContext:
@@ -62,8 +64,7 @@ class CompilationContext:
         variable = f"v{self.__variable_counter}"
         if variable in set(self.__models_to_vars.values()):
             logger.warning(
-                "Variable %s has already been defined. If you are using a aliased model "
-                ", make sure it's alias is unique",
+                "Variable %s has already been defined",
                 variable,
             )
             return

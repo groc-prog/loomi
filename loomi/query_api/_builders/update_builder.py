@@ -2,9 +2,9 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Generic, List, Self, Tuple, TypeVar, Union, cast
 
 from loomi._core.types import ModelType
-from loomi._logger import logger
 from loomi.constants import ServerType
 from loomi.exceptions import QueryError
+from loomi.logger import get_logger
 from loomi.query_api._core.context import CompilationContext
 from loomi.query_api._core.descriptors import FieldDescriptor
 from loomi.query_api._core.expressions import CompoundExpression
@@ -15,6 +15,8 @@ from loomi.query_api._core.protocols import (
 )
 
 R = TypeVar("R")
+
+logger = get_logger("query_api")
 
 
 @dataclass(frozen=True)

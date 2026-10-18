@@ -17,8 +17,8 @@ from typing import (
 from pydantic import BaseModel
 
 from loomi._core.types import ModelType
-from loomi._logger import logger
 from loomi.exceptions import QueryError
+from loomi.logger import get_logger
 from loomi.query_api._core.context import CompilationContext
 from loomi.query_api._core.descriptors import FieldDescriptor
 from loomi.query_api._core.expressions import CompoundExpression
@@ -36,6 +36,8 @@ else:
 T = TypeVar("T", bound=Union[Node, Relationship, Dict[str, Any]])
 P = TypeVar("P", bound=BaseModel)
 R = TypeVar("R")
+
+logger = get_logger("query_api")
 
 
 @dataclass

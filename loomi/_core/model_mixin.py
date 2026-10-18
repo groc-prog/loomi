@@ -20,15 +20,18 @@ from typing import (
 from pydantic import BaseModel, ConfigDict, PrivateAttr, computed_field
 
 from loomi._core.types import ModelType
-from loomi._logger import LogContext, logger, scoped_log_ctx
 from loomi.constants import SUPPORTED_DATA_TYPES, SUPPORTED_LIST_DATA_TYPES, ServerType
 from loomi.exceptions import ModelError, SerializationError
+from loomi.logger import LogContext, _scoped_log_ctx, get_logger
 from loomi.query_api._core.descriptors import FieldDescriptor
 
 if TYPE_CHECKING:
     from loomi._core.client_mixin import ClientConfiguration
 else:
     ClientConfiguration = object
+
+
+logger = get_logger("model")
 
 
 class EntityConfiguration(TypedDict, total=False):
@@ -117,10 +120,10 @@ class ModelMixin(BaseModel, metaclass=ModelMixinMetaclass):
         return self._element_id
 
     def _compute_checksums(self) -> Dict[str, Optional[str]]:
-        with scoped_log_ctx(
+        with _scoped_log_ctx(
             {
                 LogContext.MODEL_NAME: self.__class__.__name__,
-                LogContext.MODEL_IDENTIFIER: self._hash,
+                LogContext.MODEL_HASH: self._hash,
             }
         ):
             logger.debug("Computing checksums for model fields")
@@ -139,10 +142,10 @@ class ModelMixin(BaseModel, metaclass=ModelMixinMetaclass):
     def _serialize(
         self, mode: ServerType, client_config: ClientConfiguration, **kwargs
     ) -> Dict[str, Any]:
-        with scoped_log_ctx(
+        with _scoped_log_ctx(
             {
                 LogContext.MODEL_NAME: self.__class__.__name__,
-                LogContext.MODEL_IDENTIFIER: self._hash,
+                LogContext.MODEL_HASH: self._hash,
             }
         ):
             model_dump = self.model_dump(by_alias=True, exclude={"element_id", "id"}, **kwargs)
@@ -241,10 +244,10 @@ class ModelMixin(BaseModel, metaclass=ModelMixinMetaclass):
     def _deserialize(
         cls, obj: Dict[str, Any], mode: ServerType, client_config: ClientConfiguration
     ) -> Self:
-        with scoped_log_ctx(
+        with _scoped_log_ctx(
             {
                 LogContext.MODEL_NAME: cls.__name__,
-                LogContext.MODEL_IDENTIFIER: cls._hash,
+                LogContext.MODEL_HASH: cls._hash,
             }
         ):
             deserialized: Dict[str, Any] = {}
@@ -267,7 +270,11 @@ class ModelMixin(BaseModel, metaclass=ModelMixinMetaclass):
                 field_info = cls.model_fields.get(resolved_field_name)
 
                 if field_info is None:
-                    logger.warning("Encountered unknown field %s, skipping", field_name)
+                    logger.warning(
+                        "Encountered unknown field %s for model %s, skipping",
+                        field_name,
+                        cls.__name__,
+                    )
                     continue
 
                 # Due to usage of `serialize_nested`, some string values might actually be nested values which we
@@ -333,10 +340,10 @@ class ModelMixin(BaseModel, metaclass=ModelMixinMetaclass):
 
     @classmethod
     def _init_config_defaults(cls) -> None:
-        with scoped_log_ctx(
+        with _scoped_log_ctx(
             {
                 LogContext.MODEL_NAME: cls.__name__,
-                LogContext.MODEL_IDENTIFIER: cls._hash,
+                LogContext.MODEL_HASH: cls._hash,
             }
         ):
             cls._merge_configs()

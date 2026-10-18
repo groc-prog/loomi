@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Union
 
-from loomi._logger import logger
+from loomi.logger import get_logger
 from loomi.query_api._core.protocols import (
     CompilableDbFunction,
     CompilableDescriptor,
@@ -14,6 +14,9 @@ if TYPE_CHECKING:
     from loomi.query_api._core.context import CompilationContext
 else:
     CompilationContext = object
+
+
+logger = get_logger("query_api")
 
 
 @dataclass(frozen=True)
@@ -37,6 +40,8 @@ class DbFunction(CompilableDbFunction):
             parameter_name = ctx.add_parameter(arg)
             parameter_map[f"arg{index}"] = f"${parameter_name}"
 
+        logger.debug("Build parameter map for %d values", len(parameter_map.keys()))
+
         # The thing to wrap is a descriptor, so we need to compile it and modify it's full template
         # to include the DB function
         if isinstance(self.wrapped, CompilableDescriptor):
@@ -55,6 +60,7 @@ class DbFunction(CompilableDbFunction):
         # The DB function is deeply nested, so we need to compile it and return
         # This can either return another DB function or a descriptor
         if isinstance(self.wrapped, CompilableDbFunction):
+            logger.debug("Wrapped value is a DB function, compiling nested DB functions first")
             compiled_db_function_or_descriptor = self.wrapped._compile_db_function(ctx)
 
             if isinstance(compiled_db_function_or_descriptor, CompiledDescriptor):
@@ -63,6 +69,7 @@ class DbFunction(CompilableDbFunction):
                     **parameter_map,
                 )
 
+                logger.debug("Compiled DB function wrapping a descriptor")
                 return CompiledDescriptor(
                     full_template=compiled_db_function_or_descriptor.full_template,
                     variable_path=compiled_variable_path,
@@ -70,6 +77,7 @@ class DbFunction(CompilableDbFunction):
                     full_path=compiled_db_function_or_descriptor.full_path,
                 )
 
+            logger.debug("Compiled DB function wrapping another DB function")
             compiled_template = compiled_db_function_or_descriptor.full_template.format(
                 variable_or_value="{variable_or_value}"
             )
@@ -81,6 +89,7 @@ class DbFunction(CompilableDbFunction):
             )
 
         # The DB function wraps a primitive value
+        logger.debug("Compiled DB function wrapping primitive value")
         parameter_name = ctx.add_parameter(self.wrapped)
         return CompiledDbFunction(
             full_template=template_to_compile.format(

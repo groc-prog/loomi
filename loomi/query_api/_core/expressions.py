@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Union, cast
 
 from loomi._core.types import QueryModelType
-from loomi._logger import logger
+from loomi.logger import get_logger
 from loomi.query_api._core.context import CompilationContext
 from loomi.query_api._core.protocols import (
     CompilableDbFunction,
@@ -23,6 +23,9 @@ if TYPE_CHECKING:
     from loomi.query_api._core.protocols import CompiledDescriptor
 else:
     CompiledDescriptor = object
+
+
+logger = get_logger("query_api")
 
 
 @dataclass(frozen=True)
@@ -59,7 +62,7 @@ class Expression(ExpressionMixin, CompilableExpression):
     value: Any
 
     def _compile_expression(self, ctx: CompilationContext) -> CompiledExpression:
-        logger.debug("Compiling %s for template %s", self.__class__.__name__, self.template.name)
+        logger.debug("Compiling expression for template %s", self.template.name)
 
         if isinstance(self.descriptor, CompilableDbFunction):
             compiled_descriptor = cast(
@@ -69,6 +72,7 @@ class Expression(ExpressionMixin, CompilableExpression):
             compiled_descriptor = self.descriptor._compile_descriptor(ctx)
 
         if isinstance(self.value, CompilableDbFunction):
+            logger.debug("Value is wrapped in db function, compiling db function first")
             compiled_db_function = cast(CompiledDbFunction, self.value._compile_db_function(ctx))
             compiled_parameter_template = compiled_db_function.full_template.format(
                 variable_or_value=f"${compiled_db_function.inserted_parameter}"
@@ -177,7 +181,11 @@ class CompoundExpression:
         Returns:
             str: The part of the query string represented by this compiled expression.
         """
-        logger.debug("Compiling %s to query string", self.__class__.__name__)
+        logger.debug(
+            "Compiling %s with %d expressions to query string",
+            self.__class__.__name__,
+            len(self.expressions),
+        )
 
         query_strings: List[str] = []
         path_map: Dict[str, List[CompiledExpression]] = {}
@@ -203,13 +211,15 @@ class CompoundExpression:
 
         # Optimize list queries by combining them in a single nested WHERE statement instead of
         # multiple individual ones
-        for combinable_expressions in path_map.values():
+        logger.debug("Checking for possible query optimizations in %d paths", len(path_map.keys()))
+        for path, combinable_expressions in path_map.items():
             first_expression = combinable_expressions[0]
 
             if len(combinable_expressions) == 1:
                 query_strings.append(first_expression.to_query_string())
                 continue
 
+            logger.debug("Optimizing expression at path %s", path)
             optimized_expression = CompiledExpression(
                 outer_template=first_expression.outer_template,
                 expression_template=f" {self.operator.value} ".join(
