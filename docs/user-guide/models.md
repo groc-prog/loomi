@@ -45,7 +45,7 @@ class FamilyRelation(Relationship):
 
 Models also support inheritance, with some specific rules applying to configuration merging based on the model type. Class properties are merged in the same way as for normal Pydantic classes.
 
-For `Node` models, all configuration keys defined in the **inheriting class** will be overridden. The only exception to this rule is the `labels` key, as **labels are merged**:
+For `Node` models, all configuration keys defined in the **inheriting class** will override existing inherited ones. The only exception to this rule is the `labels` key, as **labels are merged**:
 
 ```python
 class Human(Node):
@@ -60,7 +60,7 @@ class Worker(Human):
   job: str
 ```
 
-For `Relationship` models, all configuration keys are **always overridden**:
+For `Relationship` models, all configuration keys are **always overridden** by the inheriting class:
 
 ```python
 class Knows(Relationship):
@@ -81,10 +81,10 @@ As you might have seen in the [Getting started](../getting-started.md) docs, bot
 > When using custom (de)serializer functions, ensure your serialization logic is performant, as this can quickly become a performance trap when used heavily. In most cases, you should _consider switching to Memgraph_ when you make heavy use of nested properties.
 
 > [!WARNING]
-> Uniqueness of nodes labels and relationship types is not checked. The client will use the last model with matching labels/type when transforming results into models.
+> Uniqueness of node labels and relationship types is not checked. The client will use the last model with matching labels/type when transforming results into models.
 
 - **`serializer_fn`**: Only relevant when using both Neo4j and enabling `serialize_nested` on the client. By using this you can control how nested properties are serialized before they are stored. This function will be called for all fields which are not of a **supported data type** after `model.model_dump()` has been called. By default, `json.dumps` is used.
-- **`deserializer_fn`**: Only relevant when using both Neo4j and enabling `serialize_nested` on the client. By using this you can control how nested properties are deserialized after they are loaded from the database. This function will be called for all fields where the data type does not match their annotation on the model. For lists, this will be called for each list item. By default, `json.dumps` is used.
+- **`deserializer_fn`**: Only relevant when using both Neo4j and enabling `serialize_nested` on the client. By using this you can control how nested properties are deserialized after they are loaded from the database. This function will be called for all fields where the data type does not match their annotation on the model. For lists, this will be called for each list item. By default, `json.loads` is used.
 - **`labels`**: Specific to **nodes**. This defines the labels used when the model is persisted to the database. By default, the **unchanged class name** is used as the only label.
 - **`type`**: Specific to **relationships**. This defines the type used when the model is persisted to the database. By default, the **class name** converted into **SCREAMING_SNAKE_CASE** is used as the type.
 
