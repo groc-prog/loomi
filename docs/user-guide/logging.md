@@ -1,6 +1,6 @@
 # Logging configurations
 
-Welcome to the **loomi** logging guide! This section covers how `loomi` emits logs, how to control log verbosity, and how to inject context metadata (such as active models and operations) into your logs.
+This section covers how `loomi` emits logs, how to control log verbosity, and how to inject context metadata (such as active models and operations) into your logs.
 
 ---
 
@@ -25,7 +25,7 @@ Different log levels also map to different events from the package:
 
 ## Context enrichment (`LogContextFilter`)
 
-During execution, `loomi` tracks internal state (like model identifiers, change change tracker operations, etc) using `contextvars`. You can opt into this by registering `LogContextFilter` from the `loomi.logger` module on your logger.
+During execution, `loomi` tracks internal state (like model identifiers, change change tracker operations and more) using `contextvars`. You can opt into this by registering `LogContextFilter` from the `loomi.logger` module on your logger.
 
 ```python
 import logging
