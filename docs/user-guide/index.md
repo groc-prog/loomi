@@ -7,7 +7,6 @@ Welcome to the **loomi** user guide! This section covers basic and advanced usag
 
 If you are new to loomi, consider checking out the [quickstart guide](../getting-started.md) section.
 
----
 
 ## Core guides
 
@@ -17,7 +16,6 @@ Explore the main components used in most common tasks:
 - **[Model usage & configuration](./models.md):** How to define and configure your own models and work with data.
 - **[Sessions, transactions & results](./sessions-transactions-and-results.md):** How sessions, transactions and results work with loomi clients.
 
----
 
 ## Advanced Topics
 

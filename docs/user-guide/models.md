@@ -2,7 +2,6 @@
 
 This section covers how `loomi` models are defined and configured for later usage in [queries](./sessions-transactions-and-results.md).
 
----
 
 ## Types of models
 
@@ -13,7 +12,6 @@ This section covers how `loomi` models are defined and configured for later usag
 - `Graph`: A wrapper around the `neo4j.graph.Graph` class which provides correct typing and logic for working with loomi nodes and relationships. It provides **the same interface** as the `Graph` class from the `neo4j.graph` module.
 - `Path`: A wrapper around the `neo4j.graph.Path` class which provides correct typing and logic for working with loomi nodes and relationships. It provides **the same interface** as the `Path` class from the `neo4j.graph` module.
 
----
 
 ## Defining your models
 

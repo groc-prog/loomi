@@ -2,7 +2,6 @@
 
 This section covers how `loomi` emits logs, how to control log verbosity, and how to inject context metadata (such as active models and operations) into your logs.
 
----
 
 ## Logger namespaces & levels
 
@@ -21,7 +20,6 @@ Different log levels also map to different events from the package:
 - **`warning`**: Duplicate setting definitions, recoverable issues during serialization, etc.
 - **`error`**: Unrecoverable errors.
 
----
 
 ## Context enrichment (`LogContextFilter`)
 

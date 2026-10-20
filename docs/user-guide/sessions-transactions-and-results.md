@@ -2,7 +2,6 @@
 
 This section covers how `loomi` clients expose sessions, transactions and results for running queries.
 
----
 
 ## `native` mode vs. `loomi` mode
 
@@ -69,7 +68,10 @@ with client.session() as session:
   tx.commit()
 ```
 
-If you need to, you can also pass some session/transaction configurations and the corresponding function call will pass them to the underlying original object:
+
+## Passing configuration to underlying objects
+
+If you need to, you can also pass some session/transaction configurations and the corresponding function call will pass them to the underlying original object automatically:
 
 ```python
 # Pass some session configuration
@@ -90,47 +92,3 @@ with client.session(database="neo4j", default_access_mode=neo4j.WRITE_ACCESS) as
 
   tx.commit()
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-In it's simplest form, a loomi client can be **used in the same way you would use the neo4j driver**, meaning you can start using it as a **drop-in replacement** and enable additional features as you go. As such, both the neo4j driver and loomi clients **share the same interfaces** on sessions and transactions.
-
-> [!NOTE]
-> This mode may also be referred to as `no-op mode` in other parts of the documentation.
-
-```python
-# Initialize the driver like usual
-driver = neo4j.GraphDatabase.driver(
-  uri="bolt://localhost:7687", auth=("<user>", "<password>")
-)
-
-# Tell the loomi client which driver to use
-client = Client(driver)
-
-# You can also pass any other session-related configuration here
-with client.session(mode="native") as session:
-  result = await session.run(
-    "CREATE (a:Adult $adult) RETURN a",
-    {"adult": {"name": "John", "age": 28, "job": "Developer"}},
-  )
-  data = await result.values()
-
-  # [[<Node element_id='...' labels=frozenset({'Adult'}) properties={'name': 'John', 'job': 'Developer', 'age': 28}>]]
-  print(data)
-```
-
-> [!IMPORTANT]
-> Clients only expose the necessary interfaces to work with models. Other things like bookmarks should be controlled with the neo4j driver.
-

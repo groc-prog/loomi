@@ -2,7 +2,6 @@
 
 This section covers how `loomi` wraps **neo4j drivers**, what modes they support and how they can be used and configured.
 
----
 
 ## How clients work
 
@@ -37,7 +36,6 @@ client.initialize()
 > [!NOTE]
 > Attempting to run any action which requires a active database connection without previously initializing the client will result in a `ClientError`.
 
----
 
 ## Client types & configuration
 
@@ -50,12 +48,14 @@ Similar to the [`neo4j package`](https://pypi.org/project/neo4j/), `loomi` also 
 
 Both client types provide the same interface and configuration options.
 
+
 ### Configuration options
 
 Both clients provide a few configuration options which can affect how to client handles it's data:
 
 - **`serialize_nested`**: `loomi` supports both Neo4j and Memgraph. Since Neo4j does not support nested properties, but Memgraph does, this option allows you to store nested properties in Neo4j even with this limitation. But keep in mind that this comes with some other limitations like not being able to query these nested properties like you would in Memgraph. It is generally _not recommended_ to use this option.
 - **`strict_transformations`**: During data fetching, clients attempt to parse the received data into their corresponding models. By default, serialization will fail if said model has not been registered with the client. Optionally, this can be changed to leave the data unchanged, meaning the client will just pass it on to the result without changing it.
+
 
 ## Registering models
 
