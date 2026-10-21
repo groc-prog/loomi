@@ -44,7 +44,7 @@ from loomi import AsyncClient
 
 # Initialize the driver like usual
 driver = neo4j.AsyncGraphDatabase.driver(
-  uri="bolt://localhost:7687", auth=("neo4j", "password")
+  uri="<uri>", auth=("<user>", "<password>")
 )
 client = AsyncClient(driver)
 

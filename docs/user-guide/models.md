@@ -43,35 +43,6 @@ class FamilyRelation(Relationship):
   loves_child: bool = Field(default=True)
 ```
 
-Models also support inheritance, with some specific rules applying to configuration merging based on the model type. Class properties are merged in the same way as for normal Pydantic classes.
-
-For `Node` models, all configuration keys defined in the **inheriting class** will override existing inherited ones. The only exception to this rule is the `labels` key, as **labels are merged**:
-
-```python
-class Human(Node):
-  name: str
-  age: int
-
-
-# This classes labels will be `{"Human", "Worker"}`
-class Worker(Human):
-  name: str
-  age: int
-  job: str
-```
-
-For `Relationship` models, all configuration keys are **always overridden** by the inheriting class:
-
-```python
-class Knows(Relationship):
-  knows_since: datetime.datetime
-
-
-# This classes type will be `LOVES`
-class Loves(Knows):
-  very_much: bool
-```
-
 
 ### Configuring models
 
@@ -92,11 +63,14 @@ As you might have seen in the [Getting started](../getting-started.md) docs, bot
 > Configuration options are always per model type and can not be defined globally.
 
 ```python
+def custom_serializer(val):
+  return "serialized"
+
 class Child(Node):
   name: str
   age: int
 
-  # Define how the entity is displayed in the database
+  # Both `Human` and `Child` will be used as labels
   loomi_config = {
     "labels": {"Human", "Child"}
   }
@@ -104,22 +78,50 @@ class Child(Node):
 
 # `Adult` will be used as the only label
 class Adult(Node):
-  name: str
-  age: int
   job: str
 
 
 class FamilyRelation(Relationship):
   loves_child: bool = Field(default=True)
 
+  # `IS_PARENT_OF` will be used as the type and `custom_serializer` will
+  # be called when serializing nested properties
   loomi_config = {
-    "type": "IS_PARENT_OF"
+    "type": "IS_PARENT_OF",
+    "serializer_fn": custom_serializer
   }
 
 
 # `WORKS_AT` will be the type for this relationship
 class WorksAt(Relationship):
   ...
+```
+
+Models also support inheritance, with some specific rules applying to configuration merging based on the model type. Class properties are merged in the same way as for normal Pydantic classes.
+
+For `Node` models, all configuration keys defined in the **inheriting class** will override existing inherited ones. The only exception to this rule is the `labels` key, as **labels are merged**:
+
+```python
+class Human(Node):
+  name: str
+  age: int
+
+
+# This classes labels will be `{"Human", "Worker"}`
+class Worker(Human):
+  job: str
+```
+
+For `Relationship` models, all configuration keys are **always overridden** by the inheriting class:
+
+```python
+class Knows(Relationship):
+  knows_since: datetime.datetime
+
+
+# This classes type will be `LOVES`
+class Loves(Knows):
+  very_much: bool
 ```
 
 
@@ -139,5 +141,5 @@ with client.session() as session:
   models = result.values()
 
   # Prints the `element_id` from the database
-  print(models[0].element_id)
+  print(models[0][0].element_id)
 ```

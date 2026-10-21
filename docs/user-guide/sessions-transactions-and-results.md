@@ -21,11 +21,11 @@ client = Client(driver)
 # You can also pass any other session-related configuration here
 # `mode="native"` is what tells the client how results are returned
 with client.session(mode="native") as session:
-  result = await session.run(
+  result = session.run(
     "CREATE (a:Adult $adult) RETURN a",
     {"adult": {"name": "John", "age": 28, "job": "Developer"}},
   )
-  data = await result.values()
+  data = result.values()
 
   # [[<Node element_id='...' labels=frozenset({'Adult'}) properties={'name': 'John', 'job': 'Developer', 'age': 28}>]]
   print(data)
