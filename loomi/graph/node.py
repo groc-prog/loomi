@@ -1,4 +1,5 @@
-from typing import ClassVar, List, Set, cast
+import json
+from typing import ClassVar, List, Set
 
 from loomi._core.model_mixin import EntityConfiguration, ModelMixin
 from loomi.exceptions import ModelError
@@ -17,33 +18,16 @@ class Node(ModelMixin):
 
     @classmethod
     def __pydantic_init_subclass__(cls, **kwargs):
+        cls.__merge_configs()
         super().__pydantic_init_subclass__(**kwargs)
 
-        if not hasattr(cls, "loomi_config"):
-            setattr(cls, "loomi_config", NodeConfiguration())
-
-        # If not labels have been defined, fall back to the class name
-        if "labels" not in cls.loomi_config:
-            cls.loomi_config["labels"] = {cls.__name__}
-
-        cls._init_config_defaults()
-        cls._hash = cls._generate_hash(list(cls.loomi_config["labels"]))
+        cls._hash = cls._generate_hash(list(cls.loomi_config["labels"]))  # type: ignore
 
     def __repr__(self) -> str:
         return (
             f"<{self.__class__.__name__} element_id={self._element_id!r} "
             f"labels={self._get_labels()!r}>"
         )
-
-    @classmethod
-    def _merge_config(cls, config: NodeConfiguration) -> None:
-        for key, value in config.items():
-            if key not in cls.loomi_config:
-                cls.loomi_config[key] = value
-
-            # If the key is a set (we are dealing with labels), merge them
-            if isinstance(value, set):
-                cls.loomi_config[key] = cast(Set[str], cls.loomi_config[key]).union(value)
 
     @classmethod
     def _generate_hash(cls, labels: List[str]) -> str:
@@ -66,3 +50,44 @@ class Node(ModelMixin):
             )
 
         return labels
+
+    @classmethod
+    def __merge_configs(cls) -> None:
+        merged_config: NodeConfiguration = {
+            "serializer_fn": json.dumps,
+            "deserializer_fn": json.loads,
+        }
+        labels: Set[str] = set()
+
+        for base in reversed(cls.__mro__):
+            if not issubclass(base, Node) or base is Node:
+                continue
+
+            # Check if loomi_config is defined directly on this class
+            if "loomi_config" in base.__dict__ and isinstance(base.__dict__["loomi_config"], dict):
+                base_conf = base.__dict__["loomi_config"]
+
+                # Handle labels merging
+                if "labels" in base_conf:
+                    parent_labels = base_conf["labels"]
+                    if isinstance(parent_labels, set):
+                        labels.update(parent_labels)
+                    else:
+                        labels.add(parent_labels)
+
+                # All other keys are either inherited if not defined or overwrite any defined value
+                for key, val in base_conf.items():
+                    if key != "labels":
+                        merged_config[key] = val
+
+            # If no labels are defined, fall back to the class name
+            has_explicit_labels = (
+                "loomi_config" in base.__dict__
+                and isinstance(base.__dict__["loomi_config"], dict)
+                and "labels" in base.__dict__["loomi_config"]
+            )
+            if not has_explicit_labels:
+                labels.add(base.__name__)
+
+        merged_config["labels"] = labels
+        cls.loomi_config = merged_config

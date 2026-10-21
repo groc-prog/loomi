@@ -26,7 +26,7 @@ from loomi.exceptions import ClientError, ModelError, SerializationError
 from loomi.graph.node import Node
 from loomi.graph.path import Path
 from loomi.graph.relationship import Relationship
-from loomi.logger import LogContext, _scoped_log_ctx, get_logger
+from loomi.logger import get_logger
 
 T = TypeVar("T", bound=Union[neo4j.Driver, neo4j.AsyncDriver])
 U = TypeVar("U", bound=Callable[..., Any])
@@ -107,53 +107,43 @@ class ClientMixin(Generic[T]):
         Raises:
             ModelError: If a model has not finished initialization.
         """
-        with _scoped_log_ctx({LogContext.DRIVER: self._driver.__class__.__name__}):
-            for model in models:
-                if not issubclass(model, (Node, Relationship)):
-                    logger.warning(
-                        "Invalid model %s provided during model registration, skipping",
-                        model,
-                    )
-                    continue
+        for model in models:
+            if not issubclass(model, (Node, Relationship)):
+                logger.warning(
+                    "Invalid model %s provided during model registration, skipping",
+                    model,
+                )
+                continue
 
-                # In most cases, the hash should always be initialized, but there can be some cases in which
-                # the models have not finished initialization
-                if model._hash is None:
-                    raise ModelError(
-                        f"Hash on model {model.__name__} is not initialized. Maybe you forgot to "
-                        f"call {model.model_rebuild.__name__}?"
-                    )
+            # In most cases, the hash should always be initialized, but there can be some cases in which
+            # the models have not finished initialization
+            if model._hash is None:
+                raise ModelError(
+                    f"Hash on model {model.__name__} is not initialized. Maybe you forgot to "
+                    f"call {model.model_rebuild.__name__}?"
+                )
 
-                logger.debug("Registering model %s with client %s", model, self)
-                self._models[model._hash] = model
+            logger.debug("Registering model %s with client %s", model, self)
+            self._models[model._hash] = model
 
     def _extract_version(self, version: str) -> None:
         self._server_version = tuple(int(part) for part in version.split("."))
         logger.debug("Server version identifier as %s", self._server_version)
 
     def _transform_entity(self, entity: Any) -> Any:
-        with _scoped_log_ctx(
-            {
-                LogContext.DRIVER: self._driver.__class__.__name__,
-                LogContext.SERVER_TYPE: self._server_type,
-                LogContext.SERVER_VERSION: self._server_version,
-            }
-        ):
-            if isinstance(entity, (neo4j.graph.Node, neo4j.graph.Relationship)):
-                return self._entity_to_model(entity)
-            if isinstance(entity, neo4j.graph.Path):
-                logger.debug("Transforming nodes and relationships from path %s", entity)
-                return Path(
-                    self,
-                    tuple(self._entity_to_model(node) for node in entity.nodes),
-                    tuple(
-                        self._entity_to_model(relationship) for relationship in entity.relationships
-                    ),
-                    entity.graph,
-                )
+        if isinstance(entity, (neo4j.graph.Node, neo4j.graph.Relationship)):
+            return self._entity_to_model(entity)
+        if isinstance(entity, neo4j.graph.Path):
+            logger.debug("Transforming nodes and relationships from path %s", entity)
+            return Path(
+                self,
+                tuple(self._entity_to_model(node) for node in entity.nodes),
+                tuple(self._entity_to_model(relationship) for relationship in entity.relationships),
+                entity.graph,
+            )
 
-            logger.debug("Entity %s is a primitive value, skipping transformation", entity)
-            return entity
+        logger.debug("Entity %s is a primitive value, skipping transformation", entity)
+        return entity
 
     @overload
     def _entity_to_model(self, entity: neo4j.graph.Node) -> Union[Node, neo4j.graph.Node]: ...
@@ -199,25 +189,19 @@ class ClientMixin(Generic[T]):
         return instance
 
     def _relationship_type_to_model(self, type_: str) -> Optional[Type[Relationship]]:
-        with _scoped_log_ctx(
-            {
-                LogContext.DRIVER: self._driver.__class__.__name__,
-                LogContext.SERVER_TYPE: self._server_type,
-            }
-        ):
-            model_hash = Relationship._generate_hash(type_)
+        model_hash = Relationship._generate_hash(type_)
 
-            if model_hash not in self._models:
-                if self._configuration.get("strict_transformations"):
-                    raise SerializationError(f"No model with type {type_} registered")
+        if model_hash not in self._models:
+            if self._configuration.get("strict_transformations"):
+                raise SerializationError(f"No model with type {type_} registered")
 
-                logger.warning(
-                    "No model with type %s registered with client. Record will not be transformed",
-                    type_,
-                )
-                return None
+            logger.warning(
+                "No model with type %s registered with client. Record will not be transformed",
+                type_,
+            )
+            return None
 
-            return cast(Type[Relationship], self._models[model_hash])
+        return cast(Type[Relationship], self._models[model_hash])
 
     def __init_configuration(self, **config) -> ClientConfiguration:
         return ClientConfiguration(

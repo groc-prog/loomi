@@ -3,7 +3,7 @@ from typing import Dict, LiteralString, Union, cast
 import neo4j
 
 from loomi._core.change_tracker_mixin import ChangeTrackerMixin
-from loomi.logger import LogContext, _scoped_log_ctx, get_logger
+from loomi.logger import get_logger
 
 logger = get_logger("change_tracker")
 
@@ -21,26 +21,18 @@ class ChangeTracker(ChangeTrackerMixin[Union[neo4j.Session, neo4j.Transaction]])
         will only be committed once `tx.commit()` is called.
         """
         is_session = isinstance(self._session_or_tx, neo4j.Session)
+        self._omit_redundant_relationship_operations()
 
-        with _scoped_log_ctx(
-            {
-                LogContext.DRIVER: self._client.__class__.__name__,
-                LogContext.SERVER_TYPE: self._client._server_type,
-                LogContext.CHANGE_TRACKER_FLUSH_SCOPE: ("session" if is_session else "transaction"),
-            }
-        ):
-            self._omit_redundant_relationship_operations()
+        if is_session:
+            # If the change tracker is called on a session, we create a new transaction and run
+            # every operation in that transaction
+            self.__flush_with_session()
+        else:
+            # If this is called on a transaction already, we pass the responsibility of calling
+            # `.commit()` to the caller
+            self.__flush_with_transaction()
 
-            if is_session:
-                # If the change tracker is called on a session, we create a new transaction and run
-                # every operation in that transaction
-                self.__flush_with_session()
-            else:
-                # If this is called on a transaction already, we pass the responsibility of calling
-                # `.commit()` to the caller
-                self.__flush_with_transaction()
-
-            self.clear()
+        self.clear()
 
     def __flush_with_session(self) -> None:
         id_map: Dict[int, Union[str, int]] = {}

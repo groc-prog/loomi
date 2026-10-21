@@ -23,7 +23,7 @@ from loomi.constants import ServerType
 from loomi.exceptions import ChangeTrackerError, ModelError
 from loomi.graph.node import Node
 from loomi.graph.relationship import Relationship
-from loomi.logger import LogContext, _scoped_log_ctx, get_logger
+from loomi.logger import get_logger
 
 if TYPE_CHECKING:
     from loomi._async.client import AsyncClient
@@ -133,119 +133,106 @@ class ChangeTrackerMixin(Generic[T]):
             TrackingOperation.UPDATE if model._element_id is not None else TrackingOperation.INSERT
         )
 
-        with _scoped_log_ctx(
-            {
-                LogContext.MODEL_NAME: model.__class__.__name__,
-                LogContext.MODEL_HASH: obj_id,
-                LogContext.CHANGE_TRACKER_OPERATION: operation.name,
-            }
-        ):
-            # If the entity is already being tracked with `TrackingOperation.DELETE`, this
-            # acts as a reversal, by either removing it from the tracker if it has not been
-            # saved to the DB or by reversing it back to `TrackingOperation.UPDATE`
-            tracked_as_delete = self._state[TrackingOperation.DELETE]["nodes"].get(
-                obj_id
-            ) or self._state[TrackingOperation.DELETE]["relationships"].get(obj_id)
-            if tracked_as_delete is not None:
-                if model._element_id is not None:
-                    logger.debug(
-                        "Persisted entity has previously been tracked as %s, updating to tracking "
-                        "operation %s",
-                        TrackingOperation.DELETE.name,
-                        TrackingOperation.UPDATE.name,
-                    )
-                    if is_relationship:
-                        reference = self._state[TrackingOperation.DELETE]["relationships"].pop(
-                            obj_id
-                        )
-                        self._state[TrackingOperation.UPDATE]["relationships"][obj_id] = reference
-                    else:
-                        reference = self._state[TrackingOperation.DELETE]["nodes"].pop(obj_id)
-                        self._state[TrackingOperation.UPDATE]["nodes"][obj_id] = reference
-
-                    return
-
-                if model._element_id is None:
-                    logger.debug(
-                        "Non-persisted entity has previously been tracked as %s, removing entity "
-                        "from tracker",
-                        TrackingOperation.DELETE.name,
-                    )
-
-                    if is_relationship:
-                        reference = self._state[TrackingOperation.DELETE]["relationships"].pop(
-                            obj_id
-                        )
-                    else:
-                        reference = self._state[TrackingOperation.DELETE]["nodes"].pop(obj_id)
-
-                    return
-
-            if is_relationship and model._element_id is None:
-                if start_node is None or end_node is None:
-                    raise ChangeTrackerError(
-                        "Both start and end nodes have to be defined when tracking a unsaved "
-                        "relationship"
-                    )
-
-                start_node_id = id(start_node)
-                start_node_operation = (
-                    TrackingOperation.UPDATE
-                    if start_node._element_id is not None
-                    else TrackingOperation.INSERT
+        # If the entity is already being tracked with `TrackingOperation.DELETE`, this
+        # acts as a reversal, by either removing it from the tracker if it has not been
+        # saved to the DB or by reversing it back to `TrackingOperation.UPDATE`
+        tracked_as_delete = self._state[TrackingOperation.DELETE]["nodes"].get(
+            obj_id
+        ) or self._state[TrackingOperation.DELETE]["relationships"].get(obj_id)
+        if tracked_as_delete is not None:
+            if model._element_id is not None:
+                logger.debug(
+                    "Persisted entity has previously been tracked as %s, updating to tracking "
+                    "operation %s",
+                    TrackingOperation.DELETE.name,
+                    TrackingOperation.UPDATE.name,
                 )
-                if start_node_id not in self._state[start_node_operation]["nodes"]:
-                    logger.debug(
-                        "Tracking start node of unsaved relationship as %s", start_node_operation
-                    )
-                    self._state[start_node_operation]["nodes"][start_node_id] = (
-                        start_node,
-                        start_node._compute_checksums(),
-                    )
+                if is_relationship:
+                    reference = self._state[TrackingOperation.DELETE]["relationships"].pop(obj_id)
+                    self._state[TrackingOperation.UPDATE]["relationships"][obj_id] = reference
+                else:
+                    reference = self._state[TrackingOperation.DELETE]["nodes"].pop(obj_id)
+                    self._state[TrackingOperation.UPDATE]["nodes"][obj_id] = reference
 
-                end_node_id = id(end_node)
-                end_node_operation = (
-                    TrackingOperation.UPDATE
-                    if end_node._element_id is not None
-                    else TrackingOperation.INSERT
+                return
+
+            if model._element_id is None:
+                logger.debug(
+                    "Non-persisted entity has previously been tracked as %s, removing entity "
+                    "from tracker",
+                    TrackingOperation.DELETE.name,
                 )
-                if end_node_id not in self._state[end_node_operation]["nodes"]:
-                    logger.debug(
-                        "Tracking end node of unsaved relationship as %s", end_node_operation
-                    )
-                    self._state[end_node_operation]["nodes"][end_node_id] = (
-                        end_node,
-                        end_node._compute_checksums(),
-                    )
 
-                # Remember the dependencies between relationship and nodes to be able to resolve
-                # the queries later on
-                self._grouping_map[obj_id] = (start_node_id, end_node_id)
+                if is_relationship:
+                    reference = self._state[TrackingOperation.DELETE]["relationships"].pop(obj_id)
+                else:
+                    reference = self._state[TrackingOperation.DELETE]["nodes"].pop(obj_id)
 
-            if is_relationship:
-                tracked_state = self._state[operation]["relationships"].get(obj_id)
-            else:
-                tracked_state = self._state[operation]["nodes"].get(obj_id)
+                return
 
-            if tracked_state is not None:
-                # If the entity is already being tracked and the operation is not
-                # `TrackingOperation.REMOVE`, it is already being tracked with the correct
-                # operation
-                if operation != TrackingOperation.DELETE:
-                    logger.warning(
-                        "Entity has already been added to the change tracker. It will only be "
-                        "tracked once"
-                    )
-                    return
-
-            logger.debug("Tracking new entity")
-            if is_relationship:
-                self._state[operation]["relationships"][obj_id] = (
-                    model,
-                    model._compute_checksums(),
+        if is_relationship and model._element_id is None:
+            if start_node is None or end_node is None:
+                raise ChangeTrackerError(
+                    "Both start and end nodes have to be defined when tracking a unsaved "
+                    "relationship"
                 )
-            else:
-                self._state[operation]["nodes"][obj_id] = (model, model._compute_checksums())
+
+            start_node_id = id(start_node)
+            start_node_operation = (
+                TrackingOperation.UPDATE
+                if start_node._element_id is not None
+                else TrackingOperation.INSERT
+            )
+            if start_node_id not in self._state[start_node_operation]["nodes"]:
+                logger.debug(
+                    "Tracking start node of unsaved relationship as %s", start_node_operation
+                )
+                self._state[start_node_operation]["nodes"][start_node_id] = (
+                    start_node,
+                    start_node._compute_checksums(),
+                )
+
+            end_node_id = id(end_node)
+            end_node_operation = (
+                TrackingOperation.UPDATE
+                if end_node._element_id is not None
+                else TrackingOperation.INSERT
+            )
+            if end_node_id not in self._state[end_node_operation]["nodes"]:
+                logger.debug("Tracking end node of unsaved relationship as %s", end_node_operation)
+                self._state[end_node_operation]["nodes"][end_node_id] = (
+                    end_node,
+                    end_node._compute_checksums(),
+                )
+
+            # Remember the dependencies between relationship and nodes to be able to resolve
+            # the queries later on
+            self._grouping_map[obj_id] = (start_node_id, end_node_id)
+
+        if is_relationship:
+            tracked_state = self._state[operation]["relationships"].get(obj_id)
+        else:
+            tracked_state = self._state[operation]["nodes"].get(obj_id)
+
+        if tracked_state is not None:
+            # If the entity is already being tracked and the operation is not
+            # `TrackingOperation.REMOVE`, it is already being tracked with the correct
+            # operation
+            if operation != TrackingOperation.DELETE:
+                logger.warning(
+                    "Entity has already been added to the change tracker. It will only be "
+                    "tracked once"
+                )
+                return
+
+        logger.debug("Tracking new entity")
+        if is_relationship:
+            self._state[operation]["relationships"][obj_id] = (
+                model,
+                model._compute_checksums(),
+            )
+        else:
+            self._state[operation]["nodes"][obj_id] = (model, model._compute_checksums())
 
     def remove(self, model: Union[Node, Relationship]) -> None:
         """
@@ -265,64 +252,57 @@ class ChangeTrackerMixin(Generic[T]):
             TrackingOperation.UPDATE if model._element_id is not None else TrackingOperation.INSERT
         )
 
-        with _scoped_log_ctx(
-            {
-                LogContext.MODEL_NAME: model.__class__.__name__,
-                LogContext.MODEL_HASH: obj_id,
-                LogContext.CHANGE_TRACKER_OPERATION: TrackingOperation.DELETE.name,
-            }
-        ):
+        if is_relationship:
+            tracked_state = self._state[operation]["relationships"].get(obj_id)
+        else:
+            tracked_state = self._state[operation]["nodes"].get(obj_id)
+
+        if model._element_id is None:
+            if tracked_state is None:  # pragma: no cover
+                raise ChangeTrackerError(
+                    "Can not track a entity to be deleted if it has not been persisted "
+                    "to the database and has not been previously added to the change tracker"
+                )
+
+            logger.debug(
+                "Non persisted entity has been previously added to change tracker, stopping "
+                "tracking"
+            )
             if is_relationship:
-                tracked_state = self._state[operation]["relationships"].get(obj_id)
+                self._state[operation]["relationships"].pop(obj_id)
             else:
-                tracked_state = self._state[operation]["nodes"].get(obj_id)
+                self._state[operation]["nodes"].pop(obj_id)
 
-            if model._element_id is None:
-                if tracked_state is None:  # pragma: no cover
-                    raise ChangeTrackerError(
-                        "Can not track a entity to be deleted if it has not been persisted "
-                        "to the database and has not been previously added to the change tracker"
-                    )
+            return
 
-                logger.debug(
-                    "Non persisted entity has been previously added to change tracker, stopping "
-                    "tracking"
-                )
-                if is_relationship:
-                    self._state[operation]["relationships"].pop(obj_id)
-                else:
-                    self._state[operation]["nodes"].pop(obj_id)
+        if tracked_state is not None:
+            logger.debug(
+                "Persisted entity has previously been tracked as %s, updating to tracking "
+                "operation %s",
+                operation.name,
+                TrackingOperation.DELETE.name,
+            )
 
-                return
-
-            if tracked_state is not None:
-                logger.debug(
-                    "Persisted entity has previously been tracked as %s, updating to tracking "
-                    "operation %s",
-                    operation.name,
-                    TrackingOperation.DELETE.name,
-                )
-
-                if is_relationship:
-                    reference = self._state[operation]["relationships"].pop(obj_id)
-                    self._state[TrackingOperation.DELETE]["relationships"][obj_id] = reference
-                else:
-                    reference = self._state[operation]["nodes"].pop(obj_id)
-                    self._state[TrackingOperation.DELETE]["nodes"][obj_id] = reference
-
-                return
-
-            logger.debug("Tracking new entity")
             if is_relationship:
-                self._state[TrackingOperation.DELETE]["relationships"][obj_id] = (
-                    model,
-                    model._compute_checksums(),
-                )
+                reference = self._state[operation]["relationships"].pop(obj_id)
+                self._state[TrackingOperation.DELETE]["relationships"][obj_id] = reference
             else:
-                self._state[TrackingOperation.DELETE]["nodes"][obj_id] = (
-                    model,
-                    model._compute_checksums(),
-                )
+                reference = self._state[operation]["nodes"].pop(obj_id)
+                self._state[TrackingOperation.DELETE]["nodes"][obj_id] = reference
+
+            return
+
+        logger.debug("Tracking new entity")
+        if is_relationship:
+            self._state[TrackingOperation.DELETE]["relationships"][obj_id] = (
+                model,
+                model._compute_checksums(),
+            )
+        else:
+            self._state[TrackingOperation.DELETE]["nodes"][obj_id] = (
+                model,
+                model._compute_checksums(),
+            )
 
     def clear(self) -> None:
         """

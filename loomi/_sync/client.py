@@ -20,7 +20,7 @@ from loomi.constants import ServerType
 from loomi.exceptions import ClientError
 from loomi.graph.node import Node
 from loomi.graph.relationship import Relationship
-from loomi.logger import LogContext, _scoped_log_ctx, get_logger
+from loomi.logger import get_logger
 from loomi.query_api._builders.delete_builder import (
     DeleteQueryBuilder,
     DeleteResult,
@@ -51,40 +51,38 @@ class Client(ClientMixin[neo4j.Driver]):
             ClientError: If the remote server can not be reached or does not return required
                 metadata.
         """
-        with _scoped_log_ctx({LogContext.DRIVER: self._driver.__class__.__name__}):
-            try:
-                logger.info("Verifying connectivity to server")
-                self._driver.verify_connectivity()
+        try:
+            logger.info("Verifying connectivity to server")
+            self._driver.verify_connectivity()
 
-                logger.debug("Getting server metadata")
-                server_info = self._driver.get_server_info()
+            logger.debug("Getting server metadata")
+            server_info = self._driver.get_server_info()
 
-                self._server_type = (
-                    ServerType.MEMGRAPH
-                    if "memgraph" in server_info.agent.lower()
-                    else ServerType.NEO4J
+            self._server_type = (
+                ServerType.MEMGRAPH if "memgraph" in server_info.agent.lower() else ServerType.NEO4J
+            )
+
+            logger.debug("Checking server version")
+            with self._driver.session() as session:
+                query = (
+                    "SHOW VERSION"
+                    if self._server_type == ServerType.MEMGRAPH
+                    else (
+                        "CALL dbms.components() YIELD name, versions "
+                        'WHERE name = "Neo4j Kernel" '
+                        "RETURN versions[0] AS version"
+                    )
                 )
 
-                logger.debug("Checking server version")
-                with self._driver.session() as session:
-                    query = (
-                        "SHOW VERSION"
-                        if self._server_type == ServerType.MEMGRAPH
-                        else (
-                            "CALL dbms.components() YIELD name, versions "
-                            'WHERE name = "Neo4j Kernel" '
-                            "RETURN versions[0] AS version"
-                        )
-                    )
+                result = session.run(query)
+                version = result.value()
+                if len(version) == 0:
+                    raise ClientError("Server did not respond with a valid version")
 
-                    result = session.run(query)
-                    version = result.value()
-                    if len(version) == 0:
-                        raise ClientError("Server did not respond with a valid version")
-
-                    self._extract_version(version[0])
-            except Exception as exc:
-                raise ClientError("Could not get required metadata from remote") from exc
+                self._extract_version(version[0])
+                logger.info("Client ready")
+        except Exception as exc:
+            raise ClientError("Could not get required metadata from remote") from exc
 
     @overload
     def session(self, mode: Literal["loomi"] = "loomi", **session_config: Any) -> Session: ...
@@ -109,18 +107,12 @@ class Client(ClientMixin[neo4j.Driver]):
             Loomi session. Defaults to `loomi`.
                 session_config: Key-word arguments passed to the session directly.
         """
-        with _scoped_log_ctx(
-            {
-                LogContext.DRIVER: self._driver.__class__.__name__,
-                LogContext.SERVER_TYPE: self._server_type,
-            }
-        ):
-            session = self._driver.session(**session_config)
+        session = self._driver.session(**session_config)
 
-            if mode == "loomi":
-                return Session(session, self)
+        if mode == "loomi":
+            return Session(session, self)
 
-            return session
+        return session
 
     @require_server_metadata
     def query(
