@@ -1,145 +1,171 @@
-# Model usage & configuration
+# Model usage and configuration
 
-This section covers how `loomi` models are defined and configured for later usage in [queries](./sessions-transactions-and-results.md).
-
+This section covers how loomi models are defined and configured, and how they are used later in [queries](./sessions-transactions-and-results.md).
 
 ## Types of models
 
-`loomi` has multiple types of models, some of which are defined by the user, while others are only returned by queries and **should never needed to be initialized by yourself**:
+loomi has several types of models. Some are defined by the user, while others are only returned by queries and **should never need to be instantiated yourself**:
 
 - `Node`: Represents a type of node in the database.
 - `Relationship`: Represents a type of relationship in the database.
-- `Graph`: A wrapper around the `neo4j.graph.Graph` class which provides correct typing and logic for working with loomi nodes and relationships. It provides **the same interface** as the `Graph` class from the `neo4j.graph` module.
-- `Path`: A wrapper around the `neo4j.graph.Path` class which provides correct typing and logic for working with loomi nodes and relationships. It provides **the same interface** as the `Path` class from the `neo4j.graph` module.
-
+- `Graph`: A wrapper around the `neo4j.graph.Graph` class that provides correct typing and logic for working with loomi nodes and relationships. It exposes **the same interface** as the `Graph` class from the `neo4j.graph` module.
+- `Path`: A wrapper around the `neo4j.graph.Path` class that provides correct typing and logic for working with loomi nodes and relationships. It exposes **the same interface** as the `Path` class from the `neo4j.graph` module.
 
 ## Defining your models
 
-Under the hood, nodes and relationships are just [Pydantic classes](https://pydantic.dev/). If you have previously worked with Pydantic, you will get familiar with the way `loomi` makes use of Pydantics capabilities pretty quickly:
+Under the hood, nodes and relationships are just [Pydantic classes](https://pydantic.dev/). If you have worked with Pydantic before, you will recognize how loomi uses Pydantic's capabilities:
 
 ```python
-# Nodes and relationships are defined as normal classes
-# Any properties are translated to database entity properties
+from pydantic import Field, field_validator
+
+from loomi import Node, Relationship
+
+
+# Nodes and relationships are defined as regular classes.
+# Their class attributes are translated into database entity properties.
 class Child(Node):
-  name: str
-  age: int
+    name: str
+    age: int
 
 
 class Adult(Node):
-  name: str
-  age: int
-  job: str
+    name: str
+    age: int
+    job: str
 
-  # Everything Pydantic has to offer is supported
-  @field_validator("age")
-  @classmethod
-  def check_positive_age(cls, value: int) -> int:
-      if value <= 0:
-          raise ValueError("Age must be a positive integer.")
-      return value
+    # Everything Pydantic has to offer is supported
+    @field_validator("age")
+    @classmethod
+    def check_positive_age(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("Age must be a positive integer.")
+        return value
 
 
 class FamilyRelation(Relationship):
-  loves_child: bool = Field(default=True)
+    loves_child: bool = Field(default=True)
 ```
-
 
 ### Configuring models
 
-As you might have seen in the [Getting started](../getting-started.md) docs, both nodes and relationships can be configured to behave differently. There are also some shared configuration options which affect both types of models:
+As you may have seen in the [Getting started](../getting-started.md) docs, both nodes and relationships can be configured to behave differently. Some configuration options are shared by both model types:
 
 > [!WARNING]
-> When using custom (de)serializer functions, ensure your serialization logic is performant, as this can quickly become a performance trap when used heavily. In most cases, you should _consider switching to Memgraph_ when you make heavy use of nested properties.
+> When using custom (de)serializer functions, make sure your serialization logic is performant, as this can quickly become a performance trap under heavy use. In most cases, you should _consider switching to Memgraph_ when you make heavy use of nested properties.
 
 > [!WARNING]
-> Uniqueness of node labels and relationship types is not checked. The client will use the last model with matching labels/type when transforming results into models.
+> Uniqueness of node labels and relationship types is not checked. The client will use the last model with matching labels or type when transforming results into models.
 
-- **`serializer_fn`**: Only relevant when using both Neo4j and enabling `serialize_nested` on the client. By using this you can control how nested properties are serialized before they are stored. This function will be called for all fields which are not of a **supported data type** after `model.model_dump()` has been called. By default, `json.dumps` is used.
-- **`deserializer_fn`**: Only relevant when using both Neo4j and enabling `serialize_nested` on the client. By using this you can control how nested properties are deserialized after they are loaded from the database. This function will be called for all fields where the data type does not match their annotation on the model. For lists, this will be called for each list item. By default, `json.loads` is used.
-- **`labels`**: Specific to **nodes**. This defines the labels used when the model is persisted to the database. By default, the **unchanged class name** is used as the only label.
-- **`type`**: Specific to **relationships**. This defines the type used when the model is persisted to the database. By default, the **class name** converted into **SCREAMING_SNAKE_CASE** is used as the type.
+- **`serializer_fn`**: Only relevant when using Neo4j with `serialize_nested` enabled on the client. Use this to control how nested properties are serialized before they are stored. This function is called for all fields that are not of a **supported data type**, after `model.model_dump()` has been called. By default, `json.dumps` is used.
+- **`deserializer_fn`**: Only relevant when using Neo4j with `serialize_nested` enabled on the client. Use this to control how nested properties are deserialized after they are loaded from the database. This function is called for all fields where the data type does not match their annotation on the model. For lists, it is called for each list item. By default, `json.loads` is used.
+- **`labels`**: Specific to **nodes**. Defines the labels used when the model is persisted to the database. By default, the **unchanged class name** is used as the only label.
+- **`type`**: Specific to **relationships**. Defines the type used when the model is persisted to the database. By default, the **class name** converted into **SCREAMING_SNAKE_CASE** is used as the type.
 
 > [!NOTE]
-> Configuration options are always per model type and can not be defined globally.
+> Configuration options are always per model type and cannot be defined globally.
+
+#### Supported data types
+
+The **supported data types** referenced by `serializer_fn` and `deserializer_fn` are the types Neo4j and Memgraph can store natively as property values. The following are considered supported:
+
+- Python built-ins: `bool`, `int`, `float`, `str`, `bytes`, `bytearray`, `list`, `dict`, and `NoneType`
+- Neo4j temporal and spatial types: `neo4j.time.Date`, `neo4j.time.Time`, `neo4j.time.DateTime`, `neo4j.time.Duration`, and `neo4j.spatial.Point`
+- Python standard-library temporal types: `datetime.date`, `datetime.time`, `datetime.datetime`, and `datetime.timedelta`
+
+Lists are supported only when their items are of one of the following types:
+
+- Python built-ins: `bool`, `int`, `float`, `str`, `bytes`, `bytearray`
+- Neo4j temporal and spatial types: `neo4j.time.Date`, `neo4j.time.Time`, `neo4j.time.DateTime`, `neo4j.time.Duration`, and `neo4j.spatial.Point`
+- Python standard-library temporal types: `datetime.date`, `datetime.time`, `datetime.datetime`, and `datetime.timedelta`
+
+Note that `list`, `dict`, and `NoneType` are not valid list item types — nested lists and nested dicts must be handled by a `serializer_fn` when `serialize_nested` is enabled.
 
 ```python
 def custom_serializer(val):
-  return "serialized"
+    return "serialized"
+
 
 class Child(Node):
-  name: str
-  age: int
+    name: str
+    age: int
 
-  # Both `Human` and `Child` will be used as labels
-  loomi_config = {
-    "labels": {"Human", "Child"}
-  }
+    # Both `Human` and `Child` are used as labels
+    loomi_config = {
+        "labels": {"Human", "Child"}
+    }
 
 
-# `Adult` will be used as the only label
+# `Adult` is used as the only label
 class Adult(Node):
-  job: str
+    job: str
 
 
 class FamilyRelation(Relationship):
-  loves_child: bool = Field(default=True)
+    loves_child: bool = Field(default=True)
 
-  # `IS_PARENT_OF` will be used as the type and `custom_serializer` will
-  # be called when serializing nested properties
-  loomi_config = {
-    "type": "IS_PARENT_OF",
-    "serializer_fn": custom_serializer
-  }
+    # `IS_PARENT_OF` is used as the type, and `custom_serializer`
+    # is called when serializing nested properties
+    loomi_config = {
+        "type": "IS_PARENT_OF",
+        "serializer_fn": custom_serializer
+    }
 
 
-# `WORKS_AT` will be the type for this relationship
+# `WORKS_AT` is the type for this relationship
 class WorksAt(Relationship):
-  ...
+    ...
 ```
 
-Models also support inheritance, with some specific rules applying to configuration merging based on the model type. Class properties are merged in the same way as for normal Pydantic classes.
+Models also support inheritance, with specific rules applying to configuration merging based on the model type. Class properties are merged in the same way as for normal Pydantic classes.
 
-For `Node` models, all configuration keys defined in the **inheriting class** will override existing inherited ones. The only exception to this rule is the `labels` key, as **labels are merged**:
+For `Node` models, all configuration keys defined in the **inheriting class** override existing inherited ones. The only exception is the `labels` key, as **labels are merged**:
 
 ```python
+from loomi import Node
+
+
 class Human(Node):
-  name: str
-  age: int
+    name: str
+    age: int
 
 
-# This classes labels will be `{"Human", "Worker"}`
+# This class's labels will be `{"Human", "Worker"}`
 class Worker(Human):
-  job: str
+    job: str
 ```
 
 For `Relationship` models, all configuration keys are **always overridden** by the inheriting class:
 
 ```python
+import datetime
+
+from loomi import Relationship
+
+
 class Knows(Relationship):
-  knows_since: datetime.datetime
+    knows_since: datetime.datetime
 
 
-# This classes type will be `LOVES`
+# This class's type will be `LOVES`
 class Loves(Knows):
-  very_much: bool
+    very_much: bool
 ```
-
 
 ## Accessing entity metadata
 
-All populated models expose both `element_id` and `id` properties which reflect their value in the database:
+All populated models expose both `element_id` and `id` properties, reflecting their values in the database:
 
 > [!NOTE]
-> When using Memgraph, `element_id` and `id` will resolve to the same value. This is due to how Memgraph handles internal ID's.
+> When using Memgraph, `element_id` and `id` resolve to the same value. This is because of how Memgraph handles internal IDs.
 
 ```python
 with client.session() as session:
-  result = session.run(
-    "MATCH (a:Adult)-[r:IS_PARENT_OF]->(c:Human:Child) RETURN a, c"
-  )
+    result = session.run(
+        "MATCH (a:Adult)-[r:IS_PARENT_OF]->(c:Human:Child) RETURN a, c"
+    )
 
-  models = result.values()
+    models = result.values()
 
-  # Prints the `element_id` from the database
-  print(models[0][0].element_id)
+    # Prints the `element_id` from the database
+    print(models[0][0].element_id)
 ```
