@@ -7,11 +7,6 @@ from loomi.graph.relationship import Relationship
 
 
 class Graph:
-    """
-    A graph of nodes and relationships transformed into Loomi models. Provides the same interface
-    as `neo4j.graph.Graph`.
-    """
-
     _nodes: Dict[str, Union[Node, neo4j.graph.Node]]
     _relationships: Dict[str, Union[Relationship, neo4j.graph.Relationship]]
     _relationship_types: Dict[str, Type[Union[Relationship, neo4j.graph.Relationship]]]

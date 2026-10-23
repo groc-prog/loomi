@@ -14,8 +14,6 @@ logger = get_logger("query_api")
 
 @dataclass(frozen=True)
 class CompiledDescriptor:
-    """The compiled version for a given descriptor."""
-
     full_template: str
     variable_path: str
     variable: str
@@ -24,20 +22,12 @@ class CompiledDescriptor:
 
 @dataclass(frozen=True)
 class CompiledExpression:
-    """The compiled version for a given descriptor."""
-
     outer_template: str
     expression_template: str
-    expression_variable: str
+    expression_variable: Optional[str]
     full_path: Optional[str]
 
     def to_query_string(self) -> str:
-        """
-        Generates a query string from the compiled expression.
-
-        Returns:
-            str: The part of the query string represented by this compiled expression.
-        """
         logger.debug(
             "Formatting compiled expression to query string. "
             "outer template %s; "
@@ -54,19 +44,19 @@ class CompiledExpression:
 
 
 @dataclass(frozen=True)
-class CompiledDbFunction:
-    """The compiled version for a given Db function."""
+class CompiledExpressionSide:
+    outer_template: str
+    inner_template: str
+    expression_variable: Optional[str]
+    full_path: Optional[str]
 
+
+@dataclass(frozen=True)
+class CompiledDbFunction:
     full_template: str
     inserted_parameter: Optional[str]
 
     def to_query_string(self) -> str:
-        """
-        Generates a query string from the compiled expression.
-
-        Returns:
-            str: The part of the query string represented by this compiled expression.
-        """
         logger.debug(
             "Formatting compiled db function to query string. parameter %s",
             self.inserted_parameter,
@@ -76,22 +66,16 @@ class CompiledDbFunction:
 
 @runtime_checkable
 class CompilableDescriptor(Protocol):
-    """Protocol implemented by descriptors making them compilable."""
-
     def _compile_descriptor(self, ctx: CompilationContext) -> CompiledDescriptor: ...
 
 
 @runtime_checkable
 class CompilableExpression(Protocol):
-    """Protocol implemented by expressions making them compilable."""
-
     def _compile_expression(self, ctx: CompilationContext) -> CompiledExpression: ...
 
 
 @runtime_checkable
 class CompilableDbFunction(Protocol):
-    """Protocol implemented by DB functions making them compilable."""
-
     def _compile_db_function(
         self, ctx: CompilationContext
     ) -> Union[CompiledDescriptor, CompiledDbFunction]: ...

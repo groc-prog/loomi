@@ -1,17 +1,19 @@
 # pylint: disable=missing-function-docstring
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, List, Union, cast
+from typing import Any, Dict, List, Union, cast
 
 from loomi._core.types import QueryModelType
+from loomi.exceptions import QueryError
 from loomi.logger import get_logger
 from loomi.query_api._core.context import CompilationContext
 from loomi.query_api._core.protocols import (
     CompilableDbFunction,
     CompilableDescriptor,
     CompilableExpression,
-    CompiledDbFunction,
+    CompiledDescriptor,
     CompiledExpression,
+    CompiledExpressionSide,
 )
 from loomi.query_api._core.templates import (
     ArithmeticExpressionTemplate,
@@ -19,19 +21,11 @@ from loomi.query_api._core.templates import (
     LogicalExpressionTemplate,
 )
 
-if TYPE_CHECKING:
-    from loomi.query_api._core.protocols import CompiledDescriptor
-else:
-    CompiledDescriptor = object
-
-
 logger = get_logger("query_api")
 
 
 @dataclass(frozen=True)
 class ExpressionMixin:
-    """Expression mixin providing shared overloads for common magic methods."""
-
     def __invert__(self) -> CompilableExpression:
         from loomi.query_api.functions.comparison import not_
 
@@ -55,54 +49,128 @@ class ExpressionMixin:
 
 @dataclass(frozen=True)
 class Expression(ExpressionMixin, CompilableExpression):
-    """A expression which can be compiled by a query builder."""
-
-    descriptor: Union[CompilableDescriptor, CompilableDbFunction]
+    left: Union[CompilableDescriptor, CompilableDbFunction, Any]
     template: Union[ExpressionTemplate, ArithmeticExpressionTemplate]
-    value: Any
+    right: Union[CompilableDescriptor, CompilableDbFunction, CompilableExpression, Any]
 
-    def _compile_expression(self, ctx: CompilationContext) -> CompiledExpression:
-        logger.debug("Compiling expression for template %s", self.template.name)
-
-        if isinstance(self.descriptor, CompilableDbFunction):
-            compiled_descriptor = cast(
-                CompiledDescriptor, self.descriptor._compile_db_function(ctx)
+    def __compile_side(
+        self,
+        ctx: CompilationContext,
+        value: Union[CompilableDescriptor, CompilableDbFunction, CompilableExpression, Any],
+    ) -> CompiledExpressionSide:
+        if isinstance(value, CompilableExpression):
+            logger.debug(
+                "Expression side is a expression, compiling expression and transforming to final output"
             )
-        else:
-            compiled_descriptor = self.descriptor._compile_descriptor(ctx)
+            compiled_expression = value._compile_expression(ctx)
 
-        if isinstance(self.value, CompilableDbFunction):
-            logger.debug("Value is wrapped in db function, compiling db function first")
-            compiled_db_function = cast(CompiledDbFunction, self.value._compile_db_function(ctx))
-            compiled_parameter_template = compiled_db_function.full_template.format(
-                variable_or_value=f"${compiled_db_function.inserted_parameter}"
+            if compiled_expression.full_path is not None:
+                raise QueryError(
+                    "Invalid right side of expression passed. Expected primitive value, DB function, nested "
+                    "expression or field descriptor without list path operators, but got "
+                    f"{compiled_expression.full_path}"
+                )
+
+            # Expressions nested inside expressions are simply compiled to a expression side by wrapping
+            # them in parenthesis
+            return CompiledExpressionSide(
+                outer_template="{innermost_template}",
+                inner_template=f"({compiled_expression.to_query_string()})",
+                expression_variable=None,
+                full_path=None,
             )
 
-            return CompiledExpression(
+        if isinstance(value, CompilableDescriptor):
+            logger.debug(
+                "Expression side is a field descriptor, compiling descriptor to final output"
+            )
+            compiled_descriptor = value._compile_descriptor(ctx)
+
+            # Descriptors can be returned directly. The `expression_variable` is passed on, but
+            # only the expression value of the left side of the expression will be included in the
+            # final output
+            return CompiledExpressionSide(
                 outer_template=compiled_descriptor.full_template,
-                expression_template=self.template.format(
-                    variable=compiled_descriptor.variable_path,
-                    parameter=compiled_parameter_template,
+                inner_template=compiled_descriptor.variable_path.format(
+                    variable=compiled_descriptor.variable
                 ),
                 expression_variable=compiled_descriptor.variable,
                 full_path=compiled_descriptor.full_path,
             )
 
-        parameter_name = ctx.add_parameter(self.value)
+        if isinstance(value, CompilableDbFunction):
+            logger.debug("Expression side is a DB function, compiling result")
+            compiled_db_function_or_descriptor = value._compile_db_function(ctx)
+
+            # We will get a descriptor with a modified template here if the DB function wraps a descriptor
+            if isinstance(compiled_db_function_or_descriptor, CompiledDescriptor):
+                logger.debug(
+                    "Result of DB function compilation is a field descriptor, compiling descriptor to final output"
+                )
+                return CompiledExpressionSide(
+                    outer_template=compiled_db_function_or_descriptor.full_template,
+                    inner_template=compiled_db_function_or_descriptor.variable_path.format(
+                        variable=compiled_db_function_or_descriptor.variable
+                    ),
+                    expression_variable=compiled_db_function_or_descriptor.variable,
+                    full_path=compiled_db_function_or_descriptor.full_path,
+                )
+
+            logger.debug("Compiling expression side to final output")
+            # If the DB function wraps a primitive value, we can compile the template directly
+            return CompiledExpressionSide(
+                outer_template="{innermost_template}",
+                inner_template=compiled_db_function_or_descriptor.full_template.format(
+                    variable_or_value=f"${compiled_db_function_or_descriptor.inserted_parameter}"
+                ),
+                expression_variable=None,
+                full_path=None,
+            )
+
+        parameter_name = ctx.add_parameter(value)
+        logger.debug(
+            "Expression side is a primitive value. Final output for side is parameter %s",
+            parameter_name,
+        )
+
+        # Primitive values can also be returned by simply compiling the template from the parameter
+        # it was assigned
+        return CompiledExpressionSide(
+            outer_template="{innermost_template}",
+            inner_template=f"${parameter_name}",
+            expression_variable=None,
+            full_path=None,
+        )
+
+    def _compile_expression(self, ctx: CompilationContext) -> CompiledExpression:
+        logger.debug("Compiling expression for template %s", self.template.name)
+
+        left = self.__compile_side(ctx, self.left)
+        right = self.__compile_side(ctx, self.right)
+
+        # We can not build expressions with nested list path operators on the right side
+        # They are only allowed on the left side, which will put the actual expression somewhere
+        # inside the list path
+        if right.full_path is not None:
+            raise QueryError(
+                "Invalid right side of expression passed. Expected primitive value, DB function, nested expression "
+                f"or field descriptor without list path operators, but got {right.full_path}"
+            )
+
         return CompiledExpression(
-            outer_template=compiled_descriptor.full_template,
+            outer_template=left.outer_template,
             expression_template=self.template.format(
-                variable=compiled_descriptor.variable_path, parameter=f"${parameter_name}"
+                left=left.inner_template, right=right.inner_template
             ),
-            expression_variable=compiled_descriptor.variable,
-            full_path=compiled_descriptor.full_path,
+            # Only the expression variable of the left side is passed on here since this will be
+            # used when optimizing list path expressions in compound expressions
+            expression_variable=left.expression_variable,
+            full_path=left.full_path,
         )
 
 
 @dataclass(frozen=True)
 class InvertExpression(CompilableExpression):
-    """A invert expression which can be compiled by a query builder."""
-
     expression: Union["CompoundExpression", CompilableExpression]
 
     def _compile_expression(self, ctx: CompilationContext) -> CompiledExpression:
@@ -130,8 +198,6 @@ class InvertExpression(CompilableExpression):
 
 @dataclass(frozen=True)
 class CompoundExpression:
-    """A compound expression which can be compiled by a query builder."""
-
     operator: LogicalExpressionTemplate
     expressions: List[Union["CompoundExpression", CompilableExpression]]
 
@@ -235,8 +301,6 @@ class CompoundExpression:
 
 @dataclass(frozen=True)
 class CustomCypherExpression(CompilableExpression):
-    """A custom cypher expression which can be compiled by a query builder."""
-
     template: str
     model_map: Dict[str, QueryModelType]
     parameter_map: Dict[str, Any]

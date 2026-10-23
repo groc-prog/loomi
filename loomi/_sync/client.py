@@ -23,8 +23,8 @@ from loomi.graph.relationship import Relationship
 from loomi.logger import get_logger
 from loomi.query_api._builders.delete_builder import (
     DeleteQueryBuilder,
+    DeleteQueryState,
     DeleteResult,
-    _DeleteQueryState,
 )
 from loomi.query_api._builders.match_builder import MatchQueryBuilder, _MatchQueryState
 from loomi.query_api._builders.update_builder import (
@@ -41,8 +41,6 @@ logger = get_logger("driver")
 
 
 class Client(ClientMixin[neo4j.Driver]):
-    """Sync database client for interacting with Loomi models."""
-
     def initialize(self) -> None:
         """
         Checks if the remote server is reachable and fetches additional required metadata.
@@ -99,13 +97,13 @@ class Client(ClientMixin[neo4j.Driver]):
         **session_config: Any,
     ) -> Union[neo4j.Session, Session]:
         """
-        Start a new session. This behaves the same as the `.session()` from the driver except it
+        Start a new session. This behaves the same as `.session()` from the driver except it
         exposes additional functionality if `mode` is set to `loomi`.
 
         Args:
             mode (Union[Literal["native"], Literal["loomi"]]): Whether to use a native session or a
-            Loomi session. Defaults to `loomi`.
-                session_config: Key-word arguments passed to the session directly.
+                Loomi session. Defaults to `loomi`.
+            session_config: Key-word arguments passed to the session directly.
         """
         session = self._driver.session(**session_config)
 
@@ -122,12 +120,12 @@ class Client(ClientMixin[neo4j.Driver]):
         **kwparameters: Any,
     ):
         """
-        Runs the query. By default, a new session is created and used to run the query. You can
-        optionally pass a transaction, which will be used instead.
+        Queries models of a given type with automatically build queries.
 
         Args:
-            transaction (Optional[neo4j.Transaction]): A transaction to use. Defaults to
-            `None`.
+            model_Type (Type[T]): The model type to query.
+            transaction (Optional[neo4j.Transaction]): A transaction to use. Will run in
+                a new session if not defined. Defaults to `None`.
             kwparameters: Key-word arguments passed to the session/transaction directly.
         """
 
@@ -182,8 +180,8 @@ class Client(ClientMixin[neo4j.Driver]):
         A query builder for deleting entities for a given model type.
 
         Args:
-            transaction (Optional[neo4j.Transaction]): A transaction to use. Defaults to
-            `None`.
+            transaction (Optional[neo4j.Transaction]): A transaction to use. Will run in
+                a new session if not defined. Defaults to `None`.
             kwparameters: Key-word arguments passed to the session/transaction directly.
         """
 
@@ -203,7 +201,7 @@ class Client(ClientMixin[neo4j.Driver]):
             affected_entities = [(cast(str, result[0]), cast(int, result[1])) for result in results]
             return DeleteResult(len(affected_entities), affected_entities)
 
-        state = _DeleteQueryState(model_type)
+        state = DeleteQueryState(model_type)
         ctx = CompilationContext(cast(ServerType, self._server_type))
         ctx.add_model(model_type)
 
@@ -220,8 +218,8 @@ class Client(ClientMixin[neo4j.Driver]):
         A query builder for updating entities for a given model type.
 
         Args:
-            transaction (Optional[neo4j.Transaction]): A transaction to use. Defaults to
-            `None`.
+            transaction (Optional[neo4j.Transaction]): A transaction to use. Will run in
+                a new session if not defined. Defaults to `None`.
             kwparameters: Key-word arguments passed to the session/transaction directly.
         """
 

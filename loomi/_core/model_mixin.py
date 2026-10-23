@@ -98,8 +98,8 @@ class ModelMixin(BaseModel, metaclass=ModelMixinMetaclass):
     @property
     def id(self) -> Optional[int]:
         """
-        ID of the database entity. Will be `None` as long as the model is `not hydrated or
-        persisted`.
+        ID of the database entity. Will be `None` as long as the model is **not hydrated or
+        persisted**.
 
         Returns:
             Optional[int]: The ID or `None` if not hydrated or persisted.
@@ -110,11 +110,12 @@ class ModelMixin(BaseModel, metaclass=ModelMixinMetaclass):
     @property
     def element_id(self) -> Optional[str]:
         """
-        Element ID of the database entity. Will be `None` as long as the model is `not hydrated
-        or persisted`. For clients using `Memgraph`, this will be the same as `id`.
+        Element ID of the database entity. Will be `None` as long as the model is **not hydrated
+        or persisted**.
+        For clients using `Memgraph`, this will be the same as `id`.
 
         Returns:
-            Optional[int]: The Element ID or `None` if not hydrated or persisted.
+            Optional[str]: The Element ID or `None` if not hydrated or persisted.
         """
         return self._element_id
 
@@ -161,11 +162,11 @@ class ModelMixin(BaseModel, metaclass=ModelMixinMetaclass):
             # but this has the drawback that it can not be queried easily later on
             if mode == ServerType.NEO4J:
                 if isinstance(value, dict):
-                    serialized[field_name] = self._serialize_neo4j_dict(
+                    serialized[field_name] = self.__serialize_neo4j_dict(
                         field_name, value, serializer_fn, serialize_nested
                     )
                 elif isinstance(value, list):
-                    serialized[field_name] = self._serialize_neo4j_list(
+                    serialized[field_name] = self.__serialize_neo4j_list(
                         field_name, value, serializer_fn, serialize_nested
                     )
                 else:
@@ -174,58 +175,6 @@ class ModelMixin(BaseModel, metaclass=ModelMixinMetaclass):
                 serialized[field_name] = value
 
         return serialized
-
-    def _serialize_neo4j_dict(
-        self,
-        field_name: str,
-        value: Any,
-        serializer_fn: Callable[[Any], Any],
-        serialize_nested: bool,
-    ) -> Any:
-        if not serialize_nested:
-            raise SerializationError(
-                "Nested data types are only supported if `serialize_nested` is "
-                f"enabled. The nested field was found at "
-                f"{self.__class__.__name__}.{field_name}"
-            )
-
-        try:
-            logger.debug("Serializing nested field %s", field_name)
-            return serializer_fn(value)
-        except Exception as exc:
-            raise SerializationError(f"Field {field_name} is not serializable") from exc
-
-    def _serialize_neo4j_list(
-        self,
-        field_name: str,
-        value: Any,
-        serializer_fn: Callable[[Any], Any],
-        serialize_nested: bool,
-    ) -> List[Any]:
-        serialized_list = []
-
-        logger.debug("Serializing list items for field %s", field_name)
-        for index, item in enumerate(value):
-            if not isinstance(item, SUPPORTED_LIST_DATA_TYPES):
-                if not serialize_nested:
-                    raise SerializationError(
-                        "Nested data types are only supported if `serialize_nested` "
-                        "is enabled. The nested field was found at "
-                        f"{self.__class__.__name__}.{field_name}[{index}]"
-                    )
-
-                try:
-                    logger.debug("Serializing nested field %s at index %d", field_name, index)
-                    serialized_list.append(serializer_fn(item))
-                    continue
-                except Exception as exc:
-                    raise SerializationError(
-                        f"Field {field_name}[{index}] is not serializable"
-                    ) from exc
-
-            serialized_list.append(item)
-
-        return serialized_list
 
     @classmethod
     def _deserialize(
@@ -318,3 +267,55 @@ class ModelMixin(BaseModel, metaclass=ModelMixinMetaclass):
                 deserialized[field_name] = value
 
         return cls.model_validate(deserialized)
+
+    def __serialize_neo4j_dict(
+        self,
+        field_name: str,
+        value: Any,
+        serializer_fn: Callable[[Any], Any],
+        serialize_nested: bool,
+    ) -> Any:
+        if not serialize_nested:
+            raise SerializationError(
+                "Nested data types are only supported if `serialize_nested` is "
+                f"enabled. The nested field was found at "
+                f"{self.__class__.__name__}.{field_name}"
+            )
+
+        try:
+            logger.debug("Serializing nested field %s", field_name)
+            return serializer_fn(value)
+        except Exception as exc:
+            raise SerializationError(f"Field {field_name} is not serializable") from exc
+
+    def __serialize_neo4j_list(
+        self,
+        field_name: str,
+        value: Any,
+        serializer_fn: Callable[[Any], Any],
+        serialize_nested: bool,
+    ) -> List[Any]:
+        serialized_list = []
+
+        logger.debug("Serializing list items for field %s", field_name)
+        for index, item in enumerate(value):
+            if not isinstance(item, SUPPORTED_LIST_DATA_TYPES):
+                if not serialize_nested:
+                    raise SerializationError(
+                        "Nested data types are only supported if `serialize_nested` "
+                        "is enabled. The nested field was found at "
+                        f"{self.__class__.__name__}.{field_name}[{index}]"
+                    )
+
+                try:
+                    logger.debug("Serializing nested field %s at index %d", field_name, index)
+                    serialized_list.append(serializer_fn(item))
+                    continue
+                except Exception as exc:
+                    raise SerializationError(
+                        f"Field {field_name}[{index}] is not serializable"
+                    ) from exc
+
+            serialized_list.append(item)
+
+        return serialized_list

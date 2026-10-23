@@ -35,8 +35,6 @@ logger = get_logger("driver")
 
 
 class ClientConfiguration(TypedDict, total=False):
-    """TypedDict for configuring Loomi client behavior."""
-
     serialize_nested: bool
     """Whether nested properties should be serialized before they are stored to Neo4j."""
 

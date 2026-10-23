@@ -23,8 +23,6 @@ logger = get_logger("query_api")
 
 
 class ListPathOperator(StrEnum):
-    """Operators for list paths."""
-
     ANY = "$any"
     ALL = "$all"
     NONE = "$none"
@@ -33,8 +31,6 @@ class ListPathOperator(StrEnum):
 
 @dataclass(frozen=True)
 class FieldDescriptor(CompilableDescriptor):
-    """Descriptor class used for building query paths for a model."""
-
     _full_path: str
     _annotation: Any
     _model_type: QueryModelType
@@ -124,6 +120,9 @@ class FieldDescriptor(CompilableDescriptor):
 
         # Since a dict might contain any key, we allow all fields
         if origin is dict or origin is Dict:
+            logger.debug(
+                "Field descriptor used on a dictionary type, resolving to dictionary key without further checks"
+            )
             value_type = args[1] if len(args) > 1 else Any
             return FieldDescriptor(f"{base_path}.{name}", value_type, self._model_type)
 
@@ -133,6 +132,9 @@ class FieldDescriptor(CompilableDescriptor):
             and issubclass(current_annotation, BaseModel)
             and name in current_annotation.model_fields
         ):
+            logger.debug(
+                "Field descriptor used on a pydantic model, resolving pydantic model property with defined annotation"
+            )
             return FieldDescriptor(
                 f"{base_path}.{name}",
                 current_annotation.model_fields[name].annotation,
@@ -148,16 +150,24 @@ class FieldDescriptor(CompilableDescriptor):
 
         inner_type = Any
         if origin in (list, List, Union):
+            logger.debug("Field descriptor used on list with index %s", index)
             inner_type = next((a for a in args if not isinstance(a, type(None))), Any)
             return FieldDescriptor(f"{self._full_path}[{index}]", inner_type, self._model_type)
 
         if origin in (dict, Dict) and len(args) > 1:
+            logger.debug("Field descriptor used on dictionary with key %s", index)
             inner_type = args[1] if len(args) > 1 else Any
             return FieldDescriptor(f"{self._full_path}.{index}", inner_type, self._model_type)
 
         # In some cases the inner type can not be determined (e.g. Dict[str, Any])
         # In such cases, we just assume that a simple property access should be performed
+        logger.debug(
+            "Field descriptor used on dictionary with key %s. Type could not be determined", index
+        )
         return FieldDescriptor(f"{self._full_path}.{index}", Any, self._model_type)
+
+    def _is_list_path(self) -> bool:
+        return any([operator.value in self._full_path for operator in ListPathOperator])
 
     def _compile_descriptor(self, ctx: CompilationContext) -> CompiledDescriptor:
         logger.debug(
@@ -175,16 +185,21 @@ class FieldDescriptor(CompilableDescriptor):
 
         # If we don't have any list operators, we can return directly
         if not any(p in list_operators for p in parts):
-            logger.debug("Descriptor does not contain any list paths, compiling final output")
+            logger.debug(
+                "Descriptor does not contain any list paths, compiling final output immediately"
+            )
             return CompiledDescriptor(
                 full_template="{innermost_template}",
                 variable_path=f"{{variable}}.{self._full_path}",
                 variable=model_variable,
-                full_path=self._full_path,
+                full_path=None,
             )
 
         # Get the path parts and their index so we can use them to build the full
         # template in reverse order (from inner-most to outer-most)
+        logger.debug(
+            "Field descriptor contains list paths, resolving innermost template to outermost template"
+        )
         operators = [(index, part) for index, part in enumerate(parts) if part in list_operators]
 
         # The variable ID defined here will not always be present in the final query since compound queries
@@ -226,6 +241,11 @@ class FieldDescriptor(CompilableDescriptor):
 
             variable_path = f"{variable_path}.{remaining_paths}"
 
+        logger.debug(
+            "Determined final output with full template %s and variable path %s",
+            full_template,
+            variable_path,
+        )
         return CompiledDescriptor(
             full_template=full_template,
             variable_path=variable_path,
@@ -236,8 +256,6 @@ class FieldDescriptor(CompilableDescriptor):
 
 @dataclass(frozen=True)
 class EntityIdDescriptor(CompilableDescriptor):
-    """Descriptor class used to apply entity ID functions."""
-
     _model_type: QueryModelType
     _template: EntityIdExpressionTemplate
 

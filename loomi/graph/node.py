@@ -6,14 +6,10 @@ from loomi.exceptions import ModelError
 
 
 class NodeConfiguration(EntityConfiguration, total=False):
-    """TypedDict for configuring Loomi node behavior."""
-
     labels: Set[str]
 
 
 class Node(ModelMixin):
-    """A base class for Loomi nodes."""
-
     loomi_config: ClassVar[NodeConfiguration]
 
     @classmethod
@@ -32,13 +28,6 @@ class Node(ModelMixin):
     @classmethod
     def _generate_hash(cls, labels: List[str]) -> str:
         return f"n_{"_".join(sorted(labels))}"
-
-    @classmethod
-    def _labels_from_hash(cls, hash_: str) -> List[str]:
-        if not hash_.startswith("n_"):
-            raise ModelError("Provided hash is not a node model hash")
-
-        return hash_[2:].split("_")
 
     @classmethod
     def _get_labels(cls) -> Set[str]:

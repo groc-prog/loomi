@@ -30,24 +30,20 @@ R = TypeVar("R")
 
 @dataclass(frozen=True)
 class DeleteResult:
-    """Result of a batch delete operation."""
-
     affected: int
     affected_ids: List[Tuple[str, int]]
 
 
 @dataclass
-class _DeleteQueryState:
+class DeleteQueryState:
     model_type: ModelType
     expressions: List[Union[CompoundExpression, CompilableExpression]] = field(default_factory=list)
 
 
 @dataclass
 class DeleteQueryBuilder(Generic[R]):
-    """Query builder for batch deleting entities using a loomi client."""
-
     _execute_fn: Callable[[str, Dict[str, Any]], R]
-    _state: _DeleteQueryState
+    _state: DeleteQueryState
     _compilation_ctx: CompilationContext
 
     def where(self, expression: Any) -> Self:
@@ -56,7 +52,7 @@ class DeleteQueryBuilder(Generic[R]):
 
         Args:
             expression (Union[CompoundExpression, CompilableExpression]): A expression which can be compiled by the
-            query compiler.
+                query compiler.
 
         Raises:
             QueryError: If any invalid expression is provided.
@@ -72,8 +68,8 @@ class DeleteQueryBuilder(Generic[R]):
 
     def execute(self) -> R:
         """
-        Runs the query. By default, a new session is created and used to run the query. You can
-        optionally pass a transaction, which will be used instead.
+        Runs the query. If a transaction has been provided at the start, it will be used instead
+            of a new session.
 
         Returns:
             DeleteResult: The delete result.

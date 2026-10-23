@@ -21,8 +21,6 @@ logger = get_logger("query_api")
 
 @dataclass(frozen=True)
 class UpdateResult:
-    """Result of a batch update operation."""
-
     affected: int
     affected_ids: List[Tuple[str, int]]
 
@@ -38,8 +36,6 @@ class _UpdateQueryState:
 
 @dataclass
 class UpdateQueryBuilder(Generic[R]):
-    """Query builder for batch updating entities using a loomi client."""
-
     _execute_fn: Callable[[str, Dict[str, Any]], R]
     _state: _UpdateQueryState
     _compilation_ctx: CompilationContext
@@ -50,7 +46,7 @@ class UpdateQueryBuilder(Generic[R]):
 
         Args:
             expression (Union[CompoundExpression, CompilableExpression]): A expression which can be compiled by the
-            query compiler.
+                query compiler.
 
         Raises:
             QueryError: If any invalid expression is provided.
@@ -69,8 +65,9 @@ class UpdateQueryBuilder(Generic[R]):
         Adds filter expression for a WHERE clause.
 
         Args:
-            expression (CompilableExpression): A expression which can be compiled by the query
-            compiler.
+            model_field (Any): The field to set.
+            expression (CompilableExpression): A expression or value which can be compiled by the query
+                compiler.
 
         Raises:
             QueryError: If any invalid expression is provided.
@@ -96,8 +93,8 @@ class UpdateQueryBuilder(Generic[R]):
 
     def execute(self) -> R:
         """
-        Runs the query. By default, a new session is created and used to run the query. You can
-        optionally pass a transaction, which will be used instead.
+        Runs the query. If a transaction has been provided at the start, it will be used instead
+        of a new session.
 
         Returns:
             UpdateResult: The update result.

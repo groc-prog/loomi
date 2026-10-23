@@ -20,8 +20,6 @@ else:
 
 
 class AsyncResult(_Base):
-    """Wrapper for `neo4j.AsyncResult` allowing for additional functionality."""
-
     __result: neo4j.AsyncResult
     __client: AsyncClient
     __change_tracker: Optional[AsyncChangeTracker]
@@ -65,11 +63,11 @@ class AsyncResult(_Base):
 
     async def peek(self):
         """
-        Method providing the same interface as `neo4j.Result.peek`.
+        Method providing the same interface as `neo4j.AsyncResultResult.peek`.
 
         If a entity is returned, it will be transformed to it's corresponding model if that model
         has been registered with the client.
-        If `tracking` has been set to `true`, the entity will be added to the `change tracker`.
+        If `tracking` has been set to `true`, the entity will be added to the change tracker.
         """
         original_result = await self.__result.peek()
         if original_result is None:
@@ -86,11 +84,11 @@ class AsyncResult(_Base):
 
     async def fetch(self, n: int):
         """
-        Method providing the same interface as `neo4j.Result.fetch`.
+        Method providing the same interface as `neo4j.AsyncResultResult.fetch`.
 
         All returned entities will be transformed to their corresponding models if that model has
         been registered with the client.
-        If `tracking` has been set to `true`, all entities will be added to the `change tracker`.
+        If `tracking` has been set to `true`, all entities will be added to the change tracker.
         """
         original_result = await self.__result.fetch(n)
 
@@ -110,11 +108,11 @@ class AsyncResult(_Base):
 
     async def to_eager_result(self):
         """
-        Method providing the same interface as `neo4j.Result.to_eager_result`.
+        Method providing the same interface as `neo4j.AsyncResultResult.to_eager_result`.
 
         All returned entities will be transformed to their corresponding models if that model has
         been registered with the client.
-        If `tracking` has been set to `true`, all entities will be added to the `change tracker`.
+        If `tracking` has been set to `true`, all entities will be added to the change tracker.
         """
         original_result = await self.__result.to_eager_result()
 
@@ -141,11 +139,11 @@ class AsyncResult(_Base):
 
     async def single(self, strict: bool = False) -> Optional[neo4j.Record]:
         """
-        Method providing the same interface as `neo4j.Result.single`.
+        Method providing the same interface as `neo4j.AsyncResultResult.single`.
 
         If a entity is returned, it will be transformed to it's corresponding model if that model
         has been registered with the client.
-        If `tracking` has been set to `true`, the entity will be added to the `change tracker`.
+        If `tracking` has been set to `true`, the entity will be added to the change tracker.
         """
         original_result = await self.__result.single(strict)
         if original_result is None:
@@ -162,11 +160,11 @@ class AsyncResult(_Base):
 
     async def values(self, *keys: TResultKey):
         """
-        Method providing the same interface as `neo4j.Result.values`.
+        Method providing the same interface as `neo4j.AsyncResultResult.values`.
 
         All returned entities will be transformed to their corresponding models if that model has
         been registered with the client.
-        If `tracking` has been set to `true`, all entities will be added to the `change tracker`.
+        If `tracking` has been set to `true`, all entities will be added to the change tracker.
         """
         original_result = await self.__result.values(*keys)
 
@@ -186,11 +184,11 @@ class AsyncResult(_Base):
 
     async def value(self, key=0, default=None):
         """
-        Method providing the same interface as `neo4j.Result.value`.
+        Method providing the same interface as `neo4j.AsyncResultResult.value`.
 
         All returned entities will be transformed to their corresponding models if that model has
         been registered with the client.
-        If `tracking` has been set to `true`, all entities will be added to the `change tracker`.
+        If `tracking` has been set to `true`, all entities will be added to the change tracker.
         """
         original_result = await self.__result.value(key, default)
 
@@ -207,7 +205,7 @@ class AsyncResult(_Base):
         self,
     ) -> Graph:
         """
-        Method providing the same interface as `neo4j.Result.graph`. Returns a special
+        Method providing the same interface as `neo4j.AsyncResultResult.graph`. Returns a special
         `Graph` which contains transformed entities.
 
         Returns:

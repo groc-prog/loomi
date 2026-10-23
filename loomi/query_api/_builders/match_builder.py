@@ -52,8 +52,6 @@ class _MatchQueryState:
 
 @dataclass
 class MatchQueryBuilder(Generic[T, R]):
-    """Query builder for fetching models using a loomi client."""
-
     _execute_fn: Callable[[str, Dict[str, Any]], R]
     _state: _MatchQueryState
     _compilation_ctx: CompilationContext
@@ -64,7 +62,7 @@ class MatchQueryBuilder(Generic[T, R]):
 
         Args:
             expression (Union[CompoundExpression, CompilableExpression]): A expression which can be compiled by the
-            query compiler.
+                query compiler.
 
         Raises:
             QueryError: If any invalid expression is provided.
@@ -96,10 +94,10 @@ class MatchQueryBuilder(Generic[T, R]):
         Adds one or multiple fields to order by.
 
         Args:
-            field_or_order (Union[str, Dict[str, OrderBy]]): Either the field to order by or a
-            dictionary with fields and their order.
+            field_or_order (Union[str, Dict[str, OrderBy], Any]): Either the field to order by or a
+                dictionary with fields and their order. Field descriptors are also supported.
             order (Optional[OrderBy]): The order to use. Only needed when defining a field as the
-            first argument. Defaults to `None`
+                first argument. Defaults to `None`
 
         Raises:
             QueryError: If a invalid field is provided.
@@ -182,7 +180,8 @@ class MatchQueryBuilder(Generic[T, R]):
         Adds a projection to apply to the returned data.
 
         Args:
-            projection (Dict[str, Any]): The projection to apply.
+            projection (Dict[str, Any]): A projection where the key is the model field and the value
+                is the name of the projected key.
         """
         if self._state.projection is not None:  # pragma: no cover
             logger.warning(
@@ -201,8 +200,8 @@ class MatchQueryBuilder(Generic[T, R]):
 
     def execute(self) -> Union[List[T], Awaitable[List[T]]]:
         """
-        Runs the query. By default, a new session is created and used to run the query. You can
-        optionally pass a transaction, which will be used instead.
+        Runs the query. If a transaction has been provided at the start, it will be used instead
+            of a new session.
 
         Returns:
             List[T]: A list of models.

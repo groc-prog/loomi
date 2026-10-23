@@ -44,8 +44,11 @@ class Transaction(_Base):
     @property
     def change_tracker(self) -> ChangeTracker:
         """
-        Change tracker exposed by this transaction. Will be used when `tracking` is set to `true`
-        in a query.
+        Change tracker exposed by this transaction. Will be used when `tracking` is set to `true` in a
+        query.
+
+        Returns:
+            ChangeTracker: The active change tracker object.
         """
         return self.__change_tracker
 
@@ -61,14 +64,8 @@ class Transaction(_Base):
         functionality. For more information on the native behavior, see `neo4j.Transaction.run`.
 
         Args:
-            query (Union[LiteralString, Query]): See `neo4j.Transaction.run`.
-            parameters (Optional[str, Any]): See `neo4j.Transaction.run`.
             tracking (bool): Whether results from this query should automatically be tracked
-                in the `change tracker`. Defaults to `False`.
-            kwparameters: See `neo4j.Transaction.run`.
-
-        Returns:
-            Result: A wrapper for `neo4j.Result` objects.
+                in the change tracker. Defaults to `False`.er for `neo4j.Result` objects.
         """
         logging_parameters = (
             ", ".join(f"{key}={value}" for key, value in dict(**parameters, **kwparameters).items())

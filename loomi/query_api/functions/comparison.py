@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Union
 
-from loomi._core.types import NumericValue, QueryModelType
+from loomi._core.types import QueryModelType
 from loomi.exceptions import QueryError
 from loomi.query_api._core.expressions import (
     CompoundExpression,
@@ -16,13 +16,38 @@ from loomi.query_api._core.protocols import (
 from loomi.query_api._core.templates import ExpressionTemplate, LogicalExpressionTemplate
 
 
+def _validate_wrapped_value(value: Any, *additional_types: Any) -> None:
+    if not isinstance(
+        value, (*additional_types, CompilableDescriptor, CompilableDbFunction, CompilableExpression)
+    ):
+        raise QueryError("Value must be a valid compilable value")
+
+
+def _validate_value(value: Any, *additional_types: Any) -> None:
+    if not isinstance(
+        value, (*additional_types, CompilableDescriptor, CompilableDbFunction, CompilableExpression)
+    ):
+        raise QueryError("Value must be a valid compilable value")
+
+    _validate_non_list_path_descriptor(value)
+
+
+def _validate_non_list_path_descriptor(value: Any) -> None:
+    if not isinstance(value, CompilableDescriptor):
+        return
+
+    field_descriptor_fn = getattr(value, "_is_list_path", None)
+    if field_descriptor_fn is not None and field_descriptor_fn():
+        raise QueryError("Field descriptor with list path operators are not allowed as values")
+
+
 def equals(to_wrap: Any, value: Any) -> CompilableExpression:
     """
     Builds a `=` expression for a query builder.
 
     Args:
-        to_wrap (Any): The descriptor or DB function to build the expression for.
-        value (Any): The value used in the expression.
+        to_wrap (Any): A compilable value.
+        value (Any): A compilable value.
 
     Raises:
         QueryError: If the provided descriptor is not valid.
@@ -30,12 +55,7 @@ def equals(to_wrap: Any, value: Any) -> CompilableExpression:
     Returns:
         CompilableExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
-        raise QueryError(
-            f"Value must be a valid field descriptor or db function. "
-            f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
-            f"{to_wrap}"
-        )
+    _validate_non_list_path_descriptor(value)
 
     return Expression(to_wrap, ExpressionTemplate.EQ, value)
 
@@ -45,8 +65,8 @@ def not_equals(to_wrap: Any, value: Any) -> CompilableExpression:
     Builds a `<>` expression for a query builder.
 
     Args:
-        to_wrap (Any): The descriptor or DB function to build the expression for.
-        value (Any): The value used in the expression.
+        to_wrap (Any): A compilable value.
+        value (Any): A compilable value.
 
     Raises:
         QueryError: If the provided descriptor is not valid.
@@ -54,25 +74,18 @@ def not_equals(to_wrap: Any, value: Any) -> CompilableExpression:
     Returns:
         CompilableExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
-        raise QueryError(
-            f"Value must be a valid field descriptor or db function. "
-            f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
-            f"{to_wrap}"
-        )
+    _validate_non_list_path_descriptor(value)
 
     return Expression(to_wrap, ExpressionTemplate.NEQ, value)
 
 
-def greater_than(
-    to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]
-) -> CompilableExpression:
+def greater_than(to_wrap: Any, value: Any) -> CompilableExpression:
     """
     Builds a `>` expression for a query builder.
 
     Args:
-        to_wrap (Any): The descriptor or DB function to build the expression for.
-        value (Union[int, float]): The (numeric) value used in the expression.
+        to_wrap (Any): A numeric or compilable value.
+        value (Any): A numeric or compilable value.
 
     Raises:
         QueryError: If the provided descriptor is not valid.
@@ -80,25 +93,19 @@ def greater_than(
     Returns:
         CompilableExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
-        raise QueryError(
-            f"Value must be a valid field descriptor or db function. "
-            f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
-            f"{to_wrap}"
-        )
+    _validate_wrapped_value(to_wrap, int, float)
+    _validate_value(value, int, float)
 
     return Expression(to_wrap, ExpressionTemplate.GT, value)
 
 
-def greater_than_or_equal(
-    to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]
-) -> CompilableExpression:
+def greater_than_or_equal(to_wrap: Any, value: Any) -> CompilableExpression:
     """
     Builds a `>=` expression for a query builder.
 
     Args:
-        to_wrap (Any): The descriptor or DB function to build the expression for.
-        value (Union[int, float]): The (numeric) value used in the expression.
+        to_wrap (Any): A numeric or compilable value.
+        value (Any): A numeric or compilable value.
 
     Raises:
         QueryError: If the provided descriptor is not valid.
@@ -106,25 +113,19 @@ def greater_than_or_equal(
     Returns:
         CompilableExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
-        raise QueryError(
-            f"Value must be a valid field descriptor or db function. "
-            f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
-            f"{to_wrap}"
-        )
+    _validate_wrapped_value(to_wrap, int, float)
+    _validate_value(value, int, float)
 
     return Expression(to_wrap, ExpressionTemplate.GTE, value)
 
 
-def less_than(
-    to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]
-) -> CompilableExpression:
+def less_than(to_wrap: Any, value: Any) -> CompilableExpression:
     """
     Builds a `<` expression for a query builder.
 
     Args:
-        to_wrap (Any): The descriptor or DB function to build the expression for.
-        value (Union[int, float]): The (numeric) value used in the expression.
+        to_wrap (Any): A numeric or compilable value.
+        value (Any): A numeric or compilable value.
 
     Raises:
         QueryError: If the provided descriptor is not valid.
@@ -132,25 +133,19 @@ def less_than(
     Returns:
         CompilableExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
-        raise QueryError(
-            f"Value must be a valid field descriptor or db function. "
-            f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
-            f"{to_wrap}"
-        )
+    _validate_wrapped_value(to_wrap, int, float)
+    _validate_value(value, int, float)
 
     return Expression(to_wrap, ExpressionTemplate.LT, value)
 
 
-def less_than_or_equal(
-    to_wrap: Any, value: Union[NumericValue, CompilableDbFunction]
-) -> CompilableExpression:
+def less_than_or_equal(to_wrap: Any, value: Any) -> CompilableExpression:
     """
     Builds a `<=` expression for a query builder.
 
     Args:
-        to_wrap (Any): The descriptor or DB function to build the expression for.
-        value (Union[int, float]): The (numeric) value used in the expression.
+        to_wrap (Any): A numeric or compilable value.
+        value (Any): A numeric or compilable value.
 
     Raises:
         QueryError: If the provided descriptor is not valid.
@@ -158,12 +153,8 @@ def less_than_or_equal(
     Returns:
         CompilableExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
-        raise QueryError(
-            f"Value must be a valid field descriptor or db function. "
-            f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
-            f"{to_wrap}"
-        )
+    _validate_wrapped_value(to_wrap, int, float)
+    _validate_value(value, int, float)
 
     return Expression(to_wrap, ExpressionTemplate.LTE, value)
 
@@ -175,12 +166,15 @@ def not_(
     Builds a `NOT(...)` expression for a query builder.
 
     Args:
-        expression (Union[CompoundExpression, _BaseExpression]): The expression
+        expression (Union[CompoundExpression, CompilableExpression]): The expression
         to invert.
 
     Returns:
         CompilableExpression: A expression which can be compiled by a query builder.
     """
+    if not isinstance(expression, (CompoundExpression, CompilableExpression)):
+        raise QueryError("Value must be a valid expression")
+
     return InvertExpression(expression)
 
 
@@ -191,12 +185,18 @@ def and_(
     Builds a `AND(...)` expression for a query builder.
 
     Args:
-        *expressions (Union[CompoundExpression, _BaseExpression]): The expressions
+        *expressions (Union[CompoundExpression, CompilableExpression]): The expressions
         to join.
 
     Returns:
         CompoundExpression: A expression which can be compiled by a query builder.
     """
+    if not all(
+        isinstance(expression, (CompoundExpression, CompilableExpression))
+        for expression in expressions
+    ):
+        raise QueryError("All values must be valid expressions")
+
     return CompoundExpression(LogicalExpressionTemplate.AND, [*expressions])
 
 
@@ -207,12 +207,18 @@ def or_(
     Builds a `OR(...)` expression for a query builder.
 
     Args:
-        *expressions (Union[CompoundExpression, _BaseExpression]): The expressions
+        *expressions (Union[CompoundExpression, CompilableExpression]): The expressions
         to join.
 
     Returns:
         CompoundExpression: A expression which can be compiled by a query builder.
     """
+    if not all(
+        isinstance(expression, (CompoundExpression, CompilableExpression))
+        for expression in expressions
+    ):
+        raise QueryError("All values must be valid expressions")
+
     return CompoundExpression(LogicalExpressionTemplate.OR, [*expressions])
 
 
@@ -223,12 +229,18 @@ def xor(
     Builds a `XOR(...)` expression for a query builder.
 
     Args:
-        *expressions (Union[CompoundExpression, _BaseExpression]): The expressions
+        *expressions (Union[CompoundExpression, CompilableExpression]): The expressions
         to join.
 
     Returns:
         CompoundExpression: A expression which can be compiled by a query builder.
     """
+    if not all(
+        isinstance(expression, (CompoundExpression, CompilableExpression))
+        for expression in expressions
+    ):
+        raise QueryError("All values must be valid expressions")
+
     return CompoundExpression(LogicalExpressionTemplate.XOR, [*expressions])
 
 
@@ -237,7 +249,7 @@ def is_null(to_wrap: Any) -> CompilableExpression:
     Builds a `IS NULL` expression for a query builder.
 
     Args:
-        to_wrap (Any): The descriptor or DB function to build the expression for.
+        to_wrap (Any): A numeric or compilable value.
 
     Raises:
         QueryError: If the provided descriptor is not valid.
@@ -245,11 +257,7 @@ def is_null(to_wrap: Any) -> CompilableExpression:
     Returns:
         CompilableExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(to_wrap, CompilableDescriptor):
-        raise QueryError(
-            f"Descriptor must be a valid field descriptor. Expected {CompilableDescriptor.__name__}"
-            f", got {to_wrap}"
-        )
+    _validate_non_list_path_descriptor(to_wrap)
 
     return Expression(to_wrap, ExpressionTemplate.IS_NULL, None)
 
@@ -259,7 +267,7 @@ def is_not_null(to_wrap: Any) -> CompilableExpression:
     Builds a `IS NOT NULL` expression for a query builder.
 
     Args:
-        to_wrap (Any): The descriptor or DB function to build the expression for.
+        to_wrap (Any): A numeric or compilable value.
 
     Raises:
         QueryError: If the provided descriptor is not valid.
@@ -267,11 +275,7 @@ def is_not_null(to_wrap: Any) -> CompilableExpression:
     Returns:
         CompilableExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(to_wrap, CompilableDescriptor):
-        raise QueryError(
-            f"Descriptor must be a valid field descriptor. Expected {CompilableDescriptor.__name__}"
-            f", got {to_wrap}"
-        )
+    _validate_non_list_path_descriptor(to_wrap)
 
     return Expression(to_wrap, ExpressionTemplate.IS_NOT_NULL, None)
 
@@ -281,8 +285,8 @@ def in_(to_wrap: Any, value: Union[List[Any], CompilableDbFunction]) -> Compilab
     Builds a `IN` expression for a query builder.
 
     Args:
-        to_wrap (Any): The descriptor or DB function to build the expression for.
-        value (List[Any]): The (list) value used in the expression.
+        to_wrap (Any): A compilable value.
+        value (List[Any]): A list or compilable value.
 
     Raises:
         QueryError: If the provided descriptor is not valid.
@@ -290,12 +294,7 @@ def in_(to_wrap: Any, value: Union[List[Any], CompilableDbFunction]) -> Compilab
     Returns:
         CompilableExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
-        raise QueryError(
-            f"Value must be a valid field descriptor or db function. "
-            f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
-            f"{to_wrap}"
-        )
+    _validate_value(value, list)
 
     return Expression(to_wrap, ExpressionTemplate.IN, value)
 
@@ -305,8 +304,8 @@ def starts_with(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> Compil
     Builds a `STARTS WITH` expression for a query builder.
 
     Args:
-        to_wrap (Any): The descriptor or DB function to build the expression for.
-        value (str): The (string) value used in the expression.
+        to_wrap (Any): A string or compilable value.
+        value (str): A string or compilable value.
 
     Raises:
         QueryError: If the provided descriptor is not valid.
@@ -314,12 +313,8 @@ def starts_with(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> Compil
     Returns:
         CompilableExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
-        raise QueryError(
-            f"Value must be a valid field descriptor or db function. "
-            f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
-            f"{to_wrap}"
-        )
+    _validate_value(to_wrap, str)
+    _validate_value(value, str)
 
     return Expression(to_wrap, ExpressionTemplate.STARTS_WITH, value)
 
@@ -329,8 +324,8 @@ def ends_with(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> Compilab
     Builds a `ENDS WITH` expression for a query builder.
 
     Args:
-        to_wrap (Any): The descriptor or DB function to build the expression for.
-        value (str): The (string) value used in the expression.
+        to_wrap (Any): A string or compilable value.
+        value (str): A string or compilable value.
 
     Raises:
         QueryError: If the provided descriptor is not valid.
@@ -338,12 +333,8 @@ def ends_with(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> Compilab
     Returns:
         CompilableExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
-        raise QueryError(
-            f"Value must be a valid field descriptor or db function. "
-            f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
-            f"{to_wrap}"
-        )
+    _validate_value(to_wrap, str)
+    _validate_value(value, str)
 
     return Expression(to_wrap, ExpressionTemplate.ENDS_WITH, value)
 
@@ -353,8 +344,8 @@ def contains(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> Compilabl
     Builds a `CONTAINS` expression for a query builder.
 
     Args:
-        to_wrap (Any): The descriptor or DB function to build the expression for.
-        value (str): The (string) value used in the expression.
+        to_wrap (Any): A string or compilable value.
+        value (str): A string or compilable value.
 
     Raises:
         QueryError: If the provided descriptor is not valid.
@@ -362,12 +353,8 @@ def contains(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> Compilabl
     Returns:
         CompilableExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
-        raise QueryError(
-            f"Value must be a valid field descriptor or db function. "
-            f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
-            f"{to_wrap}"
-        )
+    _validate_value(to_wrap, str)
+    _validate_value(value, str)
 
     return Expression(to_wrap, ExpressionTemplate.CONTAINS, value)
 
@@ -377,8 +364,8 @@ def regex(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> CompilableEx
     Builds a `=~` expression for a query builder.
 
     Args:
-        to_wrap (Any): The descriptor or DB function to build the expression for.
-        value (str): The (string) value used in the expression.
+        to_wrap (Any): A string or compilable value.
+        value (str): A string or compilable value.
 
     Raises:
         QueryError: If the provided descriptor is not valid.
@@ -386,12 +373,8 @@ def regex(to_wrap: Any, value: Union[str, CompilableDbFunction]) -> CompilableEx
     Returns:
         CompilableExpression: A expression which can be compiled by a query builder.
     """
-    if not isinstance(to_wrap, (CompilableDescriptor, CompilableDbFunction)):
-        raise QueryError(
-            f"Value must be a valid field descriptor or db function. "
-            f"Expected {CompilableDescriptor.__name__} or {CompilableDbFunction.__name__}, got "
-            f"{to_wrap}"
-        )
+    _validate_value(to_wrap, str)
+    _validate_value(value, str)
 
     return Expression(to_wrap, ExpressionTemplate.REGEX, value)
 

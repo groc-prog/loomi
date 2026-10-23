@@ -9,15 +9,13 @@ logger = get_logger("change_tracker")
 
 
 class ChangeTracker(ChangeTrackerMixin[Union[neo4j.Session, neo4j.Transaction]]):
-    """Manages state synchronization between local entities and the database state."""
-
     def flush(self) -> None:
         """
         Flushes the tracker by generating and running all queries for the tracked models.
 
-        If this is called on a `Session`, a `new transaction` will be created (based on
-        the current session) which will run all queries and `commit them`. If this is called
-        on a `Transaction`, the flushed queries will be `part of that transaction` and
+        If this is called on a `Session`, a **new transaction** will be created (based on
+        the current session) which will run all queries and commit them. If this is called
+        on a `Transaction`, the flushed queries will be **part of that transaction** and
         will only be committed once `tx.commit()` is called.
         """
         is_session = isinstance(self._session_or_tx, neo4j.Session)

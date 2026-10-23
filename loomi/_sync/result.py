@@ -21,8 +21,6 @@ else:
 
 
 class Result(_Base):
-    """Wrapper for `neo4j.Result` allowing for additional functionality."""
-
     __result: neo4j.Result
     __client: Client
     __change_tracker: Optional[ChangeTracker]
@@ -67,7 +65,7 @@ class Result(_Base):
 
         If a entity is returned, it will be transformed to it's corresponding model if that model
         has been registered with the client.
-        If `tracking` has been set to `true`, the entity will be added to the `change tracker`.
+        If `tracking` has been set to `true`, the entity will be added to the change tracker.
         """
         original_result = self.__result.peek()
         if original_result is None:
@@ -88,7 +86,7 @@ class Result(_Base):
 
         All returned entities will be transformed to their corresponding models if that model has
         been registered with the client.
-        If `tracking` has been set to `true`, all entities will be added to the `change tracker`.
+        If `tracking` has been set to `true`, all entities will be added to the change tracker.
         """
         original_result = self.__result.fetch(n)
 
@@ -112,7 +110,7 @@ class Result(_Base):
 
         All returned entities will be transformed to their corresponding models if that model has
         been registered with the client.
-        If `tracking` has been set to `true`, all entities will be added to the `change tracker`.
+        If `tracking` has been set to `true`, all entities will be added to the change tracker.
         """
         original_result = self.__result.to_eager_result()
 
@@ -143,7 +141,7 @@ class Result(_Base):
 
         If a entity is returned, it will be transformed to it's corresponding model if that model
         has been registered with the client.
-        If `tracking` has been set to `true`, the entity will be added to the `change tracker`.
+        If `tracking` has been set to `true`, the entity will be added to the change tracker.
         """
         original_result = self.__result.single(strict)
         if original_result is None:
@@ -164,7 +162,7 @@ class Result(_Base):
 
         All returned entities will be transformed to their corresponding models if that model has
         been registered with the client.
-        If `tracking` has been set to `true`, all entities will be added to the `change tracker`.
+        If `tracking` has been set to `true`, all entities will be added to the change tracker.
         """
         original_result = self.__result.values(*keys)
 
@@ -188,7 +186,7 @@ class Result(_Base):
 
         All returned entities will be transformed to their corresponding models if that model has
         been registered with the client.
-        If `tracking` has been set to `true`, all entities will be added to the `change tracker`.
+        If `tracking` has been set to `true`, all entities will be added to the change tracker.
         """
         original_result = self.__result.value(key, default)
 

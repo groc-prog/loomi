@@ -6,8 +6,6 @@ import neo4j.time
 
 
 class ServerType(StrEnum):
-    """The supported server types."""
-
     NEO4J = "Neo4j"
     MEMGRAPH = "Memgraph"
 

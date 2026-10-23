@@ -2,43 +2,37 @@ from enum import StrEnum
 
 
 class ExpressionTemplate(StrEnum):
-    """Templates for query expressions."""
-
-    EQ = "{variable} = {parameter}"
-    NEQ = "{variable} <> {parameter}"
-    GT = "{variable} > {parameter}"
-    GTE = "{variable} >= {parameter}"
-    LT = "{variable} < {parameter}"
-    LTE = "{variable} <= {parameter}"
-    IN = "{variable} IN {parameter}"
-    STARTS_WITH = "{variable} STARTS WITH {parameter}"
-    ENDS_WITH = "{variable} ENDS WITH {parameter}"
-    CONTAINS = "{variable} CONTAINS {parameter}"
-    REGEX = "{variable} =~ {parameter}"
-    IS_NULL = "{variable} IS NULL"
-    IS_NOT_NULL = "{variable} IS NOT NULL"
+    EQ = "{left} = {right}"
+    NEQ = "{left} <> {right}"
+    GT = "{left} > {right}"
+    GTE = "{left} >= {right}"
+    LT = "{left} < {right}"
+    LTE = "{left} <= {right}"
+    IN = "{left} IN {right}"
+    STARTS_WITH = "{left} STARTS WITH {right}"
+    ENDS_WITH = "{left} ENDS WITH {right}"
+    CONTAINS = "{left} CONTAINS {right}"
+    REGEX = "{left} =~ {right}"
+    IS_NULL = "{left} IS NULL"
+    IS_NOT_NULL = "{left} IS NOT NULL"
 
 
 class ArithmeticExpressionTemplate(StrEnum):
-    """Templates for arithmetic query expressions."""
-
-    ADD = "{variable} + {parameter}"
-    R_ADD = "{parameter} + {variable}"
-    SUBTRACT = "{variable} - {parameter}"
-    R_SUBTRACT = "{parameter} - {variable}"
-    MULTIPLY = "{variable} * {parameter}"
-    R_MULTIPLY = "{parameter} * {variable}"
-    DIVIDE = "{variable} / {parameter}"
-    R_DIVIDE = "{parameter} / {variable}"
-    MODULO = "{variable} % {parameter}"
-    R_MODULO = "{parameter} % {variable}"
-    POW = "{variable} ^ {parameter}"
-    R_POW = "{parameter} ^ {variable}"
+    ADD = "{left} + {right}"
+    R_ADD = "{right} + {left}"
+    SUBTRACT = "{left} - {right}"
+    R_SUBTRACT = "{right} - {left}"
+    MULTIPLY = "{left} * {right}"
+    R_MULTIPLY = "{right} * {left}"
+    DIVIDE = "{left} / {right}"
+    R_DIVIDE = "{right} / {left}"
+    MODULO = "{left} % {right}"
+    R_MODULO = "{right} % {left}"
+    POW = "{left} ^ {right}"
+    R_POW = "{right} ^ {left}"
 
 
 class LogicalExpressionTemplate(StrEnum):
-    """Templates for logical query expressions."""
-
     AND = "AND"
     OR = "OR"
     XOR = "XOR"
@@ -46,15 +40,11 @@ class LogicalExpressionTemplate(StrEnum):
 
 
 class EntityIdExpressionTemplate(StrEnum):
-    """Templates for entity ID query expressions."""
-
     ELEMENT_ID = "elementId({variable})"
     ID = "id({variable})"
 
 
 class DbFunctionTemplate(StrEnum):
-    """Templates for DB functions."""
-
     TAIL = "tail({variable_or_parameter})"
     ABS = "abs({variable_or_parameter})"
     CEIL = "ceil({variable_or_parameter})"

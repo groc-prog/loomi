@@ -21,8 +21,6 @@ logger = get_logger("driver")
 
 
 class Session(_Base):
-    """Wrapper for `neo4j.Session` allowing for additional functionality."""
-
     __session: neo4j.Session
     __client: Client
     __change_tracker: ChangeTracker
@@ -47,6 +45,9 @@ class Session(_Base):
         """
         Change tracker exposed by this session. Will be used when `tracking` is set to `true` in a
         query.
+
+        Returns:
+            ChangeTracker: The active change tracker object.
         """
         return self.__change_tracker
 
@@ -62,14 +63,8 @@ class Session(_Base):
         functionality. For more information on the native behavior, see `neo4j.Session.run`.
 
         Args:
-            query (Union[LiteralString, Query]): See `neo4j.Session.run`.
-            parameters (Optional[str, Any]): See `neo4j.Session.run`.
             tracking (bool): Whether results from this query should automatically be tracked
-                in the `change tracker`. Defaults to `False`.
-            kwargs: See `neo4j.Session.run`.
-
-        Returns:
-            Result: A wrapper for `neo4j.Result` objects.
+                in the change tracker. Defaults to `False`.
         """
         logging_parameters = (
             ", ".join(f"{key}={value}" for key, value in {**parameters, **kwargs}.items())

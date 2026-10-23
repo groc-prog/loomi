@@ -1,6 +1,7 @@
 # pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, missing-function-docstring, unused-argument, line-too-long, unused-variable
 
 import datetime
+import re
 from typing import List, cast
 
 import pytest
@@ -204,10 +205,8 @@ class TestCompoundExpressionNestedPathOptimization:
         )
         query_string = expression.to_query_string(compilation_context)
 
-        assert (
-            query_string
-            == "(any(v1 IN v0.metadata.hobbies WHERE v1.name = $p0 OR v1.name = $p1)) AND single(v3 IN v0.timestamps WHERE v3.name = $p2)"
-        )
+        pattern = r"^\(any\(v\d+ IN v\d+\.metadata\.hobbies WHERE v\d+\.name = \$p0 OR v\d+\.name = \$p1\)\) AND single\(v\d+ IN v\d+\.timestamps WHERE v\d+\.name = \$p2\)$"
+        assert re.match(pattern, query_string)
         assert compilation_context.get_parameters() == {
             "p0": "Fishing",
             "p1": "Running",

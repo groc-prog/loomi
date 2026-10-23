@@ -113,15 +113,15 @@ class ChangeTrackerMixin(Generic[T]):
         Starts tracking a model in the change tracker. The entity will be saved/updated once the
         change tracker is flushed.
 
-        [!NOTE] Depending on whether the model has been `persisted or not`, any model passed to this
+        [!NOTE] Depending on whether the model has been **persisted or not**, any model passed to this
         function will be tracked as `UPDATE` (element_id set) or `INSERT` (element_id not set).
 
         Args:
             model (Union[Node, Relationship]): The model to start tracking.
             start_node (Optional[Node]): The start node of the relationship. Only relevant if
-                `model` is a `Relationship`.
+                `model` is a `Relationship`. Defaults to `None`.
             end_node (Optional[Node]): The end node of the relationship. Only relevant if
-                `model` is a `Relationship`.
+                `model` is a `Relationship`. Defaults to `None`.
 
         Raises:
             ChangeTrackerError: If start- or end nodes are missing when a relationship model is
@@ -243,7 +243,6 @@ class ChangeTrackerMixin(Generic[T]):
             model (Union[Node, Relationship]): The model to start tracking.
 
         Raises:
-            ModelTrackingError: If a invalid model is provided.
             ChangeTrackerError: If the model has not been persisted or tracked yet.
         """
         obj_id = id(model)

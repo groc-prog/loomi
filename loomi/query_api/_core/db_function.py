@@ -21,8 +21,6 @@ logger = get_logger("query_api")
 
 @dataclass(frozen=True)
 class DbFunction(CompilableDbFunction):
-    """Class used to apply DB functions to fields/parameters."""
-
     wrapped: Any
     template: Union[DbFunctionTemplate, str]
     args: List[Any]
@@ -30,10 +28,10 @@ class DbFunction(CompilableDbFunction):
     def _compile_db_function(
         self, ctx: CompilationContext
     ) -> Union[CompiledDescriptor, CompiledDbFunction]:
-        logger.debug("Compiling DB function")
         template_to_compile = (
             self.template.value if isinstance(self.template, DbFunctionTemplate) else self.template
         )
+        logger.debug("Compiling DB function with template %s", template_to_compile)
 
         parameter_map: Dict[str, str] = {}
         for index, arg in enumerate(self.args):
@@ -58,7 +56,9 @@ class DbFunction(CompilableDbFunction):
             )
 
         # The DB function is deeply nested, so we need to compile it and return
-        # This can either return another DB function or a descriptor
+        # This can either return another DB function (in case the value of the DB function is a
+        # primitive) or a descriptor (in case the value of the DB function is a descriptor) with a
+        # modified template
         if isinstance(self.wrapped, CompilableDbFunction):
             logger.debug("Wrapped value is a DB function, compiling nested DB functions first")
             compiled_db_function_or_descriptor = self.wrapped._compile_db_function(ctx)
@@ -69,7 +69,7 @@ class DbFunction(CompilableDbFunction):
                     **parameter_map,
                 )
 
-                logger.debug("Compiled DB function wrapping a descriptor")
+                logger.debug("Compiled DB function resolved to a descriptor")
                 return CompiledDescriptor(
                     full_template=compiled_db_function_or_descriptor.full_template,
                     variable_path=compiled_variable_path,
@@ -77,7 +77,7 @@ class DbFunction(CompilableDbFunction):
                     full_path=compiled_db_function_or_descriptor.full_path,
                 )
 
-            logger.debug("Compiled DB function wrapping another DB function")
+            logger.debug("Compiled DB function resolved to another DB function")
             compiled_template = compiled_db_function_or_descriptor.full_template.format(
                 variable_or_value="{variable_or_value}"
             )
@@ -88,9 +88,12 @@ class DbFunction(CompilableDbFunction):
                 inserted_parameter=compiled_db_function_or_descriptor.inserted_parameter,
             )
 
-        # The DB function wraps a primitive value
-        logger.debug("Compiled DB function wrapping primitive value")
+        # The DB function wraps a primitive value, we can build the correct template directly
         parameter_name = ctx.add_parameter(self.wrapped)
+
+        logger.debug(
+            "Compiled DB function is wrapping a primitive value with parameter %s", parameter_name
+        )
         return CompiledDbFunction(
             full_template=template_to_compile.format(
                 variable_or_parameter="{variable_or_value}", **parameter_map

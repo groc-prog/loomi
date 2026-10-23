@@ -7,14 +7,10 @@ from loomi.exceptions import ModelError
 
 
 class RelationshipConfiguration(EntityConfiguration, total=False):
-    """TypedDict for configuring Loomi relationship behavior."""
-
     type: str
 
 
 class Relationship(ModelMixin):
-    """A base class for Loomi relationships."""
-
     loomi_config: ClassVar[RelationshipConfiguration]
 
     @classmethod
@@ -30,20 +26,8 @@ class Relationship(ModelMixin):
         )
 
     @classmethod
-    def _get_normalized_type(cls) -> str:
-        pattern = re.compile(r"(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
-        return pattern.sub("_", cls.__name__).upper()
-
-    @classmethod
     def _generate_hash(cls, type_: str) -> str:
         return f"r_{type_}"
-
-    @classmethod
-    def _type_from_hash(cls, hash_: str) -> str:
-        if not hash_.startswith("r_"):
-            raise ModelError("Provided hash is not a relationship model hash")
-
-        return hash_[2:]
 
     @classmethod
     def _get_type(cls) -> str:
@@ -81,6 +65,11 @@ class Relationship(ModelMixin):
                 and "type" in base.__dict__["loomi_config"]
             )
             if not has_explicit_type:
-                merged_config["type"] = cls._get_normalized_type()
+                merged_config["type"] = cls.__get_normalized_type()
 
         cls.loomi_config = merged_config
+
+    @classmethod
+    def __get_normalized_type(cls) -> str:
+        pattern = re.compile(r"(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
+        return pattern.sub("_", cls.__name__).upper()

@@ -21,8 +21,6 @@ logger = get_logger("driver")
 
 
 class AsyncTransaction(_Base):
-    """Wrapper for `neo4j.AsyncTransaction` allowing for additional functionality."""
-
     __transaction: neo4j.AsyncTransaction
     __client: AsyncClient
     __change_tracker: AsyncChangeTracker
@@ -45,8 +43,11 @@ class AsyncTransaction(_Base):
     @property
     def change_tracker(self) -> AsyncChangeTracker:
         """
-        Change tracker exposed by this transaction. Will be used when `tracking` is set to `true`
-        in a query.
+        Change tracker exposed by this transaction. Will be used when `tracking` is set to `true` in a
+        query.
+
+        Returns:
+            AsyncChangeTracker: The active change tracker object.
         """
         return self.__change_tracker
 
@@ -63,14 +64,8 @@ class AsyncTransaction(_Base):
         `neo4j.AsyncTransaction.run`.
 
         Args:
-            query (Union[LiteralString, Query]): See `neo4j.AsyncTransaction.run`.
-            parameters (Optional[str, Any]): See `neo4j.AsyncTransaction.run`.
             tracking (bool): Whether results from this query should automatically be tracked
-                in the `change tracker`. Defaults to `False`.
-            kwparameters: See `neo4j.AsyncTransaction.run`.
-
-        Returns:
-            Result: A wrapper for `neo4j.AsyncResult` objects.
+                in the change tracker. Defaults to `False`.
         """
         logging_parameters = (
             ", ".join(f"{key}={value}" for key, value in dict(**parameters, **kwparameters).items())

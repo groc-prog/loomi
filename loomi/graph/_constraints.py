@@ -6,23 +6,17 @@ from typing import Dict
 
 
 class Neo4jConstraintType(StrEnum):
-    """Constraint types supported by Neo4j."""
-
     UNIQUENESS = "UNIQUENESS"
     RELATIONSHIP_UNIQUENESS = "RELATIONSHIP_UNIQUENESS"
 
 
 class MemgraphConstraintType(StrEnum):
-    """Constraint types supported by Memgraph."""
-
     EXISTS = "exists"
     UNIQUE = "unique"
     DATA_TYPE = "data_type"
 
 
 class DataTypeConstraintType(StrEnum):
-    """Constraint data types supported by Memgraph."""
-
     STRING = "STRING"
     BOOLEAN = "BOOLEAN"
     INTEGER = "INTEGER"

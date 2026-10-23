@@ -16,8 +16,6 @@ PathRelationship = Union[Relationship, neo4j.graph.Relationship]
 
 
 class Path:
-    """Graph path containing resolved Loomi nodes."""
-
     __client: ClientMixin
     _nodes: Tuple[PathNode, ...]
     _relationships: Tuple[PathRelationship, ...]
