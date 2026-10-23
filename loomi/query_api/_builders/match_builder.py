@@ -85,11 +85,11 @@ class MatchQueryBuilder(Generic[T, R]):
     def order_by(self, order: Dict[Any, OrderBy]) -> Self: ...
 
     @overload
-    def order_by(self, descriptor: FieldDescriptor) -> Self: ...
+    def order_by(self, descriptor: Any, order: Optional[OrderBy] = None) -> Self: ...
 
     def order_by(  # type: ignore
         self,
-        field_or_order: Union[str, Dict[Any, OrderBy], FieldDescriptor],
+        field_or_order: Union[str, Dict[Any, OrderBy], Any],
         order: Optional[OrderBy] = None,
     ) -> Self:
         """
