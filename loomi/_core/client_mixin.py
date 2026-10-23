@@ -123,6 +123,14 @@ class ClientMixin(Generic[T]):
                     f"call {model.model_rebuild.__name__}?"
                 )
 
+            if model._hash in self._models and self._models[model._hash] is not model:
+                logger.warning(
+                    "A model with the same hash has already been registered. The previously registered "
+                    "model %s will be overwritten with %s",
+                    self._models[model._hash].__name__,
+                    model.__name__,
+                )
+
             logger.debug("Registering model %s with client %s", model, self)
             self._models[model._hash] = model
 
