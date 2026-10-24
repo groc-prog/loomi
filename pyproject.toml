@@ -24,6 +24,7 @@ dev = [
     "pre-commit (>=4.5.1,<5.0.0)",
     "pytest-cov (>=7.0.0,<8.0.0)",
     "pytest-dotenv (>=0.5.2,<0.6.0)",
+    "pytest-mock (>=3.17.0,<4.0.0)",
 ]
 
 [tool.semantic_release]
@@ -72,7 +73,7 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
-addopts = "--cov=loomi --cov-report=term-missing"
+addopts = ["--import-mode=importlib", "--cov=loomi", "--cov-report=term-missing"]
 env_files = [".env.test"]
 markers = ["integration"]
 

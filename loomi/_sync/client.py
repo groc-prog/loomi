@@ -74,8 +74,6 @@ class Client(ClientMixin[neo4j.Driver]):
 
                 result = session.run(query)
                 version = result.value()
-                if len(version) == 0:
-                    raise ClientError("Server did not respond with a valid version")
 
                 self._extract_version(version[0])
                 logger.info("Client ready")

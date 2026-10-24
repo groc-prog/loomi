@@ -75,8 +75,6 @@ class AsyncClient(ClientMixin[neo4j.AsyncDriver]):
 
                 result = await session.run(query)
                 version = await result.value()
-                if len(version) == 0:
-                    raise ClientError("Server did not respond with a valid version")
 
                 self._extract_version(version[0])
                 logger.info("Client ready")

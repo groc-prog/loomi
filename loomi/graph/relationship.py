@@ -22,15 +22,14 @@ class Relationship(ModelMixin):
 
     def __repr__(self) -> str:
         return (
-            f"<{self.__class__.__name__} element_id={self._element_id!r} type={self._get_type()!r}>"
+            f"<{self.__class__.__name__} "
+            f"element_id={self._element_id!r} "
+            f"properties={self.__class__.model_fields!r} "
+            f"labels={self.type()!r}>"
         )
 
     @classmethod
-    def _generate_hash(cls, type_: str) -> str:
-        return f"r_{type_}"
-
-    @classmethod
-    def _get_type(cls) -> str:
+    def type(cls) -> str:
         type_ = cls.loomi_config.get("type")
         if type_ is None:
             raise ModelError(
@@ -39,6 +38,10 @@ class Relationship(ModelMixin):
             )
 
         return type_
+
+    @classmethod
+    def _generate_hash(cls, type_: str) -> str:
+        return f"r_{type_}"
 
     @classmethod
     def __merge_configs(cls) -> None:

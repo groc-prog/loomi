@@ -138,7 +138,6 @@ async def async_cleanup(driver: neo4j.AsyncDriver, server_type: ServerType):
     ids=[ServerType.NEO4J, ServerType.MEMGRAPH],
 )
 def driver_spec(request) -> DriverSpec:
-    """The Source of Truth for driver configuration."""
     spec = cast(DriverSpec, request.param)
     if not spec.uri or not spec.user or not spec.pwd:
         pytest.skip(f"Missing environment variables for {spec.name} connection.")
@@ -147,7 +146,6 @@ def driver_spec(request) -> DriverSpec:
 
 @pytest.fixture
 def sync_driver(driver_spec: DriverSpec):
-    """Provides a synchronous driver and cleans the database."""
     driver = neo4j.GraphDatabase.driver(
         cast(str, driver_spec.uri), auth=(cast(str, driver_spec.user), cast(str, driver_spec.pwd))
     )
@@ -159,7 +157,6 @@ def sync_driver(driver_spec: DriverSpec):
 
 @pytest.fixture
 async def async_driver(driver_spec: DriverSpec):
-    """Provides an asynchronous driver and cleans the database."""
     driver = neo4j.AsyncGraphDatabase.driver(
         cast(str, driver_spec.uri), auth=(cast(str, driver_spec.user), cast(str, driver_spec.pwd))
     )

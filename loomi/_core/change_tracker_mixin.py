@@ -371,7 +371,7 @@ class ChangeTrackerMixin(Generic[T]):
 
             if reference._hash not in groups:
                 logger.debug("Encountered new model with hash %s", reference._hash)
-                groups[reference._hash] = {"labels": reference._get_labels(), "batches": []}
+                groups[reference._hash] = {"labels": reference.labels(), "batches": []}
 
             groups[reference._hash]["batches"].append(
                 {
@@ -429,7 +429,7 @@ class ChangeTrackerMixin(Generic[T]):
             # nodes with their ID's
             if reference._hash not in groups:
                 logger.debug("Encountered new model with hash %s", reference._hash)
-                groups[reference._hash] = {"type_": reference._get_type(), "batches": []}
+                groups[reference._hash] = {"type_": reference.type(), "batches": []}
 
             start_node_id, end_node_id = self._grouping_map[obj_id]
 

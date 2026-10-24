@@ -3,6 +3,9 @@ from typing import ClassVar, List, Set
 
 from loomi._core.model_mixin import EntityConfiguration, ModelMixin
 from loomi.exceptions import ModelError
+from loomi.logger import get_logger
+
+logger = get_logger("model")
 
 
 class NodeConfiguration(EntityConfiguration, total=False):
@@ -21,16 +24,14 @@ class Node(ModelMixin):
 
     def __repr__(self) -> str:
         return (
-            f"<{self.__class__.__name__} element_id={self._element_id!r} "
-            f"labels={self._get_labels()!r}>"
+            f"<{self.__class__.__name__} "
+            f"element_id={self._element_id!r} "
+            f"properties={self.__class__.model_fields!r} "
+            f"labels={self.labels()!r}>"
         )
 
     @classmethod
-    def _generate_hash(cls, labels: List[str]) -> str:
-        return f"n_{"_".join(sorted(labels))}"
-
-    @classmethod
-    def _get_labels(cls) -> Set[str]:
+    def labels(cls) -> Set[str]:
         labels = cls.loomi_config.get("labels")
         if labels is None:
             raise ModelError(
@@ -39,6 +40,10 @@ class Node(ModelMixin):
             )
 
         return labels
+
+    @classmethod
+    def _generate_hash(cls, labels: List[str]) -> str:
+        return f"n_{"_".join(sorted(labels))}"
 
     @classmethod
     def __merge_configs(cls) -> None:
@@ -62,7 +67,11 @@ class Node(ModelMixin):
                     if isinstance(parent_labels, set):
                         labels.update(parent_labels)
                     else:
-                        labels.add(parent_labels)
+                        logger.warning(
+                            "Labels defined on parent class %s are not in the expected format. "
+                            "Labels will be skipped",
+                            base.__name__,
+                        )
 
                 # All other keys are either inherited if not defined or overwrite any defined value
                 for key, val in base_conf.items():

@@ -110,10 +110,10 @@ class UpdateQueryBuilder(Generic[R]):
 
         query = ""
         if is_node:
-            labels = ":".join(cast(Node, self._state.model_type)._get_labels())
+            labels = ":".join(cast(Node, self._state.model_type).labels())
             query = f"MATCH ({model_variable}:{labels})"
         else:
-            type_ = cast(Relationship, self._state.model_type)._get_type()
+            type_ = cast(Relationship, self._state.model_type).type()
             query = f"MATCH ()-[{model_variable}:{type_}]->()"
 
         filter_query_strings = []

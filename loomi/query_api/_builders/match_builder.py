@@ -212,9 +212,9 @@ class MatchQueryBuilder(Generic[T, R]):
 
         query = ""
         if issubclass(self._state.model_type, Node):
-            query = f"MATCH ({model_variable}:{':'.join(self._state.model_type._get_labels())})"
+            query = f"MATCH ({model_variable}:{':'.join(self._state.model_type.labels())})"
         else:
-            query = f"MATCH ()-[{model_variable}:{self._state.model_type._get_type()}]->()"
+            query = f"MATCH ()-[{model_variable}:{self._state.model_type.type()}]->()"
 
         query_strings = []
         for expression in self._state.expressions:

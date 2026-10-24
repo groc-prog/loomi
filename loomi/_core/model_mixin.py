@@ -34,7 +34,7 @@ logger = get_logger("model")
 
 
 class EntityConfiguration(TypedDict, total=False):
-    serializer_fn: Callable[[Any], Any]
+    serializer_fn: Callable[..., Any]
     """
     A custom function used when serializing nested objects before storing the model to the
     database. Defaults to `json.dumps` if not defined.
@@ -43,7 +43,7 @@ class EntityConfiguration(TypedDict, total=False):
     `SUPPORTED_DATA_TYPES` after `model.model_dump()` has been called.
     """
 
-    deserializer_fn: Callable[[Any], Any]
+    deserializer_fn: Callable[..., Any]
     """
     A custom function used when de-serializing nested objects before passing the data to the
     Pydantic model. Defaults to `json.loads` if not defined.
