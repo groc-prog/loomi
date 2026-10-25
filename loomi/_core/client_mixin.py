@@ -13,6 +13,7 @@ from typing import (
     TypedDict,
     TypeVar,
     Union,
+    Unpack,
     cast,
     overload,
 )
@@ -72,7 +73,7 @@ class ClientMixin(Generic[T]):
     _models: Dict[str, ModelType]
     _configuration: ClientConfiguration
 
-    def __init__(self, driver: T, **config):
+    def __init__(self, driver: T, **config: Unpack[ClientConfiguration]):
         self._driver = driver
         self._server_type = None
         self._server_version = None
