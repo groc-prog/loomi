@@ -9,7 +9,7 @@ from loomi.exceptions import ClientError
 from loomi.graph.node import Node
 
 
-class TestSyncClientInitialization:
+class TestAsyncClientInitialization:
     async def test_async_client_raises_when_trying_to_interact_with_database_without_initializing(
         self, async_driver
     ):
