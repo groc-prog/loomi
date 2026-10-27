@@ -31,7 +31,7 @@ class _UpdateQueryState:
     filter_expressions: List[Union[CompoundExpression, CompilableExpression]] = field(
         default_factory=list
     )
-    update_expressions: Dict[FieldDescriptor, Any] = field(default_factory=dict)
+    update_expressions: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -51,16 +51,16 @@ class UpdateQueryBuilder(Generic[R]):
         Raises:
             QueryError: If any invalid expression is provided.
         """
-        if not isinstance(expression, CompilableExpression):
+        if not isinstance(expression, (CompoundExpression, CompilableExpression)):
             raise QueryError(
-                f"Invalid expression found. Expected {CompilableExpression.__name__}, "
-                f"got {expression}"
+                f"Invalid expression found. Expected {CompilableExpression.__name__} "
+                f"or {CompoundExpression.__name__}, got {expression}"
             )
 
         self._state.filter_expressions.append(expression)
         return self
 
-    def set_(self, model_field: Any, expression_or_value: Any) -> Self:
+    def set(self, model_field: Any, expression_or_value: Any) -> Self:
         """
         Adds filter expression for a WHERE clause.
 
@@ -72,23 +72,25 @@ class UpdateQueryBuilder(Generic[R]):
         Raises:
             QueryError: If any invalid expression is provided.
         """
-        if (
-            not isinstance(model_field, FieldDescriptor)
-            or model_field._model_type is not self._state.model_type
-        ):
-            raise QueryError(
-                "Invalid field found. Expected a valid field of model "
-                f"{self._state.model_type.__name__}, got {model_field._full_path}"
-            )
+        if isinstance(model_field, FieldDescriptor):
+            if model_field._model_type is not self._state.model_type:
+                raise QueryError(
+                    "Invalid field found. Expected a valid field of model "
+                    f"{self._state.model_type.__name__}, got {model_field._full_path}"
+                )
 
-        if model_field in self._state.update_expressions:
+            path = model_field._full_path
+        else:
+            path = model_field
+
+        if path in self._state.update_expressions:
             logger.warning(
-                "A set operation has already been defined for field %s. "
+                "A set operation has already been defined for path %s. "
                 "This will overwrite any operations defined prior to this one",
-                model_field._full_path,
+                path,
             )
 
-        self._state.update_expressions[model_field] = expression_or_value
+        self._state.update_expressions[path] = expression_or_value
         return self
 
     def execute(self) -> R:
@@ -128,7 +130,7 @@ class UpdateQueryBuilder(Generic[R]):
             query += f" WHERE {' AND '.join(filter_query_strings)}"
 
         set_query_strings: List[str] = []
-        for model_field, expression_or_value in self._state.update_expressions.items():
+        for field_path, expression_or_value in self._state.update_expressions.items():
             value_assignment: str
 
             if isinstance(expression_or_value, CompilableDbFunction):
@@ -145,9 +147,7 @@ class UpdateQueryBuilder(Generic[R]):
                 parameter = self._compilation_ctx.add_parameter(expression_or_value)
                 value_assignment = f"${parameter}"
 
-            set_query_strings.append(
-                f"{model_variable}.{model_field._full_path} = {value_assignment}"
-            )
+            set_query_strings.append(f"{model_variable}.{field_path} = {value_assignment}")
 
         query += f" SET {', '.join(set_query_strings)}"
 
