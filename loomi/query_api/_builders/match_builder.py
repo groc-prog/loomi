@@ -9,6 +9,7 @@ from typing import (
     List,
     Optional,
     Self,
+    Type,
     TypeVar,
     Union,
     overload,
@@ -33,7 +34,7 @@ else:
     Relationship = object
     OrderBy = object
 
-T = TypeVar("T", bound=Union[Node, Relationship, Dict[str, Any]])
+T = TypeVar("T", bound=Union[Node, Relationship, Dict[str, Any], BaseModel])
 P = TypeVar("P", bound=BaseModel)
 R = TypeVar("R")
 
@@ -44,7 +45,7 @@ logger = get_logger("query_api")
 class _MatchQueryState:
     model_type: ModelType
     expressions: List[Union[CompoundExpression, CompilableExpression]] = field(default_factory=list)
-    projection: Optional[Dict[str, Any]] = None
+    projection: Optional[Union[Dict[Any, str], Type[BaseModel]]] = None
     order_by: Dict[str, Optional[OrderBy]] = field(default_factory=dict)
     limit: Optional[int] = None
     skip: Optional[int] = None
@@ -120,7 +121,7 @@ class MatchQueryBuilder(Generic[T, R]):
             if field_name not in self._state.model_type.model_fields:
                 raise QueryError(f"{field_name} is not a valid field to order by")
 
-            if field_name in self._state.order_by:  # pragma: no cover
+            if field_name in self._state.order_by:
                 logger.warning(
                     "A order has already been defined for field %s. The old order will be "
                     "overwritten",
@@ -144,7 +145,7 @@ class MatchQueryBuilder(Generic[T, R]):
         if limit < 0:
             raise QueryError("limit must be a positive integer if defined")
 
-        if self._state.limit is not None:  # pragma: no cover
+        if self._state.limit is not None:
             logger.warning(
                 "A limit has already been defined for this query. The old limit will "
                 "be overwritten"
@@ -166,7 +167,7 @@ class MatchQueryBuilder(Generic[T, R]):
         if skip < 0:
             raise QueryError("skip must be a positive integer if defined")
 
-        if self._state.skip is not None:  # pragma: no cover
+        if self._state.skip is not None:
             logger.warning(
                 "A skip has already been defined for this query. The old skip will "
                 "be overwritten"
@@ -175,15 +176,22 @@ class MatchQueryBuilder(Generic[T, R]):
         self._state.skip = skip
         return self
 
-    def project(self, projection: Dict[str, Any]) -> "MatchQueryBuilder[Dict[str, Any], R]":
+    @overload
+    def project(self, projection: Dict[Any, str]) -> "MatchQueryBuilder[Dict[str, Any], R]": ...
+
+    @overload
+    def project(self, projection: Type[P]) -> "MatchQueryBuilder[P, R]": ...
+
+    def project(self, projection: Union[Dict[Any, str], Type[P]]):
         """
         Adds a projection to apply to the returned data.
 
         Args:
-            projection (Dict[str, Any]): A projection where the key is the model field and the value
-                is the name of the projected key.
+            projection (Union[Dict[Any, str], Type[P]]): A projection where the key is the
+                model field and the value is the name of the projected key or a pydantic model with
+                matching fields.
         """
-        if self._state.projection is not None:  # pragma: no cover
+        if self._state.projection is not None:
             logger.warning(
                 "A projection has already been defined for this query. The old projection will "
                 "be overwritten"
@@ -228,10 +236,24 @@ class MatchQueryBuilder(Generic[T, R]):
             query += f" WHERE {' AND '.join(query_strings)}"
 
         if self._state.projection is not None:
-            projected = [
-                f"{model_variable}.{field_name} AS {projected_name}"
-                for field_name, projected_name in self._state.projection.items()
-            ]
+            if isinstance(self._state.projection, dict):
+                projected: List[str] = []
+
+                for field_name_or_descriptor, projected_name in self._state.projection.items():
+                    if isinstance(field_name_or_descriptor, FieldDescriptor):
+                        projected.append(
+                            f"{model_variable}.{field_name_or_descriptor._full_path} AS {projected_name}"
+                        )
+                    else:
+                        projected.append(
+                            f"{model_variable}.{field_name_or_descriptor} AS {projected_name}"
+                        )
+            else:
+                projected = [
+                    f"{model_variable}.{field_name} AS {field_name}"
+                    for field_name in self._state.projection.model_fields
+                ]
+
             query += f" RETURN {', '.join(projected)}"
         else:
             query += f" RETURN {model_variable}"
