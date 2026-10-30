@@ -125,6 +125,17 @@ class TestAsyncLoomiResult:
             models = record.values()
             assert all(isinstance(model, (Node, Relationship)) for model in models)
 
+    async def test_async_loomi_result_single_returns_none_if_query_returns_none(self, async_driver):
+        client = AsyncClient(async_driver)
+        client.register(Adult, Child, HasChild)
+        await client.initialize()
+
+        async with client.session() as session:
+            result = await session.run("MATCH (n) RETURN n")
+            record = await result.single()
+
+            assert record is None
+
     async def test_async_loomi_result_values_returns_models(self, async_driver, seed_data):
         client = AsyncClient(async_driver)
         client.register(Adult, Child, HasChild)

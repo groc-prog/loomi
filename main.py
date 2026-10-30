@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, cast
 
 from loomi.constants import ServerType
@@ -42,9 +42,29 @@ class Adult(Node):
 
 
 # Initialize the driver like usual
-# driver = neo4j.GraphDatabase.driver(
-#     uri="bolt://localhost:7688", auth=("memgraph", "2ZYh2cFrZ5h4tZmbfX9eZ4bL")
-# )
+driver = neo4j.GraphDatabase.driver(
+    uri="bolt://localhost:7687", auth=("neo4j", "e7aZLc8uE2FaqLNJpCJCwVkh")
+)
+
+with driver.session() as session:
+    session.run("MATCH (n) DETACH DELETE n")
+    session.run(
+        "CREATE (n:Test $data)",
+        {
+            "data": {
+                "username": "alice_wonder",
+                "id": 10492,
+                "active": True,
+                "score": 98.5,
+                "tags": ["admin", "developer"],
+                "metadata": {
+                    "login_count": 12,
+                    "last_login": datetime.now(timezone.utc),
+                },
+            }
+        },
+    )
+
 # client = Client(driver)
 
 # # Register models which the client should resolve
@@ -71,19 +91,19 @@ class Adult(Node):
 
 # models = client.query(Adult).execute()
 
-ctx = CompilationContext(ServerType.NEO4J)
-ctx.add_model(Adult)
+# ctx = CompilationContext(ServerType.NEO4J)
+# ctx.add_model(Adult)
 
-normal_descriptor = Adult.name
-normal_descriptor_compiled = cast(CompilableDescriptor, normal_descriptor)._compile_descriptor(ctx)
+# normal_descriptor = Adult.name
+# normal_descriptor_compiled = cast(CompilableDescriptor, normal_descriptor)._compile_descriptor(ctx)
 
-nested_descriptor = Adult.metadata.type
-nested_descriptor_compiled = cast(CompilableDescriptor, nested_descriptor)._compile_descriptor(ctx)
+# nested_descriptor = Adult.metadata.type
+# nested_descriptor_compiled = cast(CompilableDescriptor, nested_descriptor)._compile_descriptor(ctx)
 
-nested_list_descriptor = any_(any_(Adult.events).timestamps).value
-nested_list_descriptor_compiled = cast(
-    CompilableDescriptor, nested_list_descriptor
-)._compile_descriptor(ctx)
+# nested_list_descriptor = any_(any_(Adult.events).timestamps).value
+# nested_list_descriptor_compiled = cast(
+#     CompilableDescriptor, nested_list_descriptor
+# )._compile_descriptor(ctx)
 
 
 # db_func = any_(any_(Adult.events).timestamps).value == 2
@@ -112,10 +132,10 @@ nested_list_descriptor_compiled = cast(
 #     equals(Adult.name, "foo"),
 # )
 # expr = add(Adult.age, add(Adult.age, 2))
-expr = add(1, any_(any_(Adult.events).timestamps).value)
+# expr = add(1, any_(any_(Adult.events).timestamps).value)
 
-compiled = expr._compile_expression(ctx)
-query = compiled.outer_template.format(innermost_template=compiled.expression_template)
+# compiled = expr._compile_expression(ctx)
+# query = compiled.outer_template.format(innermost_template=compiled.expression_template)
 # query = expr.to_query_string(ctx)
 
 print()

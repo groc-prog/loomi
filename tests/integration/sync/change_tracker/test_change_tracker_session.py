@@ -6,92 +6,17 @@ import pytest
 
 from loomi._sync.client import Client
 from loomi.exceptions import ChangeTrackerError
-from loomi.graph.node import Node
-from loomi.graph.relationship import Relationship
+from tests.integration.fixtures.seed_data import (
+    Adult,
+    Child,
+    HasChild,
+    seed_entities_sync,
+    seed_start_and_end_nodes_sync,
+)
 
 
-class Adult(Node):
-    name: str
-    age: int
-
-    loomi_config = {"labels": {"Adult"}}
-
-
-class Child(Node):
-    name: str
-
-    loomi_config = {"labels": {"Child"}}
-
-
-class HasChild(Relationship):
-    nth_child: int
-    tag: str
-
-    loomi_config = {"type": "HAS_CHILD"}
-
-
-def seed_start_and_end_nodes(sync_driver):
-    with sync_driver.session() as session:
-        result = session.run(
-            "CREATE (a:Adult $a), (c:Child $c) RETURN a, c",
-            {
-                "a": {"name": "John", "age": 21},
-                "c": {"name": "Jimmy"},
-            },
-        )
-        values = result.values()
-        assert len(values) == 1
-        assert len(values[0]) == 2
-
-        created_adult = values[0][0]
-        created_child = values[0][1]
-
-        adult = Adult(name=created_adult["name"], age=created_adult["age"])
-        adult._element_id = created_adult.element_id
-        adult._id = created_adult.id
-
-        child = Child(name=created_child["name"])
-        child._element_id = created_child.element_id
-        child._id = created_child.id
-
-    return adult, child
-
-
-def seed_entities(sync_driver):
-    with sync_driver.session() as session:
-        result = session.run(
-            "CREATE (a:Adult $a)-[b:HAS_CHILD $b]->(c:Child $c) RETURN a, b, c",
-            {
-                "a": {"name": "John", "age": 21},
-                "b": {"nth_child": 1, "tag": "oldest"},
-                "c": {"name": "Jimmy"},
-            },
-        )
-        values = result.values()
-        assert len(values) == 1
-        assert len(values[0]) == 3
-
-        created_adult = values[0][0]
-        created_has_child = values[0][1]
-        created_child = values[0][2]
-
-        adult = Adult(name=created_adult["name"], age=created_adult["age"])
-        adult._element_id = created_adult.element_id
-        adult._id = created_adult.id
-
-        has_child = HasChild(tag=created_has_child["tag"], nth_child=created_has_child["nth_child"])
-        has_child._element_id = created_has_child.element_id
-        has_child._id = created_has_child.id
-
-        child = Child(name=created_child["name"])
-        child._element_id = created_child.element_id
-        child._id = created_child.id
-
-    return adult, has_child, child
-
-
-class TestSyncChangeTracker:
-    def test_sync_change_tracker_add_with_session(self, sync_driver, mocker):
+class TestSyncChangeTrackerWithSession:
+    def test_sync_change_tracker_with_session_add_with_session(self, sync_driver, mocker):
         session_spy = mocker.spy(neo4j.Session, "begin_transaction")
         transaction_spy = mocker.spy(neo4j.Transaction, "run")
 
@@ -107,7 +32,7 @@ class TestSyncChangeTracker:
         session_spy.assert_called_once()
         transaction_spy.assert_called_once()
 
-    def test_sync_change_tracker_add_with_transaction(self, sync_driver, mocker):
+    def test_sync_change_tracker_with_session_add_with_transaction(self, sync_driver, mocker):
         transaction_spy = mocker.spy(neo4j.Transaction, "run")
 
         client = Client(sync_driver)
@@ -122,7 +47,7 @@ class TestSyncChangeTracker:
 
         transaction_spy.assert_called_once()
 
-    def test_sync_change_tracker_add_does_not_commit_transaction(self, sync_driver):
+    def test_sync_change_tracker_with_session_add_does_not_commit_transaction(self, sync_driver):
         client = Client(sync_driver)
         client.register(Adult, Child, HasChild)
         client.initialize()
@@ -140,7 +65,9 @@ class TestSyncChangeTracker:
 
             assert len(values) == 0
 
-    def test_sync_change_tracker_flush_clears_change_tracker(self, sync_driver, mocker):
+    def test_sync_change_tracker_with_session_flush_clears_change_tracker(
+        self, sync_driver, mocker
+    ):
         client = Client(sync_driver)
         client.register(Adult, Child, HasChild)
         client.initialize()
@@ -160,8 +87,8 @@ class TestSyncChangeTracker:
             transaction_spy.assert_not_called()
 
 
-class TestSyncChangeTrackerAdd:
-    def test_sync_change_tracker_add_creates_new_node(self, sync_driver):
+class TestSyncChangeTrackerWithSessionAdd:
+    def test_sync_change_tracker_with_session_add_creates_new_node(self, sync_driver):
         client = Client(sync_driver)
         client.register(Adult, Child, HasChild)
         client.initialize()
@@ -181,7 +108,7 @@ class TestSyncChangeTrackerAdd:
             assert entity["name"] == "John"
             assert entity["age"] == 21
 
-    def test_sync_change_tracker_add_calling_add_multiple_times_on_unsaved_node_does_not_create_it_more_than_once(
+    def test_sync_change_tracker_with_session_add_calling_add_multiple_times_on_unsaved_node_does_not_create_it_more_than_once(
         self, sync_driver
     ):
         client = Client(sync_driver)
@@ -204,12 +131,14 @@ class TestSyncChangeTrackerAdd:
             assert entity["name"] == "John"
             assert entity["age"] == 21
 
-    def test_sync_change_tracker_add_updates_changed_properties_on_existing_node(self, sync_driver):
+    def test_sync_change_tracker_with_session_add_updates_changed_properties_on_existing_node(
+        self, sync_driver
+    ):
         client = Client(sync_driver)
         client.register(Adult, Child, HasChild)
         client.initialize()
 
-        adult, *_ = seed_entities(sync_driver)
+        adult, *_ = seed_entities_sync(sync_driver)
 
         with client.session() as session:
             session.change_tracker.add(adult)
@@ -226,14 +155,14 @@ class TestSyncChangeTrackerAdd:
             assert entity["name"] == "Charles"
             assert entity["age"] == 21
 
-    def test_sync_change_tracker_add_readds_and_updates_node_after_being_marked_for_deletion(
+    def test_sync_change_tracker_with_session_add_readds_and_updates_node_after_being_marked_for_deletion(
         self, sync_driver
     ):
         client = Client(sync_driver)
         client.register(Adult, Child, HasChild)
         client.initialize()
 
-        adult, *_ = seed_entities(sync_driver)
+        adult, *_ = seed_entities_sync(sync_driver)
 
         with client.session() as session:
             session.change_tracker.delete(adult)
@@ -251,14 +180,14 @@ class TestSyncChangeTrackerAdd:
             assert entity["name"] == "Charles"
             assert entity["age"] == 21
 
-    def test_sync_change_tracker_add_does_not_update_changed_properties_on_existing_node_before_add_is_called(
+    def test_sync_change_tracker_with_session_add_does_not_update_changed_properties_on_existing_node_before_add_is_called(
         self, sync_driver
     ):
         client = Client(sync_driver)
         client.register(Adult, Child, HasChild)
         client.initialize()
 
-        adult, *_ = seed_entities(sync_driver)
+        adult, *_ = seed_entities_sync(sync_driver)
 
         with client.session() as session:
             adult.name = "Charles"
@@ -275,7 +204,7 @@ class TestSyncChangeTrackerAdd:
             assert entity["name"] == "John"
             assert entity["age"] == 21
 
-    def test_sync_change_tracker_add_creates_new_relationship_with_unsaved_start_and_end_nodes(
+    def test_sync_change_tracker_with_session_add_creates_new_relationship_with_unsaved_start_and_end_nodes(
         self, sync_driver
     ):
         client = Client(sync_driver)
@@ -305,14 +234,14 @@ class TestSyncChangeTrackerAdd:
             assert has_child_entity["tag"] == "oldest"
             assert child_entity["name"] == "Jimmy"
 
-    def test_sync_change_tracker_add_creates_new_relationship_with_saved_start_and_end_nodes(
+    def test_sync_change_tracker_with_session_add_creates_new_relationship_with_saved_start_and_end_nodes(
         self, sync_driver
     ):
         client = Client(sync_driver)
         client.register(Adult, Child, HasChild)
         client.initialize()
 
-        adult, child = seed_start_and_end_nodes(sync_driver)
+        adult, child = seed_start_and_end_nodes_sync(sync_driver)
 
         with client.session() as session:
             has_child = HasChild(nth_child=1, tag="oldest")
@@ -334,7 +263,7 @@ class TestSyncChangeTrackerAdd:
             assert has_child_entity["nth_child"] == 1
             assert has_child_entity["tag"] == "oldest"
 
-    def test_sync_change_tracker_add_raise_if_unsaved_relationship_is_passed_without_start_and_end_nodes(
+    def test_sync_change_tracker_with_session_add_raise_if_unsaved_relationship_is_passed_without_start_and_end_nodes(
         self, sync_driver
     ):
         client = Client(sync_driver)
@@ -350,7 +279,7 @@ class TestSyncChangeTrackerAdd:
             ):
                 session.change_tracker.add(has_child)
 
-    def test_sync_change_tracker_add_calling_add_multiple_times_on_unsaved_relationship_and_start_and_end_nodes_does_not_create_it_more_than_once(
+    def test_sync_change_tracker_with_session_add_calling_add_multiple_times_on_unsaved_relationship_and_start_and_end_nodes_does_not_create_it_more_than_once(
         self, sync_driver
     ):
         client = Client(sync_driver)
@@ -381,14 +310,14 @@ class TestSyncChangeTrackerAdd:
             assert has_child_entity["tag"] == "oldest"
             assert child_entity["name"] == "Jimmy"
 
-    def test_sync_change_tracker_add_updates_changed_properties_on_existing_relationship(
+    def test_sync_change_tracker_with_session_add_updates_changed_properties_on_existing_relationship(
         self, sync_driver
     ):
         client = Client(sync_driver)
         client.register(Adult, Child, HasChild)
         client.initialize()
 
-        _, has_child, _ = seed_entities(sync_driver)
+        _, has_child, _ = seed_entities_sync(sync_driver)
 
         with client.session() as session:
             session.change_tracker.add(has_child)
@@ -405,14 +334,14 @@ class TestSyncChangeTrackerAdd:
             assert entity["nth_child"] == 1
             assert entity["tag"] == "youngest"
 
-    def test_sync_change_tracker_add_readds_and_updates_relationship_after_being_marked_for_deletion(
+    def test_sync_change_tracker_with_session_add_readds_and_updates_relationship_after_being_marked_for_deletion(
         self, sync_driver
     ):
         client = Client(sync_driver)
         client.register(Adult, Child, HasChild)
         client.initialize()
 
-        _, has_child, _ = seed_entities(sync_driver)
+        _, has_child, _ = seed_entities_sync(sync_driver)
 
         with client.session() as session:
             session.change_tracker.delete(has_child)
@@ -430,14 +359,14 @@ class TestSyncChangeTrackerAdd:
             assert entity["nth_child"] == 1
             assert entity["tag"] == "youngest"
 
-    def test_sync_change_tracker_add_does_not_update_changed_properties_on_existing_relationship_before_add_is_called(
+    def test_sync_change_tracker_with_session_add_does_not_update_changed_properties_on_existing_relationship_before_add_is_called(
         self, sync_driver
     ):
         client = Client(sync_driver)
         client.register(Adult, Child, HasChild)
         client.initialize()
 
-        _, has_child, _ = seed_entities(sync_driver)
+        _, has_child, _ = seed_entities_sync(sync_driver)
 
         with client.session() as session:
             has_child.tag = "youngest"
@@ -455,8 +384,10 @@ class TestSyncChangeTrackerAdd:
             assert entity["tag"] == "oldest"
 
 
-class TestSyncChangeTrackerDelete:
-    def test_sync_change_tracker_delete_ignores_unsaved_node(self, sync_driver, mocker):
+class TestSyncChangeTrackerWithSessionDelete:
+    def test_sync_change_tracker_with_session_delete_ignores_unsaved_node(
+        self, sync_driver, mocker
+    ):
         client = Client(sync_driver)
         client.register(Adult, Child, HasChild)
         client.initialize()
@@ -469,12 +400,12 @@ class TestSyncChangeTrackerDelete:
 
         transaction_spy.assert_not_called()
 
-    def test_sync_change_tracker_delete_deletes_node(self, sync_driver):
+    def test_sync_change_tracker_with_session_delete_deletes_node(self, sync_driver):
         client = Client(sync_driver)
         client.register(Adult, Child, HasChild)
         client.initialize()
 
-        adult, *_ = seed_entities(sync_driver)
+        adult, *_ = seed_entities_sync(sync_driver)
 
         with client.session() as session:
             session.change_tracker.delete(adult)
@@ -489,14 +420,14 @@ class TestSyncChangeTrackerDelete:
             values = result.values()
             assert len(values) == 1
 
-    def test_sync_change_tracker_delete_calling_delete_on_saved_node_multiple_times_is_a_noop(
+    def test_sync_change_tracker_with_session_delete_calling_delete_on_saved_node_multiple_times_is_a_noop(
         self, sync_driver
     ):
         client = Client(sync_driver)
         client.register(Adult, Child, HasChild)
         client.initialize()
 
-        adult, *_ = seed_entities(sync_driver)
+        adult, *_ = seed_entities_sync(sync_driver)
 
         with client.session() as session:
             session.change_tracker.delete(adult)
@@ -512,14 +443,14 @@ class TestSyncChangeTrackerDelete:
             values = result.values()
             assert len(values) == 1
 
-    def test_sync_change_tracker_delete_deletes_node_previously_tracked_as_update(
+    def test_sync_change_tracker_with_session_delete_deletes_node_previously_tracked_as_update(
         self, sync_driver
     ):
         client = Client(sync_driver)
         client.register(Adult, Child, HasChild)
         client.initialize()
 
-        adult, *_ = seed_entities(sync_driver)
+        adult, *_ = seed_entities_sync(sync_driver)
 
         with client.session() as session:
             session.change_tracker.add(adult)
@@ -532,7 +463,9 @@ class TestSyncChangeTrackerDelete:
 
             assert len(values) == 0
 
-    def test_sync_change_tracker_delete_ignores_unsaved_relationship(self, sync_driver, mocker):
+    def test_sync_change_tracker_with_session_delete_ignores_unsaved_relationship(
+        self, sync_driver, mocker
+    ):
         client = Client(sync_driver)
         client.register(Adult, Child, HasChild)
         client.initialize()
@@ -545,12 +478,12 @@ class TestSyncChangeTrackerDelete:
 
         transaction_spy.assert_not_called()
 
-    def test_sync_change_tracker_delete_deletes_relationship(self, sync_driver):
+    def test_sync_change_tracker_with_session_delete_deletes_relationship(self, sync_driver):
         client = Client(sync_driver)
         client.register(Adult, Child, HasChild)
         client.initialize()
 
-        _, has_child, _ = seed_entities(sync_driver)
+        _, has_child, _ = seed_entities_sync(sync_driver)
 
         with client.session() as session:
             session.change_tracker.delete(has_child)
@@ -561,15 +494,15 @@ class TestSyncChangeTrackerDelete:
             values = result.values()
             assert len(values) == 0
 
-    def test_sync_change_tracker_delete_calling_delete_on_saved_relationship_multiple_times_is_a_noop(
+    def test_sync_change_tracker_with_session_delete_calling_delete_on_saved_relationship_multiple_times_is_a_noop(
         self, sync_driver
     ):
         client = Client(sync_driver)
         client.register(Adult, Child, HasChild)
         client.initialize()
 
-        _, has_child, _ = seed_entities(sync_driver)
-        seed_entities(sync_driver)
+        _, has_child, _ = seed_entities_sync(sync_driver)
+        seed_entities_sync(sync_driver)
 
         with client.session() as session:
             session.change_tracker.delete(has_child)
@@ -590,15 +523,15 @@ class TestSyncChangeTrackerDelete:
             values = result.values()
             assert len(values) == 2
 
-    def test_sync_change_tracker_delete_deletes_relationship_previously_tracked_as_update(
+    def test_sync_change_tracker_with_session_delete_deletes_relationship_previously_tracked_as_update(
         self, sync_driver
     ):
         client = Client(sync_driver)
         client.register(Adult, Child, HasChild)
         client.initialize()
 
-        _, has_child, _ = seed_entities(sync_driver)
-        seed_entities(sync_driver)
+        _, has_child, _ = seed_entities_sync(sync_driver)
+        seed_entities_sync(sync_driver)
 
         with client.session() as session:
             session.change_tracker.add(has_child)
@@ -619,7 +552,7 @@ class TestSyncChangeTrackerDelete:
             values = result.values()
             assert len(values) == 2
 
-    def test_sync_change_tracker_delete_skips_relationship_creation_if_start_or_end_node_are_deleted(
+    def test_sync_change_tracker_with_session_delete_skips_relationship_creation_if_start_or_end_node_are_deleted(
         self, sync_driver
     ):
         client = Client(sync_driver)
@@ -652,8 +585,8 @@ class TestSyncChangeTrackerDelete:
             assert len(values) == 0
 
 
-class TestSyncChangeTrackerDetach:
-    def test_sync_change_tracker_detach_stops_tracking_node(self, sync_driver, mocker):
+class TestSyncChangeTrackerWithSessionDetach:
+    def test_sync_change_tracker_with_session_detach_stops_tracking_node(self, sync_driver, mocker):
         client = Client(sync_driver)
         client.register(Adult, Child, HasChild)
         client.initialize()
@@ -667,7 +600,7 @@ class TestSyncChangeTrackerDetach:
 
         transaction_spy.assert_not_called()
 
-    def test_sync_change_tracker_detach_stops_tracking_relationship_but_not_start_and_end_nodes(
+    def test_sync_change_tracker_with_session_detach_stops_tracking_relationship_but_not_start_and_end_nodes(
         self, sync_driver
     ):
         client = Client(sync_driver)
@@ -702,7 +635,7 @@ class TestSyncChangeTrackerDetach:
             child_entity = values[0][0]
             assert child_entity["name"] == "Jimmy"
 
-    def test_sync_change_tracker_detach_skips_relationship_creation_if_start_or_end_node_are_detached(
+    def test_sync_change_tracker_with_session_detach_skips_relationship_creation_if_start_or_end_node_are_detached(
         self, sync_driver
     ):
         client = Client(sync_driver)
@@ -735,8 +668,10 @@ class TestSyncChangeTrackerDetach:
             assert len(values) == 0
 
 
-class TestSyncChangeTrackerClear:
-    def test_sync_change_tracker_clear_stops_tracking_all_entities(self, sync_driver, mocker):
+class TestSyncChangeTrackerWithSessionClear:
+    def test_sync_change_tracker_with_session_clear_stops_tracking_all_entities(
+        self, sync_driver, mocker
+    ):
         client = Client(sync_driver)
         client.register(Adult, Child, HasChild)
         client.initialize()

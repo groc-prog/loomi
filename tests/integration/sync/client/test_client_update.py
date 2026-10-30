@@ -104,6 +104,14 @@ class TestSyncClientUpdate:
                 tx_run_spy.assert_called_once_with(mocker.ANY, mocker.ANY, timeout=test_timeout)
                 session_run_spy.assert_not_called()
 
+    def test_sync_client_update_raises_if_set_has_not_been_called(self, sync_driver):
+        client = Client(sync_driver)
+        client.register(Adult, Child, HasChild)
+        client.initialize()
+
+        with pytest.raises(QueryError, match="At least one update expression must be defined"):
+            client.update(Adult).execute()
+
 
 class TestSyncClientUpdateNodes:
     def test_sync_client_update_nodes_updates_all_nodes(self, sync_driver, seed_data):

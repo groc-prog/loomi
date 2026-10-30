@@ -1,7 +1,6 @@
 # pylint: disable=missing-class-docstring, missing-function-docstring
 
 import functools
-import inspect
 from typing import (
     Any,
     Callable,
@@ -47,19 +46,11 @@ def require_server_metadata(func: U) -> U:
     exc = ClientError("Client must be initialized before method can be called")
 
     @functools.wraps(func)
-    async def async_wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
-        if self._server_type is None:
-            raise exc
-        return await func(self, *args, **kwargs)
-
-    @functools.wraps(func)
     def sync_wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
         if self._server_type is None:
             raise exc
         return func(self, *args, **kwargs)
 
-    if inspect.iscoroutinefunction(func):
-        return cast(U, async_wrapper)
     return cast(U, sync_wrapper)
 
 

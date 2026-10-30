@@ -6,92 +6,17 @@ import pytest
 
 from loomi._async.client import AsyncClient
 from loomi.exceptions import ChangeTrackerError
-from loomi.graph.node import Node
-from loomi.graph.relationship import Relationship
+from tests.integration.fixtures.seed_data import (
+    Adult,
+    Child,
+    HasChild,
+    seed_entities_async,
+    seed_start_and_end_nodes_async,
+)
 
 
-class Adult(Node):
-    name: str
-    age: int
-
-    loomi_config = {"labels": {"Adult"}}
-
-
-class Child(Node):
-    name: str
-
-    loomi_config = {"labels": {"Child"}}
-
-
-class HasChild(Relationship):
-    nth_child: int
-    tag: str
-
-    loomi_config = {"type": "HAS_CHILD"}
-
-
-async def seed_start_and_end_nodes(async_driver):
-    async with async_driver.session() as session:
-        result = await session.run(
-            "CREATE (a:Adult $a), (c:Child $c) RETURN a, c",
-            {
-                "a": {"name": "John", "age": 21},
-                "c": {"name": "Jimmy"},
-            },
-        )
-        values = await result.values()
-        assert len(values) == 1
-        assert len(values[0]) == 2
-
-        created_adult = values[0][0]
-        created_child = values[0][1]
-
-        adult = Adult(name=created_adult["name"], age=created_adult["age"])
-        adult._element_id = created_adult.element_id
-        adult._id = created_adult.id
-
-        child = Child(name=created_child["name"])
-        child._element_id = created_child.element_id
-        child._id = created_child.id
-
-    return adult, child
-
-
-async def seed_entities(async_driver):
-    async with async_driver.session() as session:
-        result = await session.run(
-            "CREATE (a:Adult $a)-[b:HAS_CHILD $b]->(c:Child $c) RETURN a, b, c",
-            {
-                "a": {"name": "John", "age": 21},
-                "b": {"nth_child": 1, "tag": "oldest"},
-                "c": {"name": "Jimmy"},
-            },
-        )
-        values = await result.values()
-        assert len(values) == 1
-        assert len(values[0]) == 3
-
-        created_adult = values[0][0]
-        created_has_child = values[0][1]
-        created_child = values[0][2]
-
-        adult = Adult(name=created_adult["name"], age=created_adult["age"])
-        adult._element_id = created_adult.element_id
-        adult._id = created_adult.id
-
-        has_child = HasChild(tag=created_has_child["tag"], nth_child=created_has_child["nth_child"])
-        has_child._element_id = created_has_child.element_id
-        has_child._id = created_has_child.id
-
-        child = Child(name=created_child["name"])
-        child._element_id = created_child.element_id
-        child._id = created_child.id
-
-    return adult, has_child, child
-
-
-class TestAsyncChangeTracker:
-    async def test_async_change_tracker_add_with_session(self, async_driver, mocker):
+class TestAsyncChangeTrackerWithSession:
+    async def test_async_change_tracker_with_session_add_with_session(self, async_driver, mocker):
         session_spy = mocker.spy(neo4j.AsyncSession, "begin_transaction")
         transaction_spy = mocker.spy(neo4j.AsyncTransaction, "run")
 
@@ -107,7 +32,9 @@ class TestAsyncChangeTracker:
         session_spy.assert_called_once()
         transaction_spy.assert_called_once()
 
-    async def test_async_change_tracker_add_with_transaction(self, async_driver, mocker):
+    async def test_async_change_tracker_with_session_add_with_transaction(
+        self, async_driver, mocker
+    ):
         transaction_spy = mocker.spy(neo4j.AsyncTransaction, "run")
 
         client = AsyncClient(async_driver)
@@ -122,7 +49,9 @@ class TestAsyncChangeTracker:
 
         transaction_spy.assert_called_once()
 
-    async def test_async_change_tracker_add_does_not_commit_transaction(self, async_driver):
+    async def test_async_change_tracker_with_session_add_does_not_commit_transaction(
+        self, async_driver
+    ):
         client = AsyncClient(async_driver)
         client.register(Adult, Child, HasChild)
         await client.initialize()
@@ -140,7 +69,9 @@ class TestAsyncChangeTracker:
 
             assert len(values) == 0
 
-    async def test_async_change_tracker_flush_clears_change_tracker(self, async_driver, mocker):
+    async def test_async_change_tracker_with_session_flush_clears_change_tracker(
+        self, async_driver, mocker
+    ):
         client = AsyncClient(async_driver)
         client.register(Adult, Child, HasChild)
         await client.initialize()
@@ -160,8 +91,8 @@ class TestAsyncChangeTracker:
             transaction_spy.assert_not_called()
 
 
-class TestAsyncChangeTrackerAdd:
-    async def test_async_change_tracker_add_creates_new_node(self, async_driver):
+class TestAsyncChangeTrackerWithSessionAdd:
+    async def test_async_change_tracker_with_session_add_creates_new_node(self, async_driver):
         client = AsyncClient(async_driver)
         client.register(Adult, Child, HasChild)
         await client.initialize()
@@ -181,7 +112,7 @@ class TestAsyncChangeTrackerAdd:
             assert entity["name"] == "John"
             assert entity["age"] == 21
 
-    async def test_async_change_tracker_add_calling_add_multiple_times_on_unsaved_node_does_not_create_it_more_than_once(
+    async def test_async_change_tracker_with_session_add_calling_add_multiple_times_on_unsaved_node_does_not_create_it_more_than_once(
         self, async_driver
     ):
         client = AsyncClient(async_driver)
@@ -204,14 +135,14 @@ class TestAsyncChangeTrackerAdd:
             assert entity["name"] == "John"
             assert entity["age"] == 21
 
-    async def test_async_change_tracker_add_updates_changed_properties_on_existing_node(
+    async def test_async_change_tracker_with_session_add_updates_changed_properties_on_existing_node(
         self, async_driver
     ):
         client = AsyncClient(async_driver)
         client.register(Adult, Child, HasChild)
         await client.initialize()
 
-        adult, *_ = await seed_entities(async_driver)
+        adult, *_ = await seed_entities_async(async_driver)
 
         async with client.session() as session:
             session.change_tracker.add(adult)
@@ -228,14 +159,14 @@ class TestAsyncChangeTrackerAdd:
             assert entity["name"] == "Charles"
             assert entity["age"] == 21
 
-    async def test_async_change_tracker_add_readds_and_updates_node_after_being_marked_for_deletion(
+    async def test_async_change_tracker_with_session_add_readds_and_updates_node_after_being_marked_for_deletion(
         self, async_driver
     ):
         client = AsyncClient(async_driver)
         client.register(Adult, Child, HasChild)
         await client.initialize()
 
-        adult, *_ = await seed_entities(async_driver)
+        adult, *_ = await seed_entities_async(async_driver)
 
         async with client.session() as session:
             session.change_tracker.delete(adult)
@@ -253,14 +184,14 @@ class TestAsyncChangeTrackerAdd:
             assert entity["name"] == "Charles"
             assert entity["age"] == 21
 
-    async def test_async_change_tracker_add_does_not_update_changed_properties_on_existing_node_before_add_is_called(
+    async def test_async_change_tracker_with_session_add_does_not_update_changed_properties_on_existing_node_before_add_is_called(
         self, async_driver
     ):
         client = AsyncClient(async_driver)
         client.register(Adult, Child, HasChild)
         await client.initialize()
 
-        adult, *_ = await seed_entities(async_driver)
+        adult, *_ = await seed_entities_async(async_driver)
 
         async with client.session() as session:
             adult.name = "Charles"
@@ -277,7 +208,7 @@ class TestAsyncChangeTrackerAdd:
             assert entity["name"] == "John"
             assert entity["age"] == 21
 
-    async def test_async_change_tracker_add_creates_new_relationship_with_unsaved_start_and_end_nodes(
+    async def test_async_change_tracker_with_session_add_creates_new_relationship_with_unsaved_start_and_end_nodes(
         self, async_driver
     ):
         client = AsyncClient(async_driver)
@@ -307,14 +238,14 @@ class TestAsyncChangeTrackerAdd:
             assert has_child_entity["tag"] == "oldest"
             assert child_entity["name"] == "Jimmy"
 
-    async def test_async_change_tracker_add_creates_new_relationship_with_saved_start_and_end_nodes(
+    async def test_async_change_tracker_with_session_add_creates_new_relationship_with_saved_start_and_end_nodes(
         self, async_driver
     ):
         client = AsyncClient(async_driver)
         client.register(Adult, Child, HasChild)
         await client.initialize()
 
-        adult, child = await seed_start_and_end_nodes(async_driver)
+        adult, child = await seed_start_and_end_nodes_async(async_driver)
 
         async with client.session() as session:
             has_child = HasChild(nth_child=1, tag="oldest")
@@ -336,7 +267,7 @@ class TestAsyncChangeTrackerAdd:
             assert has_child_entity["nth_child"] == 1
             assert has_child_entity["tag"] == "oldest"
 
-    async def test_async_change_tracker_add_raise_if_unsaved_relationship_is_passed_without_start_and_end_nodes(
+    async def test_async_change_tracker_with_session_add_raise_if_unsaved_relationship_is_passed_without_start_and_end_nodes(
         self, async_driver
     ):
         client = AsyncClient(async_driver)
@@ -352,7 +283,7 @@ class TestAsyncChangeTrackerAdd:
             ):
                 session.change_tracker.add(has_child)
 
-    async def test_async_change_tracker_add_calling_add_multiple_times_on_unsaved_relationship_and_start_and_end_nodes_does_not_create_it_more_than_once(
+    async def test_async_change_tracker_with_session_add_calling_add_multiple_times_on_unsaved_relationship_and_start_and_end_nodes_does_not_create_it_more_than_once(
         self, async_driver
     ):
         client = AsyncClient(async_driver)
@@ -383,14 +314,14 @@ class TestAsyncChangeTrackerAdd:
             assert has_child_entity["tag"] == "oldest"
             assert child_entity["name"] == "Jimmy"
 
-    async def test_async_change_tracker_add_updates_changed_properties_on_existing_relationship(
+    async def test_async_change_tracker_with_session_add_updates_changed_properties_on_existing_relationship(
         self, async_driver
     ):
         client = AsyncClient(async_driver)
         client.register(Adult, Child, HasChild)
         await client.initialize()
 
-        _, has_child, _ = await seed_entities(async_driver)
+        _, has_child, _ = await seed_entities_async(async_driver)
 
         async with client.session() as session:
             session.change_tracker.add(has_child)
@@ -407,14 +338,14 @@ class TestAsyncChangeTrackerAdd:
             assert entity["nth_child"] == 1
             assert entity["tag"] == "youngest"
 
-    async def test_async_change_tracker_add_readds_and_updates_relationship_after_being_marked_for_deletion(
+    async def test_async_change_tracker_with_session_add_readds_and_updates_relationship_after_being_marked_for_deletion(
         self, async_driver
     ):
         client = AsyncClient(async_driver)
         client.register(Adult, Child, HasChild)
         await client.initialize()
 
-        _, has_child, _ = await seed_entities(async_driver)
+        _, has_child, _ = await seed_entities_async(async_driver)
 
         async with client.session() as session:
             session.change_tracker.delete(has_child)
@@ -432,14 +363,14 @@ class TestAsyncChangeTrackerAdd:
             assert entity["nth_child"] == 1
             assert entity["tag"] == "youngest"
 
-    async def test_async_change_tracker_add_does_not_update_changed_properties_on_existing_relationship_before_add_is_called(
+    async def test_async_change_tracker_with_session_add_does_not_update_changed_properties_on_existing_relationship_before_add_is_called(
         self, async_driver
     ):
         client = AsyncClient(async_driver)
         client.register(Adult, Child, HasChild)
         await client.initialize()
 
-        _, has_child, _ = await seed_entities(async_driver)
+        _, has_child, _ = await seed_entities_async(async_driver)
 
         async with client.session() as session:
             has_child.tag = "youngest"
@@ -457,8 +388,10 @@ class TestAsyncChangeTrackerAdd:
             assert entity["tag"] == "oldest"
 
 
-class TestAsyncChangeTrackerDelete:
-    async def test_async_change_tracker_delete_ignores_unsaved_node(self, async_driver, mocker):
+class TestAsyncChangeTrackerWithSessionDelete:
+    async def test_async_change_tracker_with_session_delete_ignores_unsaved_node(
+        self, async_driver, mocker
+    ):
         client = AsyncClient(async_driver)
         client.register(Adult, Child, HasChild)
         await client.initialize()
@@ -471,12 +404,12 @@ class TestAsyncChangeTrackerDelete:
 
         transaction_spy.assert_not_called()
 
-    async def test_async_change_tracker_delete_deletes_node(self, async_driver):
+    async def test_async_change_tracker_with_session_delete_deletes_node(self, async_driver):
         client = AsyncClient(async_driver)
         client.register(Adult, Child, HasChild)
         await client.initialize()
 
-        adult, *_ = await seed_entities(async_driver)
+        adult, *_ = await seed_entities_async(async_driver)
 
         async with client.session() as session:
             session.change_tracker.delete(adult)
@@ -491,14 +424,14 @@ class TestAsyncChangeTrackerDelete:
             values = await result.values()
             assert len(values) == 1
 
-    async def test_async_change_tracker_delete_calling_delete_on_saved_node_multiple_times_is_a_noop(
+    async def test_async_change_tracker_with_session_delete_calling_delete_on_saved_node_multiple_times_is_a_noop(
         self, async_driver
     ):
         client = AsyncClient(async_driver)
         client.register(Adult, Child, HasChild)
         await client.initialize()
 
-        adult, *_ = await seed_entities(async_driver)
+        adult, *_ = await seed_entities_async(async_driver)
 
         async with client.session() as session:
             session.change_tracker.delete(adult)
@@ -514,14 +447,14 @@ class TestAsyncChangeTrackerDelete:
             values = await result.values()
             assert len(values) == 1
 
-    async def test_async_change_tracker_delete_deletes_node_previously_tracked_as_update(
+    async def test_async_change_tracker_with_session_delete_deletes_node_previously_tracked_as_update(
         self, async_driver
     ):
         client = AsyncClient(async_driver)
         client.register(Adult, Child, HasChild)
         await client.initialize()
 
-        adult, *_ = await seed_entities(async_driver)
+        adult, *_ = await seed_entities_async(async_driver)
 
         async with client.session() as session:
             session.change_tracker.add(adult)
@@ -534,7 +467,7 @@ class TestAsyncChangeTrackerDelete:
 
             assert len(values) == 0
 
-    async def test_async_change_tracker_delete_ignores_unsaved_relationship(
+    async def test_async_change_tracker_with_session_delete_ignores_unsaved_relationship(
         self, async_driver, mocker
     ):
         client = AsyncClient(async_driver)
@@ -549,12 +482,14 @@ class TestAsyncChangeTrackerDelete:
 
         transaction_spy.assert_not_called()
 
-    async def test_async_change_tracker_delete_deletes_relationship(self, async_driver):
+    async def test_async_change_tracker_with_session_delete_deletes_relationship(
+        self, async_driver
+    ):
         client = AsyncClient(async_driver)
         client.register(Adult, Child, HasChild)
         await client.initialize()
 
-        _, has_child, _ = await seed_entities(async_driver)
+        _, has_child, _ = await seed_entities_async(async_driver)
 
         async with client.session() as session:
             session.change_tracker.delete(has_child)
@@ -565,15 +500,15 @@ class TestAsyncChangeTrackerDelete:
             values = await result.values()
             assert len(values) == 0
 
-    async def test_async_change_tracker_delete_calling_delete_on_saved_relationship_multiple_times_is_a_noop(
+    async def test_async_change_tracker_with_session_delete_calling_delete_on_saved_relationship_multiple_times_is_a_noop(
         self, async_driver
     ):
         client = AsyncClient(async_driver)
         client.register(Adult, Child, HasChild)
         await client.initialize()
 
-        _, has_child, _ = await seed_entities(async_driver)
-        await seed_entities(async_driver)
+        _, has_child, _ = await seed_entities_async(async_driver)
+        await seed_entities_async(async_driver)
 
         async with client.session() as session:
             session.change_tracker.delete(has_child)
@@ -594,15 +529,15 @@ class TestAsyncChangeTrackerDelete:
             values = await result.values()
             assert len(values) == 2
 
-    async def test_async_change_tracker_delete_deletes_relationship_previously_tracked_as_update(
+    async def test_async_change_tracker_with_session_delete_deletes_relationship_previously_tracked_as_update(
         self, async_driver
     ):
         client = AsyncClient(async_driver)
         client.register(Adult, Child, HasChild)
         await client.initialize()
 
-        _, has_child, _ = await seed_entities(async_driver)
-        await seed_entities(async_driver)
+        _, has_child, _ = await seed_entities_async(async_driver)
+        await seed_entities_async(async_driver)
 
         async with client.session() as session:
             session.change_tracker.add(has_child)
@@ -623,7 +558,7 @@ class TestAsyncChangeTrackerDelete:
             values = await result.values()
             assert len(values) == 2
 
-    async def test_async_change_tracker_delete_skips_relationship_creation_if_start_or_end_node_are_deleted(
+    async def test_async_change_tracker_with_session_delete_skips_relationship_creation_if_start_or_end_node_are_deleted(
         self, async_driver
     ):
         client = AsyncClient(async_driver)
@@ -656,8 +591,10 @@ class TestAsyncChangeTrackerDelete:
             assert len(values) == 0
 
 
-class TestAsyncChangeTrackerDetach:
-    async def test_async_change_tracker_detach_stops_tracking_node(self, async_driver, mocker):
+class TestAsyncChangeTrackerWithSessionDetach:
+    async def test_async_change_tracker_with_session_detach_stops_tracking_node(
+        self, async_driver, mocker
+    ):
         client = AsyncClient(async_driver)
         client.register(Adult, Child, HasChild)
         await client.initialize()
@@ -671,7 +608,7 @@ class TestAsyncChangeTrackerDetach:
 
         transaction_spy.assert_not_called()
 
-    async def test_async_change_tracker_detach_stops_tracking_relationship_but_not_start_and_end_nodes(
+    async def test_async_change_tracker_with_session_detach_stops_tracking_relationship_but_not_start_and_end_nodes(
         self, async_driver
     ):
         client = AsyncClient(async_driver)
@@ -706,7 +643,7 @@ class TestAsyncChangeTrackerDetach:
             child_entity = values[0][0]
             assert child_entity["name"] == "Jimmy"
 
-    async def test_async_change_tracker_detach_skips_relationship_creation_if_start_or_end_node_are_detached(
+    async def test_async_change_tracker_with_session_detach_skips_relationship_creation_if_start_or_end_node_are_detached(
         self, async_driver
     ):
         client = AsyncClient(async_driver)
@@ -739,8 +676,8 @@ class TestAsyncChangeTrackerDetach:
             assert len(values) == 0
 
 
-class TestAsyncChangeTrackerClear:
-    async def test_async_change_tracker_clear_stops_tracking_all_entities(
+class TestAsyncChangeTrackerWithSessionClear:
+    async def test_async_change_tracker_with_session_clear_stops_tracking_all_entities(
         self, async_driver, mocker
     ):
         client = AsyncClient(async_driver)

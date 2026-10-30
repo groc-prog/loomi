@@ -125,6 +125,17 @@ class TestSyncLoomiResult:
             models = record.values()
             assert all(isinstance(model, (Node, Relationship)) for model in models)
 
+    def test_sync_loomi_result_single_returns_none_if_query_returns_none(self, sync_driver):
+        client = Client(sync_driver)
+        client.register(Adult, Child, HasChild)
+        client.initialize()
+
+        with client.session() as session:
+            result = session.run("MATCH (n) RETURN n")
+            record = result.single()
+
+            assert record is None
+
     def test_sync_loomi_result_values_returns_models(self, sync_driver, seed_data):
         client = Client(sync_driver)
         client.register(Adult, Child, HasChild)

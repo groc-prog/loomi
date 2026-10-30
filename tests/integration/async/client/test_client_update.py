@@ -108,6 +108,14 @@ class TestAsyncClientUpdate:
                 tx_run_spy.assert_called_once_with(mocker.ANY, mocker.ANY, timeout=test_timeout)
                 session_run_spy.assert_not_called()
 
+    async def test_async_client_update_raises_if_set_has_not_been_called(self, async_driver):
+        client = AsyncClient(async_driver)
+        client.register(Adult, Child, HasChild)
+        await client.initialize()
+
+        with pytest.raises(QueryError, match="At least one update expression must be defined"):
+            await client.update(Adult).execute()
+
 
 class TestAsyncClientUpdateNodes:
     async def test_async_client_update_nodes_updates_all_nodes(self, async_driver, seed_data):

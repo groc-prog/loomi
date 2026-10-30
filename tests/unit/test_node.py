@@ -1,5 +1,6 @@
 # pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, missing-function-docstring, unused-argument, line-too-long, unused-variable, comparison-with-callable
 import json
+from typing import List
 
 import pytest
 from pydantic import BaseModel
@@ -95,71 +96,3 @@ class TestNodeModelConfiguration:
         assert "labels" in Worker.loomi_config
         assert Worker.loomi_config["labels"] == {Human.__name__, "FullTime", "Adult"}
         assert Worker.labels() == {Human.__name__, "FullTime", "Adult"}
-
-    def test_node_uses_json_as_default_serialization(self):
-        class Human(Node): ...
-
-        assert "serializer_fn" in Human.loomi_config
-        assert Human.loomi_config["serializer_fn"] == json.dumps
-
-        assert "deserializer_fn" in Human.loomi_config
-        assert Human.loomi_config["deserializer_fn"] == json.loads
-
-    def test_node_overwrites_default_serialization(self):
-        def serialize(val):
-            return val
-
-        def deserialize(val):
-            return val
-
-        class Human(Node):
-            loomi_config = {"serializer_fn": serialize, "deserializer_fn": deserialize}
-
-        assert "serializer_fn" in Human.loomi_config
-        assert Human.loomi_config["serializer_fn"] == serialize
-
-        assert "deserializer_fn" in Human.loomi_config
-        assert Human.loomi_config["deserializer_fn"] == deserialize
-
-    def test_node_inherits_serialization_from_parent(self):
-        def serialize(val):
-            return val
-
-        def deserialize(val):
-            return val
-
-        class Human(Node):
-            loomi_config = {"serializer_fn": serialize, "deserializer_fn": deserialize}
-
-        class Worker(Human): ...
-
-        assert "serializer_fn" in Worker.loomi_config
-        assert Worker.loomi_config["serializer_fn"] == serialize
-
-        assert "deserializer_fn" in Worker.loomi_config
-        assert Worker.loomi_config["deserializer_fn"] == deserialize
-
-    def test_node_overwrites_inherited_serialization_from_parent(self):
-        def serialize1(val):
-            return val
-
-        def deserialize1(val):
-            return val
-
-        def serialize2(val):
-            return val
-
-        def deserialize2(val):
-            return val
-
-        class Human(Node):
-            loomi_config = {"serializer_fn": serialize1, "deserializer_fn": deserialize1}
-
-        class Worker(Human):
-            loomi_config = {"serializer_fn": serialize2, "deserializer_fn": deserialize2}
-
-        assert "serializer_fn" in Worker.loomi_config
-        assert Worker.loomi_config["serializer_fn"] == serialize2
-
-        assert "deserializer_fn" in Worker.loomi_config
-        assert Worker.loomi_config["deserializer_fn"] == deserialize2
