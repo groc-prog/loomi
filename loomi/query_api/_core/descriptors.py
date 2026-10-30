@@ -169,34 +169,15 @@ class FieldDescriptor(CompilableDescriptor):
     def _is_list_path(self) -> bool:
         return any([operator.value in self._full_path for operator in ListPathOperator])
 
-    def _compile_descriptor(self, ctx: CompilationContext) -> CompiledDescriptor:
-        logger.debug(
-            "Compiling descriptor for model %s with path %s",
-            self._model_type,
-            self._full_path,
-        )
+    def _compile_list_path(
+        self,
+        ctx: CompilationContext,
+        parts: list[str],
+        full_path: str,
+        model_variable: str,
+    ) -> CompiledDescriptor:
+        list_operators = {op.value for op in ListPathOperator}
 
-        list_operators = {op.value for op in ListPathOperator}  # Set for O(1) lookup
-        model_variable = ctx.get_variable(self._model_type)
-
-        # Split the path to be able to handle any list operators
-        path_parts = re.split(r"(\$all|\$any|\$none|\$single)", self._full_path)
-        parts = [p.strip(".") for p in path_parts if p.strip()]
-
-        # If we don't have any list operators, we can return directly
-        if not any(p in list_operators for p in parts):
-            logger.debug(
-                "Descriptor does not contain any list paths, compiling final output immediately"
-            )
-            return CompiledDescriptor(
-                full_template="{innermost_template}",
-                variable_path=f"{{variable}}.{self._full_path}",
-                variable=model_variable,
-                full_path=None,
-            )
-
-        # Get the path parts and their index so we can use them to build the full
-        # template in reverse order (from inner-most to outer-most)
         logger.debug(
             "Field descriptor contains list paths, resolving innermost template to outermost template"
         )
@@ -250,8 +231,60 @@ class FieldDescriptor(CompilableDescriptor):
             full_template=full_template,
             variable_path=variable_path,
             variable=f"v{inner_var_id}",
-            full_path=self._full_path,
+            full_path=full_path,
         )
+
+    def _compile_descriptor(self, ctx: CompilationContext) -> CompiledDescriptor:
+        logger.debug(
+            "Compiling descriptor for model %s with path %s",
+            self._model_type,
+            self._full_path,
+        )
+
+        list_operators = {op.value for op in ListPathOperator}  # Set for O(1) lookup
+        model_variable = ctx.get_variable(self._model_type)
+
+        # Split the path to be able to handle any list operators
+        path_parts = re.split(r"(\$all|\$any|\$none|\$single)", self._full_path)
+        parts = [p.strip(".") for p in path_parts if p.strip()]
+        has_list_operators = any(p in list_operators for p in parts)
+
+        # If we don't have any list operators, we can return directly
+        if not has_list_operators:
+            current_annotation = self._annotation
+            origin = get_origin(current_annotation)
+            args = get_args(current_annotation)
+
+            # If we encounter a list and no operator has been defined, we fall back to the any operator
+            if origin is list or origin is List or origin is Union:
+                inner_type = next((a for a in args if not isinstance(a, type(None))), None)
+                if inner_type is not None:
+                    current_annotation = inner_type
+                    origin = get_origin(current_annotation)
+                    args = get_args(current_annotation)
+
+                    logger.debug(
+                        "List descriptor does not contain any list paths, compiling final output immediately"
+                    )
+                    full_path = f"{self._full_path}.{ListPathOperator.ANY}"
+                    fallback_parts = [
+                        p.strip(".")
+                        for p in re.split(r"(\$all|\$any|\$none|\$single)", full_path)
+                        if p.strip()
+                    ]
+                    return self._compile_list_path(ctx, fallback_parts, full_path, model_variable)
+
+            logger.debug(
+                "Descriptor does not contain any list paths, compiling final output immediately"
+            )
+            return CompiledDescriptor(
+                full_template="{innermost_template}",
+                variable_path=f"{{variable}}.{self._full_path}",
+                variable=model_variable,
+                full_path=None,
+            )
+
+        return self._compile_list_path(ctx, parts, self._full_path, model_variable)
 
 
 @dataclass(frozen=True)
