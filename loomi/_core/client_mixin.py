@@ -36,9 +36,6 @@ logger = get_logger("driver")
 
 
 class ClientConfiguration(TypedDict, total=False):
-    serialize_nested: bool
-    """Whether nested properties should be serialized before they are stored to Neo4j."""
-
     strict_transformations: bool
     """
     Whether entities which can not be transformed to models should be kept unchanged or
@@ -187,9 +184,7 @@ class ClientMixin(Generic[T]):
         model = self._models[model_hash]
         logger.debug("Transforming %s to model %s", entity, model.__name__)
 
-        instance = model._deserialize(
-            dict(entity), self._server_type or ServerType.NEO4J, self._configuration
-        )
+        instance = model._deserialize(dict(entity))
         instance._id = entity.id
         instance._element_id = entity.element_id
 
@@ -212,6 +207,5 @@ class ClientMixin(Generic[T]):
 
     def __init_configuration(self, **config) -> ClientConfiguration:
         return ClientConfiguration(
-            serialize_nested=config.get("serialize_nested", False),
             strict_transformations=config.get("strict_transformations", True),
         )

@@ -1,14 +1,13 @@
-import json
-from typing import ClassVar, List, Set
+from typing import ClassVar, List, Set, TypedDict
 
-from loomi._core.model_mixin import EntityConfiguration, ModelMixin
+from loomi._core.model_mixin import ModelMixin
 from loomi.exceptions import ModelError
 from loomi.logger import get_logger
 
 logger = get_logger("model")
 
 
-class NodeConfiguration(EntityConfiguration, total=False):
+class NodeConfiguration(TypedDict, total=False):
     labels: Set[str]
 
 
@@ -47,10 +46,7 @@ class Node(ModelMixin):
 
     @classmethod
     def __merge_configs(cls) -> None:
-        merged_config: NodeConfiguration = {
-            "serializer_fn": json.dumps,
-            "deserializer_fn": json.loads,
-        }
+        merged_config: NodeConfiguration = {}
         labels: Set[str] = set()
 
         for base in reversed(cls.__mro__):

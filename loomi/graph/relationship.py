@@ -1,12 +1,11 @@
-import json
 import re
-from typing import ClassVar
+from typing import ClassVar, TypedDict
 
-from loomi._core.model_mixin import EntityConfiguration, ModelMixin
+from loomi._core.model_mixin import ModelMixin
 from loomi.exceptions import ModelError
 
 
-class RelationshipConfiguration(EntityConfiguration, total=False):
+class RelationshipConfiguration(TypedDict, total=False):
     type: str
 
 
@@ -45,10 +44,7 @@ class Relationship(ModelMixin):
 
     @classmethod
     def __merge_configs(cls) -> None:
-        merged_config: RelationshipConfiguration = {
-            "serializer_fn": json.dumps,
-            "deserializer_fn": json.loads,
-        }
+        merged_config: RelationshipConfiguration = {}
 
         for base in reversed(cls.__mro__):
             if not issubclass(base, Relationship) or base is Relationship:
