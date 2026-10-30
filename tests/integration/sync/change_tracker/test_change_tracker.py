@@ -1,7 +1,7 @@
 # pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, missing-function-docstring, unused-argument, line-too-long, unused-variable, comparison-with-callable
 
 from loomi._sync.client import Client
-from tests.integration.fixtures.seed_data import Adult, Child, HasChild, seed_entities_sync
+from tests.integration.utils.seed_data import Adult, Child, HasChild, seed_entities_sync
 
 
 class TestSyncChangeTrackerAddsNodeResults:

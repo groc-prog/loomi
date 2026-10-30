@@ -6,7 +6,7 @@ import pytest
 
 from loomi._sync.client import Client
 from loomi.exceptions import ChangeTrackerError
-from tests.integration.fixtures.seed_data import (
+from tests.integration.utils.seed_data import (
     Adult,
     Child,
     HasChild,

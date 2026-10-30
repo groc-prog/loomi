@@ -1,6 +1,5 @@
 # pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, missing-function-docstring, unused-argument, line-too-long, unused-variable, comparison-with-callable
 
-
 import neo4j
 import pytest
 
