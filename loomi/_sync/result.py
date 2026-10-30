@@ -211,6 +211,11 @@ class Result(_Base):
         graph = Graph()
 
         for element_id, node in original_result._nodes.items():
+            # The driver returns the start and end nodes for relationships even if the nodes are not returned
+            # by the query itself. This will cause the node to have no labels attached to them
+            if len(node.labels) == 0:
+                continue
+
             transformed = self.__client._transform_entity(node)
             graph._nodes[element_id] = transformed
 
