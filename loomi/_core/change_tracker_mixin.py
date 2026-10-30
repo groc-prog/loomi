@@ -158,7 +158,7 @@ class ChangeTrackerMixin(Generic[T]):
         identifier = self.__get_entity_identifier(model)
         entity_type = self.__get_entity_type(model)
         is_saved = self.__get_entity_saved(model)
-        current_tracking_operation = self.__get_current_tracking_operation(model)
+        current_tracking_operation = self.__get_current_tracking_operation(identifier, entity_type)
 
         if is_saved and current_tracking_operation == TrackingOperation.DELETE:
             logger.debug(
@@ -237,108 +237,78 @@ class ChangeTrackerMixin(Generic[T]):
         self.__set_initial_state()
 
     def _omit_redundant_relationship_operations(self) -> None:
+        if not self._grouping_map:
+            return
+
         logger.debug("Omitting redundant operations for relationships")
+
+        add_nodes = self._state[TrackingOperation.ADD]["nodes"]
+        update_nodes = self._state[TrackingOperation.UPDATE]["nodes"]
+        relevant_nodes = add_nodes.keys() | update_nodes.keys()
+        add_relationships = self._state[TrackingOperation.ADD]["relationships"]
+        update_relationships = self._state[TrackingOperation.UPDATE]["relationships"]
 
         # Check if any of the grouped entities are no longer relevant, for example a relationship
         # was marked to be created, but the start/end node is being deleted
-        for relationship_id, grouping in self._grouping_map.items():
-            start_node_id, end_node_id = grouping
-
-            start_node_not_tracked = (
-                start_node_id not in self._state[TrackingOperation.ADD]["nodes"]
-                and start_node_id not in self._state[TrackingOperation.UPDATE]["nodes"]
-            )
-            end_node_not_tracked = (
-                end_node_id not in self._state[TrackingOperation.ADD]["nodes"]
-                and end_node_id not in self._state[TrackingOperation.UPDATE]["nodes"]
-            )
-
-            if (
-                start_node_not_tracked
-                or end_node_not_tracked
-                or start_node_id in self._state[TrackingOperation.DELETE]["nodes"]
-                or end_node_id in self._state[TrackingOperation.DELETE]["nodes"]
-            ):
-                logger.debug(
-                    "Start or end node is being tracked with operation %s, relationship "
-                    "operation can be skipped",
-                    TrackingOperation.DELETE.name,
-                )
-                self._state[TrackingOperation.ADD]["relationships"].pop(relationship_id, None)
-                self._state[TrackingOperation.UPDATE]["relationships"].pop(relationship_id, None)
+        for relationship_id, (start_node_id, end_node_id) in self._grouping_map.items():
+            if start_node_id not in relevant_nodes or end_node_id not in relevant_nodes:
+                add_relationships.pop(relationship_id, None)
+                update_relationships.pop(relationship_id, None)
 
     def _build_node_add_operations(self) -> List[Tuple[str, Dict[str, Any]]]:
-        if len(self._state[TrackingOperation.ADD]["nodes"]) == 0:
+        add_nodes = self._state[TrackingOperation.ADD]["nodes"]
+        if not add_nodes:
             logger.debug("No added nodes to build queries for, skipping")
             return []
 
+        server_type = cast(ServerType, self._client._server_type)
         groups: Dict[str, NodeInsertBatch] = {}
         logger.debug(
-            "Compiling queries for node entities with operation type %s",
-            TrackingOperation.ADD.name,
+            "Compiling queries for node entities with operation type %s", TrackingOperation.ADD.name
         )
 
         # Since we can not define labels with parameters, we have to build a separate query for
         # each label combination
-        for obj_id, state in self._state[TrackingOperation.ADD]["nodes"].items():
-            reference, _ = state
-
-            if reference._hash is None:
+        for obj_id, (reference, _) in add_nodes.items():
+            hash_ = reference._hash
+            if hash_ is None:
                 raise ModelError(
                     f"Hash on model {reference.__class__.__name__} is not initialized. Maybe you "
                     f"forgot to call {reference.model_rebuild.__name__}?"
                 )
 
-            if reference._hash not in groups:
-                logger.debug("Encountered new model with hash %s", reference._hash)
-                groups[reference._hash] = {"labels": reference.labels(), "batches": []}
+            groups.setdefault(hash_, {"labels": reference.labels(), "batches": []})[
+                "batches"
+            ].append({"id_": obj_id, "properties": reference._serialize()})
 
-            groups[reference._hash]["batches"].append(
-                {
-                    "id_": obj_id,
-                    "properties": reference._serialize(
-                        cast(ServerType, self._client._server_type), self._client._configuration
-                    ),
-                }
+        entity_identifier = "elementId(e)" if server_type == ServerType.NEO4J else "id(e)"
+        return [
+            (
+                f"UNWIND $p0 AS r CREATE (e:{':'.join(group['labels'])}) "
+                f"SET e = r.properties RETURN r.id_, {entity_identifier}",
+                {"p0": group["batches"]},
             )
-
-        logger.debug("Entity grouping done, compiling node queries and parameters")
-        queries: List[Tuple[str, Dict[str, Any]]] = []
-        entity_identifier = (
-            "elementId(e)" if self._client._server_type == ServerType.NEO4J else "id(e)"
-        )
-
-        for hash_, group in groups.items():
-            logger.debug("Compiling query for models with hash %s", hash_)
-            labels = ":".join(group["labels"])
-
-            query = (
-                "UNWIND $p0 AS r "
-                f"CREATE (e:{labels}) "
-                "SET e = r.properties "
-                f"RETURN r.id_, {entity_identifier}"
-            )
-            queries.append((query, {"p0": group["batches"]}))
-
-        return queries
+            for group in groups.values()
+        ]
 
     def _build_relationship_add_operations(
         self, id_map: Dict[int, Union[str, int]]
     ) -> List[Tuple[str, Dict[str, Any]]]:
-        if len(self._state[TrackingOperation.ADD]["relationships"]) == 0:
+        add_relationships = self._state[TrackingOperation.ADD]["relationships"]
+        if not add_relationships:
             logger.debug("No added relationships to build queries for, skipping")
             return []
 
+        server_type = cast(ServerType, self._client._server_type)
         groups: Dict[str, RelationshipInsertBatch] = {}
         logger.debug(
             "Compiling queries for relationship entities with operation type %s",
             TrackingOperation.ADD.name,
         )
 
-        for obj_id, state in self._state[TrackingOperation.ADD]["relationships"].items():
-            reference, _ = state
-
-            if reference._hash is None:
+        for obj_id, (reference, _) in add_relationships.items():
+            hash_ = reference._hash
+            if hash_ is None:
                 raise ModelError(
                     f"Hash on model {reference.__class__.__name__} is not initialized. Maybe you "
                     f"forgot to call {reference.model_rebuild.__name__}?"
@@ -347,157 +317,116 @@ class ChangeTrackerMixin(Generic[T]):
             # Since relationships must define a start and end node when they are created, we have
             # to create them separately from the nodes so that we can reference the start and end
             # nodes with their ID's
-            if reference._hash not in groups:
-                logger.debug("Encountered new model with hash %s", reference._hash)
-                groups[reference._hash] = {"type_": reference.type(), "batches": []}
-
             start_node_id, end_node_id = self._grouping_map[obj_id]
-
-            # The actual entity ID can either be in the `id_map` parameter or on the referenced
-            # node model
-            logger.debug("Getting database ID from mapping for start node")
-            if start_node_id in id_map:
-                start_node_entity_id = id_map[start_node_id]
-            else:
-                start_node_state = self._state[TrackingOperation.UPDATE]["nodes"].get(start_node_id)
-                if start_node_state is None:  # pragma: no cover
-                    raise ChangeTrackerError(
-                        "Start node for relationship not found in change tracker"
-                    )
-
-                start_node, _ = start_node_state
-                start_node_entity_id = (
-                    start_node._element_id
-                    if cast(ServerType, self._client._server_type) == ServerType.NEO4J
-                    else start_node.id
-                )
-                if start_node_entity_id is None:  # pragma: no cover
-                    raise ChangeTrackerError(
-                        "Start node for relationship is being tracked as "
-                        f"{TrackingOperation.UPDATE.name} but is not saved to database",
-                    )
-
-            logger.debug("Getting database ID from mapping for end node")
-            if end_node_id in id_map:
-                end_node_entity_id = id_map[end_node_id]
-            else:
-                end_node_state = self._state[TrackingOperation.UPDATE]["nodes"].get(end_node_id)
-                if end_node_state is None:  # pragma: no cover
-                    raise ChangeTrackerError(
-                        "End node for relationship not found in change tracker"
-                    )
-
-                end_node, _ = end_node_state
-                end_node_entity_id = (
-                    end_node._element_id
-                    if cast(ServerType, self._client._server_type) == ServerType.NEO4J
-                    else end_node.id
-                )
-                if end_node_entity_id is None:  # pragma: no cover
-                    raise ChangeTrackerError(
-                        "End node for relationship is being tracked as "
-                        f"{TrackingOperation.UPDATE.name} but is not saved to database",
-                    )
-
-            groups[reference._hash]["batches"].append(
+            group = groups.setdefault(hash_, {"type_": reference.type(), "batches": []})
+            group["batches"].append(
                 {
-                    "start_node_id": start_node_entity_id,
-                    "end_node_id": end_node_entity_id,
-                    "properties": reference._serialize(
-                        cast(ServerType, self._client._server_type),
-                        self._client._configuration,
-                    ),
+                    "start_node_id": self.__resolve_node_entity_id(start_node_id, id_map, "Start"),
+                    "end_node_id": self.__resolve_node_entity_id(end_node_id, id_map, "End"),
+                    "properties": reference._serialize(),
                 }
             )
 
-        logger.debug("Entity grouping done, compiling relationship queries and parameters")
-        queries: List[Tuple[str, Dict[str, Any]]] = []
-        entity_identifier = "elementId" if self._client._server_type == ServerType.NEO4J else "id"
-
-        for hash_, group in groups.items():
-            logger.debug("Compiling query for models with hash %s", hash_)
-            query = (
+        entity_identifier = "elementId" if server_type == ServerType.NEO4J else "id"
+        return [
+            (
                 f"UNWIND $p0 AS r "
                 f"MATCH (n) WHERE {entity_identifier}(n) = r.start_node_id "
                 f"MATCH (m) WHERE {entity_identifier}(m) = r.end_node_id "
-                f"CREATE (n)-[e:{group["type_"]}]->(m) "
-                "SET e = r.properties"
+                f"CREATE (n)-[e:{g['type_']}]->(m) "
+                f"SET e = r.properties",
+                {"p0": g["batches"]},
             )
-            queries.append((query, {"p0": group["batches"]}))
-
-        return queries
+            for g in groups.values()
+        ]
 
     def _build_node_update_operations(self) -> Optional[Tuple[str, Dict[str, Any]]]:
-        if len(self._state[TrackingOperation.UPDATE]["nodes"]) == 0:
+        if not self._state[TrackingOperation.UPDATE]["nodes"]:
             logger.debug("No updated nodes to build queries for, skipping")
             return None
 
-        logger.debug("Compiling entity queries and parameters")
-        node_batches: List[EntityUpdateBatch] = []
-
-        for state in self._state[TrackingOperation.UPDATE]["nodes"].values():
-            reference, original_checksums = state
-
-            if reference._element_id is None or reference._id is None:  # pragma: no cover
-                raise ChangeTrackerError(
-                    f"Entity is being tracked as {TrackingOperation.UPDATE.name} but has not "
-                    "been saved to the database yet"
-                )
-
-            updated_checksums = reference._compute_checksums()
-            changed_fields = [
-                field_name
-                for field_name, checksum in updated_checksums.items()
-                if checksum not in (original_checksums[field_name], None)
-            ]
-
-            if len(changed_fields) == 0:
-                continue
-
-            logger.debug(
-                "Found %d changed properties for model %s",
-                len(changed_fields),
-                reference._element_id,
-            )
-            node_batches.append(
-                {
-                    "id_": (
-                        reference._element_id
-                        if self._client._server_type == ServerType.NEO4J
-                        else reference._id
-                    ),
-                    "properties": reference._serialize(
-                        cast(ServerType, self._client._server_type),
-                        self._client._configuration,
-                        include=changed_fields,
-                    ),
-                }
-            )
+        batches = self.__build_update_batches("nodes")
+        if batches is None:
+            return None
 
         entity_identifier = (
             "elementId(e)" if self._client._server_type == ServerType.NEO4J else "id(e)"
         )
-        node_query = (
-            "UNWIND $p0 AS r "
-            "MATCH (e) "
-            f"WHERE {entity_identifier} = r.id_ "
-            "SET e += r.properties"
+        return (
+            f"UNWIND $p0 AS r MATCH (e) WHERE {entity_identifier} = r.id_ SET e += r.properties",
+            {"p0": batches},
         )
 
-        return (node_query, {"p0": node_batches})
-
     def _build_relationship_update_operations(self) -> Optional[Tuple[str, Dict[str, Any]]]:
-        if len(self._state[TrackingOperation.UPDATE]["relationships"]) == 0:
+        if not self._state[TrackingOperation.UPDATE]["relationships"]:
             logger.debug("No updated relationships to build queries for, skipping")
             return None
 
-        logger.debug("Compiling entity queries and parameters")
-        relationship_batches: List[EntityUpdateBatch] = []
+        batches = self.__build_update_batches("relationships")
+        if batches is None:
+            return None
 
-        for state in self._state[TrackingOperation.UPDATE]["relationships"].values():
-            reference, original_checksums = state
+        entity_identifier = (
+            "elementId(e)" if self._client._server_type == ServerType.NEO4J else "id(e)"
+        )
+        return (
+            f"UNWIND $p0 AS r MATCH ()-[e]->() WHERE {entity_identifier} = r.id_ SET e += r.properties",
+            {"p0": batches},
+        )
 
-            if reference._element_id is None or reference._id is None:  # pragma: no cover
+    def _build_node_delete_operations(self) -> Optional[Tuple[str, Dict[str, Any]]]:
+        if not self._state[TrackingOperation.DELETE]["nodes"]:
+            logger.debug("No deleted nodes to build queries for, skipping")
+            return None
+
+        ids = self.__build_delete_ids("nodes")
+        entity_identifier = (
+            "elementId(e)" if self._client._server_type == ServerType.NEO4J else "id(e)"
+        )
+        return (
+            f"UNWIND $p0 AS r MATCH (e) WHERE {entity_identifier} = r DETACH DELETE e",
+            {"p0": ids},
+        )
+
+    def _build_relationship_delete_operations(self) -> Optional[Tuple[str, Dict[str, Any]]]:
+        if not self._state[TrackingOperation.DELETE]["relationships"]:
+            logger.debug("No deleted relationships to build queries for, skipping")
+            return None
+
+        ids = self.__build_delete_ids("relationships")
+        entity_identifier = (
+            "elementId(e)" if self._client._server_type == ServerType.NEO4J else "id(e)"
+        )
+        return (
+            f"UNWIND $p0 AS r MATCH ()-[e]->() WHERE {entity_identifier} = r DELETE e",
+            {"p0": ids},
+        )
+
+    def __build_delete_ids(self, entity_type: EntityStateType) -> List[Union[str, int]]:
+        server_type = self._client._server_type
+        use_element_id = server_type == ServerType.NEO4J
+        ids = []
+
+        for reference, _ in self._state[TrackingOperation.DELETE][entity_type].values():
+            if reference._element_id is None or reference._id is None:
+                raise ChangeTrackerError(
+                    f"Entity is being tracked as {TrackingOperation.DELETE.name} but has not "
+                    "been saved to the database yet"
+                )
+            ids.append(reference._element_id if use_element_id else reference._id)
+
+        return ids
+
+    def __build_update_batches(
+        self, entity_type: EntityStateType
+    ) -> Optional[List[EntityUpdateBatch]]:
+        batches: List[EntityUpdateBatch] = []
+        server_type = cast(ServerType, self._client._server_type)
+
+        for reference, original_checksums in self._state[TrackingOperation.UPDATE][
+            entity_type
+        ].values():
+            if reference._element_id is None or reference._id is None:
                 raise ChangeTrackerError(
                     f"Entity is being tracked as {TrackingOperation.UPDATE.name} but has not "
                     "been saved to the database yet"
@@ -505,12 +434,12 @@ class ChangeTrackerMixin(Generic[T]):
 
             updated_checksums = reference._compute_checksums()
             changed_fields = [
-                field_name
-                for field_name, checksum in updated_checksums.items()
-                if checksum not in (original_checksums[field_name], None)
+                name
+                for name, checksum in updated_checksums.items()
+                if checksum not in (original_checksums[name], None)
             ]
 
-            if len(changed_fields) == 0:
+            if not changed_fields:
                 continue
 
             logger.debug(
@@ -518,106 +447,54 @@ class ChangeTrackerMixin(Generic[T]):
                 len(changed_fields),
                 reference._element_id,
             )
-            relationship_batches.append(
+            batches.append(
                 {
                     "id_": (
-                        reference._element_id
-                        if self._client._server_type == ServerType.NEO4J
-                        else reference._id
+                        reference._element_id if server_type == ServerType.NEO4J else reference._id
                     ),
-                    "properties": reference._serialize(
-                        cast(ServerType, self._client._server_type),
-                        self._client._configuration,
-                        include=changed_fields,
-                    ),
+                    "properties": reference._serialize(include=changed_fields),
                 }
             )
 
-        entity_identifier = (
-            "elementId(e)" if self._client._server_type == ServerType.NEO4J else "id(e)"
-        )
-        relationship_query = (
-            "UNWIND $p0 AS r "
-            "MATCH ()-[e]->() "
-            f"WHERE {entity_identifier} = r.id_ "
-            "SET e += r.properties"
-        )
-
-        return (relationship_query, {"p0": relationship_batches})
-
-    def _build_node_delete_operations(self) -> Optional[Tuple[str, Dict[str, Any]]]:
-        if len(self._state[TrackingOperation.DELETE]["nodes"]) == 0:
-            logger.debug("No deleted nodes to build queries for, skipping")
+        if len(batches) == 0:
             return None
 
-        logger.debug("Compiling entity queries and parameters")
-        node_ids: List[Union[str, int]] = []
+        return batches
 
-        for state in self._state[TrackingOperation.DELETE]["nodes"].values():
-            reference, _ = state
+    def __resolve_node_entity_id(
+        self,
+        node_id: int,
+        id_map: Dict[int, Union[str, int]],
+        role: str,
+    ) -> Union[str, int]:
+        if node_id in id_map:
+            return id_map[node_id]
 
-            if reference._element_id is None or reference._id is None:  # pragma: no cover
-                raise ChangeTrackerError(
-                    f"Entity is being tracked as {TrackingOperation.DELETE.name} but has not "
-                    "been saved to the database yet"
-                )
+        state = self._state[TrackingOperation.UPDATE]["nodes"].get(node_id)
+        if state is None:
+            raise ChangeTrackerError(f"{role} node for relationship not found in change tracker")
 
-            node_ids.append(
-                reference._element_id
-                if self._client._server_type == ServerType.NEO4J
-                else reference._id
+        node, _ = state
+        node_entity_id = (
+            node._element_id if self._client._server_type == ServerType.NEO4J else node._id
+        )
+
+        if node_entity_id is None:
+            raise ChangeTrackerError(
+                f"{role} node for relationship is being tracked as "
+                f"{TrackingOperation.UPDATE.name} but is not saved to database"
             )
 
-        entity_identifier = (
-            "elementId(e)" if self._client._server_type == ServerType.NEO4J else "id(e)"
-        )
-        node_query = f"UNWIND $p0 AS r MATCH (e) WHERE {entity_identifier} = r DETACH DELETE e"
-
-        return (node_query, {"p0": node_ids})
-
-    def _build_relationship_delete_operations(self) -> Optional[Tuple[str, Dict[str, Any]]]:
-        if len(self._state[TrackingOperation.DELETE]["relationships"]) == 0:
-            logger.debug("No deleted relationships to build queries for, skipping")
-            return None
-
-        logger.debug("Compiling entity queries and parameters")
-        relationship_ids: List[Union[str, int]] = []
-
-        for state in self._state[TrackingOperation.DELETE]["relationships"].values():
-            reference, _ = state
-
-            if reference._element_id is None or reference._id is None:  # pragma: no cover
-                raise ChangeTrackerError(
-                    f"Entity is being tracked as {TrackingOperation.DELETE.name} but has not "
-                    "been saved to the database yet"
-                )
-
-            relationship_ids.append(
-                reference._element_id
-                if self._client._server_type == ServerType.NEO4J
-                else reference._id
-            )
-
-        entity_identifier = (
-            "elementId(e)" if self._client._server_type == ServerType.NEO4J else "id(e)"
-        )
-        relationship_query = (
-            f"UNWIND $p0 AS r MATCH ()-[e]->() WHERE {entity_identifier} = r DELETE e"
-        )
-
-        return (relationship_query, {"p0": relationship_ids})
+        return node_entity_id
 
     def __track_entity(self, model: TrackedEntity) -> None:
         identifier = self.__get_entity_identifier(model)
         entity_type = self.__get_entity_type(model)
         is_saved = self.__get_entity_saved(model)
-        current_tracking_operation = self.__get_current_tracking_operation(model)
+        current_tracking_operation = self.__get_current_tracking_operation(identifier, entity_type)
 
-        if (
-            not is_saved
-            and current_tracking_operation == TrackingOperation.ADD
-            or is_saved
-            and current_tracking_operation == TrackingOperation.UPDATE
+        if (not is_saved and current_tracking_operation == TrackingOperation.ADD) or (
+            is_saved and current_tracking_operation == TrackingOperation.UPDATE
         ):
             logger.debug(
                 "Entity %d is already being tracking in state %s for entity type %s",
@@ -635,10 +512,9 @@ class ChangeTrackerMixin(Generic[T]):
         else:
             self.__set_tracking_state(model, identifier, TrackingOperation.ADD)
 
-    def __get_current_tracking_operation(self, model) -> Optional[TrackingOperation]:
-        identifier = self.__get_entity_identifier(model)
-        entity_type = self.__get_entity_type(model)
-
+    def __get_current_tracking_operation(
+        self, identifier: int, entity_type: EntityStateType
+    ) -> Optional[TrackingOperation]:
         for operation in TrackingOperation:
             if identifier in self._state[operation][entity_type]:
                 return operation
@@ -660,7 +536,7 @@ class ChangeTrackerMixin(Generic[T]):
         logger.debug(
             "Tracking entity %d in new state %s for entity type %s",
             identifier,
-            TrackingOperation.DELETE,
+            tracking_operation,
             "nodes" if isinstance(model, Node) else "relationships",
         )
 
