@@ -391,11 +391,11 @@ def cypher(
     Args:
         template (str): The custom expression used as a template.
         model_map (Dict[str, QueryModelType]): A map of template placeholders and their
-        corresponding models. At compile time, the placeholders will be replaced with their actual
-        variable names.
+            corresponding models. At compile time, the placeholders will be replaced with their actual
+            variable names.
         parameter_map (Dict[str, Any]): A map of template placeholders and their corresponding
-        parameter values. At compile time, the placeholders will be replaced with their actual
-        parameter names.
+            parameter values. At compile time, the placeholders will be replaced with their actual
+            parameter names.
 
     Returns:
         CompilableExpression: A expression which can be compiled by a query builder.

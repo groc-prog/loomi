@@ -1,5 +1,6 @@
 # pylint: disable=missing-function-docstring
 
+import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Union, cast
 
@@ -57,6 +58,7 @@ class Expression(ExpressionMixin, CompilableExpression):
         self,
         ctx: CompilationContext,
         value: Union[CompilableDescriptor, CompilableDbFunction, CompilableExpression, Any],
+        is_right_side: bool,
     ) -> CompiledExpressionSide:
         if isinstance(value, CompilableExpression):
             logger.debug(
@@ -64,7 +66,7 @@ class Expression(ExpressionMixin, CompilableExpression):
             )
             compiled_expression = value._compile_expression(ctx)
 
-            if compiled_expression.full_path is not None:
+            if is_right_side and compiled_expression.full_path is not None:
                 raise QueryError(
                     "Invalid right side of expression passed. Expected primitive value, DB function, nested "
                     "expression or field descriptor without list path operators, but got "
@@ -74,9 +76,9 @@ class Expression(ExpressionMixin, CompilableExpression):
             # Expressions nested inside expressions are simply compiled to a expression side by wrapping
             # them in parenthesis
             return CompiledExpressionSide(
-                outer_template="{innermost_template}",
-                inner_template=f"({compiled_expression.to_query_string()})",
-                expression_variable=None,
+                outer_template=compiled_expression.outer_template,
+                inner_template=f"({compiled_expression.expression_template})",
+                expression_variable=compiled_expression.expression_variable,
                 full_path=None,
             )
 
@@ -91,9 +93,7 @@ class Expression(ExpressionMixin, CompilableExpression):
             # final output
             return CompiledExpressionSide(
                 outer_template=compiled_descriptor.full_template,
-                inner_template=compiled_descriptor.variable_path.format(
-                    variable=compiled_descriptor.variable
-                ),
+                inner_template=compiled_descriptor.variable_path,
                 expression_variable=compiled_descriptor.variable,
                 full_path=compiled_descriptor.full_path,
             )
@@ -145,8 +145,8 @@ class Expression(ExpressionMixin, CompilableExpression):
     def _compile_expression(self, ctx: CompilationContext) -> CompiledExpression:
         logger.debug("Compiling expression for template %s", self.template.name)
 
-        left = self.__compile_side(ctx, self.left)
-        right = self.__compile_side(ctx, self.right)
+        left = self.__compile_side(ctx, self.left, False)
+        right = self.__compile_side(ctx, self.right, True)
 
         # We can not build expressions with nested list path operators on the right side
         # They are only allowed on the left side, which will put the actual expression somewhere
@@ -164,7 +164,7 @@ class Expression(ExpressionMixin, CompilableExpression):
             ),
             # Only the expression variable of the left side is passed on here since this will be
             # used when optimizing list path expressions in compound expressions
-            expression_variable=left.expression_variable,
+            expression_variable=left.expression_variable or right.expression_variable,
             full_path=left.full_path,
         )
 
@@ -182,8 +182,8 @@ class InvertExpression(CompilableExpression):
             compiled_query = self.expression.to_query_string(ctx)
             return CompiledExpression(
                 outer_template="{innermost_template}",
-                expression_template="NOT({variable})",
-                expression_variable=compiled_query,
+                expression_template=f"NOT({compiled_query})",
+                expression_variable=None,
                 full_path=None,
             )
 
@@ -272,8 +272,15 @@ class CompoundExpression:
                 query_strings.append(compiled_expression.to_query_string())
                 continue
 
-            path_map.setdefault(compiled_expression.full_path, [])
-            path_map[compiled_expression.full_path].append(compiled_expression)
+            # We can not group expression by their full path, otherwise nested list paths for different
+            # fields would not be grouped
+            # We can get the right-most list operator and take the left side of the path as the grouping
+            # key
+            path_parts = re.split(r"(\$all|\$any|\$none|\$single)", compiled_expression.full_path)
+            grouping_key = "".join(path_parts[:-1])
+
+            path_map.setdefault(grouping_key, [])
+            path_map[grouping_key].append(compiled_expression)
 
         # Optimize list queries by combining them in a single nested WHERE statement instead of
         # multiple individual ones
@@ -306,7 +313,7 @@ class CustomCypherExpression(CompilableExpression):
     parameter_map: Dict[str, Any]
 
     def _compile_expression(self, ctx: CompilationContext) -> CompiledExpression:
-        logger.debug("Compiling models defined for custom cypher expression")
+        logger.debug("Compiling models and parameters defined for custom cypher expression")
         models_map = {
             placeholder: ctx.get_variable(model) for placeholder, model in self.model_map.items()
         }
