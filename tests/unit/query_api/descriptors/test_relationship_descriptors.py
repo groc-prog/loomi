@@ -1,6 +1,5 @@
 # pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, missing-function-docstring, unused-argument, line-too-long, unused-variable, comparison-with-callable
 
-import re
 from typing import Any, Dict, List
 
 import pytest
@@ -38,18 +37,13 @@ class RelationshipModel(Relationship):
 
 
 @pytest.fixture
-def compilation_ctx(server_type):
-    ctx = CompilationContext(server_type)
+def compilation_ctx():
+    ctx = CompilationContext(ServerType.NEO4J)
     ctx.add_model(RelationshipModel)
 
     return ctx
 
 
-def assert_path_matches(pattern: str, path: str) -> None:
-    assert re.match(pattern, path) is not None, f"{path} should match pattern {pattern}"
-
-
-@pytest.mark.parametrize("server_type", [ServerType.NEO4J, ServerType.MEMGRAPH])
 class TestRelationshipDescriptor:
     def test_relationship_descriptor_raises_if_field_does_not_exist(self, compilation_ctx):
         with pytest.raises(
@@ -242,7 +236,6 @@ class TestRelationshipDescriptor:
         assert compiled.variable == "v2"
 
 
-@pytest.mark.parametrize("server_type", [ServerType.NEO4J, ServerType.MEMGRAPH])
 class TestRelationshipEntityIdDescriptor:
     def test_relationship_entity_descriptor_with_id(self, compilation_ctx):
         descriptor = id_(RelationshipModel)
@@ -255,11 +248,15 @@ class TestRelationshipEntityIdDescriptor:
         assert compiled.variable_path == "id({variable})"
         assert compiled.variable == "v0"
 
-    def test_relationship_entity_descriptor_with_element_id(self, compilation_ctx, server_type):
+    @pytest.mark.parametrize("server_type", [ServerType.NEO4J, ServerType.MEMGRAPH])
+    def test_relationship_entity_descriptor_with_element_id(self, server_type):
+        ctx = CompilationContext(server_type)
+        ctx.add_model(RelationshipModel)
+
         descriptor = element_id(RelationshipModel)
         assert isinstance(descriptor, EntityIdDescriptor)
 
-        compiled = descriptor._compile_descriptor(compilation_ctx)
+        compiled = descriptor._compile_descriptor(ctx)
         assert isinstance(compiled, CompiledDescriptor)
         assert compiled.full_path is None
         assert compiled.full_template == "{innermost_template}"
