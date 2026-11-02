@@ -1,4 +1,4 @@
-# pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, missing-function-docstring, unused-argument, line-too-long, unused-variable, comparison-with-callable
+# pylint: disable=unused-import, redefined-outer-name, unused-argument, line-too-long, unused-variable, comparison-with-callable
 
 from loomi._async.client import AsyncClient
 from tests.integration.utils.seed_data import Adult, Child, HasChild, seed_entities_async

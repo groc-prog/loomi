@@ -1,4 +1,4 @@
-# pylint: disable=missing-class-docstring, unused-import, redefined-outer-name, missing-function-docstring, unused-argument, line-too-long, unused-variable
+# pylint: disable=unused-import, redefined-outer-name, unused-argument, line-too-long, unused-variable
 
 from dataclasses import dataclass
 from os import environ

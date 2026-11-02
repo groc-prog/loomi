@@ -1,5 +1,3 @@
-# pylint: disable=missing-function-docstring
-
 import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Union, cast
