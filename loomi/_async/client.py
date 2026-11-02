@@ -145,30 +145,28 @@ class AsyncClient(ClientMixin[neo4j.AsyncDriver]):
                     result_keys = query_result.keys()
                     results = await query_result.values()
 
+            if len(results) == 0:
+                return []
+
+            first_result = results[0]
+
             if (
-                len(results) == 0
-                or len(results[0]) == 0
-                or isinstance(results[0][0], (Node, Relationship))
+                not first_result
+                or isinstance(first_result[0], (Node, Relationship))
                 or state.projection is None
             ):
-                return [result[0] for result in results]
+                return [result[0] for result in results if result]
 
             transformed_results = []
             if isinstance(state.projection, dict):
                 for result in results:
-                    transformed: Dict[str, Any] = {}
-                    for index, field_name in enumerate(result_keys):
-                        transformed[field_name] = result[index]
-
+                    transformed = dict(zip(result_keys, result))
                     transformed_results.append(transformed)
 
                 return transformed_results
 
             for result in results:
-                projection_input: Dict[str, Any] = {}
-                for index, field_name in enumerate(result_keys):
-                    projection_input[field_name] = result[index]
-
+                projection_input = dict(zip(result_keys, result))
                 transformed_results.append(state.projection.model_validate(projection_input))
 
             return transformed_results
