@@ -1,7 +1,8 @@
 # pylint: disable=missing-class-docstring
 
 import hashlib
-from typing import Any, ClassVar, Dict, Optional, Self, cast
+import json
+from typing import Any, ClassVar, Dict, Mapping, Optional, Self, cast
 
 from pydantic import BaseModel, ConfigDict, PrivateAttr, computed_field
 
@@ -80,17 +81,22 @@ class ModelMixin(BaseModel, metaclass=ModelMixinMetaclass):
 
     def _compute_checksums(self) -> Dict[str, Optional[str]]:
         logger.debug("Computing checksums for model fields")
+
+        dumped_data = self.model_dump(mode="json")
         checksums: Dict[str, Optional[str]] = {}
 
         for field_name in self.__class__.model_fields.keys():
-            value = getattr(self, field_name)
+            value = dumped_data.get(field_name)
+
             if value is None:
                 checksums[field_name] = None
-            else:
-                dump = self.model_dump_json(include={field_name})
-                checksums[field_name] = hashlib.blake2b(
-                    dump.encode("utf-8"), usedforsecurity=False
-                ).hexdigest()
+                continue
+
+            field_json = json.dumps(value, sort_keys=True, separators=(",", ":"))
+
+            checksums[field_name] = hashlib.blake2b(
+                field_json.encode("utf-8"), usedforsecurity=False
+            ).hexdigest()
 
         return checksums
 
@@ -99,7 +105,7 @@ class ModelMixin(BaseModel, metaclass=ModelMixinMetaclass):
         return self.model_dump(by_alias=True, exclude={"element_id", "id"}, **kwargs)
 
     @classmethod
-    def _deserialize(cls, obj: Dict[str, Any]) -> Self:
+    def _deserialize(cls, obj: Mapping[str, Any]) -> Self:
         deserialized: Dict[str, Any] = {}
         logger.debug("Deserializing stored object into model")
 

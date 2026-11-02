@@ -1,5 +1,3 @@
-# pylint: disable=missing-class-docstring, missing-function-docstring
-
 import functools
 from typing import (
     Any,
@@ -175,7 +173,7 @@ class ClientMixin(Generic[T]):
         model = self._models[model_hash]
         logger.debug("Transforming %s to model %s", entity, model.__name__)
 
-        instance = model._deserialize(dict(entity))
+        instance = model._deserialize(entity)
         instance._id = entity.id
         instance._element_id = entity.element_id
 
