@@ -1,6 +1,7 @@
 import re
 from dataclasses import dataclass
 from enum import StrEnum
+from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Dict, List, Union, get_args, get_origin
 
 from pydantic import BaseModel
@@ -27,6 +28,45 @@ class ListPathOperator(StrEnum):
     ALL = "$all"
     NONE = "$none"
     SINGLE = "$single"
+
+
+@lru_cache(maxsize=512)
+def _resolve_field_metadata(name: str, full_path: str, annotation: Any) -> tuple[str, Any]:
+    """Caches only the path and annotation resolution logic, avoiding unhashable type issues."""
+    base_path = full_path
+    current_annotation = annotation
+    origin = get_origin(current_annotation)
+    args = get_args(current_annotation)
+
+    # If we encounter a list we get the first valid item type we find
+    if origin is list or origin is List or origin is Union:
+        inner_type = next((a for a in args if not isinstance(a, type(None))), None)
+        if inner_type is not None:
+            current_annotation = inner_type
+            origin = get_origin(current_annotation)
+            args = get_args(current_annotation)
+
+            # If no list path operator is defined, we fall back to ListPathOperator.ANY
+            if not base_path.endswith(tuple(member.value for member in ListPathOperator)):
+                base_path = f"{base_path}.{ListPathOperator.ANY.value}"
+
+    # Since a dict might contain any key, we allow all fields
+    if origin is dict or origin is Dict:
+        value_type = args[1] if len(args) > 1 else Any
+        return f"{base_path}.{name}", value_type
+
+    # For other Pydantic models, we validate that the field path is valid
+    if (
+        isinstance(current_annotation, type)
+        and issubclass(current_annotation, BaseModel)
+        and name in current_annotation.model_fields
+    ):
+        return (
+            f"{base_path}.{name}",
+            current_annotation.model_fields[name].annotation,
+        )
+
+    raise ModelError(f"{name} is not a valid field name for path {full_path}")
 
 
 @dataclass(frozen=True)
@@ -93,55 +133,8 @@ class FieldDescriptor(CompilableDescriptor):
         if name.startswith("_"):
             return super().__getattribute__(name)
 
-        logger.debug("Getting descriptor for field %s at path %s", name, self._full_path)
-        base_path = self._full_path
-        current_annotation = self._annotation
-        origin = get_origin(current_annotation)
-        args = get_args(current_annotation)
-
-        # If we encounter a list we get the first valid item type we find
-        if origin is list or origin is List or origin is Union:
-            inner_type = next((a for a in args if not isinstance(a, type(None))), None)
-            if inner_type is not None:
-                current_annotation = inner_type
-                origin = get_origin(current_annotation)
-                args = get_args(current_annotation)
-
-                # If no list path operator is defined, we fall back to ListPathOperator.ANY
-                if not base_path.endswith(tuple(member.value for member in ListPathOperator)):
-                    logger.debug(
-                        (
-                            "List field accessed without defining a list path operator, falling "
-                            "back to %s"
-                        ),
-                        ListPathOperator.ANY.name,
-                    )
-                    base_path = f"{base_path}.{ListPathOperator.ANY.value}"
-
-        # Since a dict might contain any key, we allow all fields
-        if origin is dict or origin is Dict:
-            logger.debug(
-                "Field descriptor used on a dictionary type, resolving to dictionary key without further checks"
-            )
-            value_type = args[1] if len(args) > 1 else Any
-            return FieldDescriptor(f"{base_path}.{name}", value_type, self._model_type)
-
-        # For other Pydantic models, we can validate that the field path is valid
-        if (
-            isinstance(current_annotation, type)
-            and issubclass(current_annotation, BaseModel)
-            and name in current_annotation.model_fields
-        ):
-            logger.debug(
-                "Field descriptor used on a pydantic model, resolving pydantic model property with defined annotation"
-            )
-            return FieldDescriptor(
-                f"{base_path}.{name}",
-                current_annotation.model_fields[name].annotation,
-                self._model_type,
-            )
-
-        raise ModelError(f"{name} is not a valid field name for path {self._full_path}")
+        new_path, new_annotation = _resolve_field_metadata(name, self._full_path, self._annotation)
+        return FieldDescriptor(new_path, new_annotation, self._model_type)
 
     def __getitem__(self, index: Union[int, str]):
         current_type = self._annotation
@@ -167,7 +160,7 @@ class FieldDescriptor(CompilableDescriptor):
         return FieldDescriptor(f"{self._full_path}.{index}", Any, self._model_type)
 
     def _is_list_path(self) -> bool:
-        return any([operator.value in self._full_path for operator in ListPathOperator])
+        return any(operator.value in self._full_path for operator in ListPathOperator)
 
     def _compile_list_path(
         self,
