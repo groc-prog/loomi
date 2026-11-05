@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any, Dict, LiteralString, Optional, Union
 
 import neo4j
 
+from loomi._core.session_mixin import SessionMixin
 from loomi._sync.change_tracker import ChangeTracker
 from loomi._sync.result import Result
 from loomi._sync.transaction import Transaction
@@ -20,7 +21,7 @@ else:
 logger = get_logger("driver")
 
 
-class Session(_Base):
+class Session(SessionMixin, _Base):
     __session: neo4j.Session
     __client: Client
     __change_tracker: ChangeTracker
@@ -66,14 +67,8 @@ class Session(_Base):
             tracking (bool): Whether results from this query should automatically be tracked
                 in the change tracker. Defaults to `False`.
         """
-        logging_parameters = (
-            ", ".join(f"{key}={value}" for key, value in {**parameters, **kwargs}.items())
-            if parameters is not None
-            else ""
-        )
-        logging_query = query if isinstance(query, str) else query.text
+        self._log_query(query, parameters, **kwargs)
 
-        logger.info("Query: %s -- Parameters: [%s]", logging_query, logging_parameters)
         original_result = self.__session.run(query, parameters, **kwargs)
         return Result(original_result, self.__client, self.__change_tracker if tracking else None)
 
