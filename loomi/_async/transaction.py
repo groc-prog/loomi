@@ -6,6 +6,7 @@ import neo4j
 
 from loomi._async.change_tracker import AsyncChangeTracker
 from loomi._async.result import AsyncResult
+from loomi._core.transaction_mixin import TransactionMixin
 from loomi.logger import get_logger
 
 if TYPE_CHECKING:
@@ -20,7 +21,7 @@ else:
 logger = get_logger("driver")
 
 
-class AsyncTransaction(_Base):
+class AsyncTransaction(TransactionMixin, _Base):
     __transaction: neo4j.AsyncTransaction
     __client: AsyncClient
     __change_tracker: AsyncChangeTracker
@@ -67,13 +68,8 @@ class AsyncTransaction(_Base):
             tracking (bool): Whether results from this query should automatically be tracked
                 in the change tracker. Defaults to `False`.
         """
-        logging_parameters = (
-            ", ".join(f"{key}={value}" for key, value in dict(**parameters, **kwparameters).items())
-            if parameters is not None
-            else ""
-        )
+        self._log_query(query, parameters, **kwparameters)
 
-        logger.info("Query: %s -- Parameters: [%s]", query, logging_parameters)
         original_result = await self.__transaction.run(query, parameters, **kwparameters)
         return AsyncResult(
             original_result, self.__client, self.__change_tracker if tracking else None

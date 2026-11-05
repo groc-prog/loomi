@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any, Dict, LiteralString, Optional
 
 import neo4j
 
+from loomi._core.transaction_mixin import TransactionMixin
 from loomi._sync.change_tracker import ChangeTracker
 from loomi._sync.result import Result
 from loomi.logger import get_logger
@@ -19,7 +20,7 @@ else:
 logger = get_logger("driver")
 
 
-class Transaction(_Base):
+class Transaction(TransactionMixin, _Base):
     """Wrapper for `neo4j.Transaction` allowing for additional functionality."""
 
     __transaction: neo4j.Transaction
@@ -67,12 +68,7 @@ class Transaction(_Base):
             tracking (bool): Whether results from this query should automatically be tracked
                 in the change tracker. Defaults to `False`.er for `neo4j.Result` objects.
         """
-        logging_parameters = (
-            ", ".join(f"{key}={value}" for key, value in dict(**parameters, **kwparameters).items())
-            if parameters is not None
-            else ""
-        )
+        self._log_query(query, parameters, **kwparameters)
 
-        logger.info("Query: %s -- Parameters: [%s]", query, logging_parameters)
         original_result = self.__transaction.run(query, parameters, **kwparameters)
         return Result(original_result, self.__client, self.__change_tracker if tracking else None)
