@@ -1,6 +1,5 @@
-# pylint: disable=missing-class-docstring
+# pylint: disable=missing-class-docstring, no-self-argument
 
-import hashlib
 import json
 from typing import Any, ClassVar, Dict, Mapping, Optional, Self, cast
 
@@ -41,9 +40,9 @@ class ModelMixin(BaseModel, metaclass=ModelMixinMetaclass):
     @classmethod
     def __pydantic_init_subclass__(cls, **kwargs):
         # Build alias cache once so we do not have to look it up during de-serialization each time
-        for field_name, field_info in cls.model_fields.items():
-            if field_info.alias is not None:
-                cls._alias_cache[field_info.alias] = field_name
+        cls._alias_cache = {
+            alias: name for name, f in cls.model_fields.items() if (alias := f.alias) is not None
+        }
 
     def __eq__(self, value: Any) -> bool:
         if type(self) is not type(value):
@@ -80,25 +79,21 @@ class ModelMixin(BaseModel, metaclass=ModelMixinMetaclass):
         return self._element_id
 
     def _compute_checksums(self) -> Dict[str, Optional[str]]:
-        logger.debug("Computing checksums for model fields")
+        logger.debug("Computing field states for model change tracker")
 
         dumped_data = self.model_dump(mode="json")
-        checksums: Dict[str, Optional[str]] = {}
+        field_states: Dict[str, Optional[str]] = {}
 
         for field_name in self.__class__.model_fields.keys():
             value = dumped_data.get(field_name)
 
             if value is None:
-                checksums[field_name] = None
+                field_states[field_name] = None
                 continue
 
-            field_json = json.dumps(value, sort_keys=True, separators=(",", ":"))
+            field_states[field_name] = json.dumps(value, sort_keys=True, separators=(",", ":"))
 
-            checksums[field_name] = hashlib.blake2b(
-                field_json.encode("utf-8"), usedforsecurity=False
-            ).hexdigest()
-
-        return checksums
+        return field_states
 
     def _serialize(self, **kwargs) -> Dict[str, Any]:
         logger.debug("Serializing model to a storable format")
