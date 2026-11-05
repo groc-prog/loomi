@@ -23,7 +23,7 @@ class Relationship(ModelMixin):
         return (
             f"<{self.__class__.__name__} "
             f"element_id={self._element_id!r} "
-            f"properties={self.__class__.model_fields!r} "
+            f"properties={self.model_dump(exclude={"element_id", "id"})!r} "
             f"labels={self.type()!r}>"
         )
 
