@@ -1,9 +1,11 @@
 # Getting started with loomi
 
 > [!TIP]
-> loomi is designed to be a **drop-in replacement**. If you are already using the [`neo4j` package](https://pypi.org/project/neo4j/), you can adopt loomi without changing how your existing code behaves. Additional features can be enabled as needed.
+> If you already use the [`neo4j` package](https://pypi.org/project/neo4j/), you can start using loomi as a **drop-in replacement**. Your existing workflow can stay familiar, and you can add Loomi features as you need them.
 
 ## 1. Define your schema
+
+First, describe the nodes and relationships in your graph as Python classes. Loomi uses their fields as database properties.
 
 ```python
 from loomi import Node, Relationship
@@ -37,6 +39,8 @@ class FamilyRelation(Relationship):
 ```
 
 ## 2. Connect and query
+
+Next, create a Neo4j driver, wrap it in a Loomi client, and register the models you want Loomi to recognize. After initialization, you can run Cypher as usual and receive matching entities as models.
 
 ```python
 import neo4j

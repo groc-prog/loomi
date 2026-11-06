@@ -1,13 +1,13 @@
 # Documentation guide
 
 > [!IMPORTANT]
-> Good documentation is the first step to ensuring anyone can use this package. Thank you for helping make loomi's docs clearer, more accurate, and easier to use.
+> Clear documentation helps people get comfortable with the package. Thanks for helping us make loomi's docs easier to follow and more accurate.
 
-This guide walks you through how our documentation is structured and how to make changes to it.
+Here is a quick tour of where the docs live and how you can update them.
 
 ## Where documentation lives
 
-All documentation source files live in the `docs/` folder:
+You will find all documentation source files in the `docs/` folder:
 
 ```
 docs/
@@ -22,20 +22,20 @@ docs/
 
 ## General guidelines
 
-To keep the docs clean and consistent when rendered on GitHub, follow these rules:
+These tips help the docs read well and render consistently on GitHub:
 
-- **Proofread your changes.** It sounds obvious, but make sure what you wrote actually makes sense.
+- **Give your changes a quick read.** Check that each explanation makes sense and is easy to follow.
 - **Use sentence case for headings.** Write "Getting started", not "Getting Started".
-- **Use fenced code blocks with language tags.** For example, ` ```python ` for Python snippets.
-- **Keep callouts GitHub-compatible.** Use `> [!NOTE]`, `> [!TIP]`, `> [!IMPORTANT]`, and `> [!WARNING]` — these render natively on GitHub.
-- **Prefer relative links.** Link to other docs with relative paths (e.g., `./dev-setup.md`) so links keep working if the docs are moved or hosted elsewhere.
+- **Add a language tag to fenced code blocks.** For example, use ` ```python ` for Python snippets.
+- **Use GitHub-compatible callouts.** The `> [!NOTE]`, `> [!TIP]`, `> [!IMPORTANT]`, and `> [!WARNING]` styles render natively on GitHub.
+- **Prefer relative links.** Link to other docs with relative paths, such as `./dev-setup.md`. They keep working if the docs move or are hosted elsewhere.
 
 ## Checklist before opening a pull request
 
-Before submitting your documentation pull request:
+Before you open a pull request with documentation changes, take a moment to check:
 
-- [ ] Have you previewed your Markdown changes to ensure headings, formatting, and tables render correctly?
-- [ ] Are all internal links working and pointing to valid files?
-- [ ] Are code snippets accurate, correctly formatted with language tags, and verified to work when run?
-- [ ] Have you checked spelling and grammar?
+- [ ] Preview the Markdown and check that headings, formatting, and tables look right.
+- [ ] Follow each internal link and make sure it points to an existing file.
+- [ ] Check that code snippets are accurate, tagged with the right language, and work as expected.
+- [ ] Read through once more for spelling and grammar.
 

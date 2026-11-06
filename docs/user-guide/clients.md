@@ -1,87 +1,111 @@
 # Client usage, modes, and configuration
 
-This section covers how loomi wraps **neo4j drivers**, which modes they support, and how they can be used and configured.
+Your client connects a Neo4j driver to Loomi's model registration and result transformation features. Choose `Client` for synchronous code, or `AsyncClient` for asynchronous code. If you have not tried Loomi yet, the [quickstart](../getting-started.md) is a friendly place to begin.
 
-## How clients work
+## Create a client
 
-Because loomi builds on the [`neo4j` package](https://pypi.org/project/neo4j/), all database interactions are delegated to the underlying neo4j driver. loomi itself only adds features on top of that driver, enhancing functionality and simplifying common ORM tasks.
-
-To do this, loomi needs a driver to work with. Each time you create a new **loomi client**, you **must pass a neo4j driver** for it to use:
+Start with a Neo4j driver, then pass it to the matching Loomi client. Register the models you want Loomi to recognize. Before opening a Loomi session or using a query builder, initialize the client.
 
 ```python
-# Create a driver, or reuse an existing one
-driver = neo4j.GraphDatabase.driver(
-    uri="<uri>", auth=("<user>", "<password>")
-)
+import neo4j
+from loomi import Client, Node
 
+
+class Person(Node):
+    name: str
+
+
+driver = neo4j.GraphDatabase.driver(
+    "<uri>", auth=("<user>", "<password>")
+)
 client = Client(driver)
+client.register(Person)
+client.initialize()
+
+try:
+    with client.session() as session:
+        people = session.run(
+            "MATCH (person:Person) RETURN person"
+        ).value()
+        print(people)
+finally:
+    driver.close()
 ```
+
+When you call `initialize()`, Loomi checks the connection and reads the server metadata it needs. The async setup follows the same steps. Await asynchronous operations and open the session with `async with`:
+
+```python
+import neo4j
+from loomi import AsyncClient, Node
+
+
+class Person(Node):
+    name: str
+
+
+async def main():
+    driver = neo4j.AsyncGraphDatabase.driver(
+        "<uri>", auth=("<user>", "<password>")
+    )
+    client = AsyncClient(driver)
+    client.register(Person)
+
+    try:
+        await client.initialize()
+        async with client.session() as session:
+            result = await session.run("MATCH (person:Person) RETURN person")
+            people = await result.value()
+            print(people)
+    finally:
+        await driver.close()
+```
+
+Register each `Node` and `Relationship` model you want Loomi to hydrate from query results. The [model guide](./models.md) shows how to define models and set their database labels or relationship types.
 
 > [!IMPORTANT]
-> Any driver configuration must be passed to the driver class when it is created. loomi does not provide any interface for defining driver configuration.
+> Call `initialize()` before you use `client.session()`, `client.query()`, `client.update()`, or `client.delete()`. Loomi needs the server metadata that initialization loads for these operations.
 
-Before you can use a client, you have to **initialize it**. During initialization, the client verifies connectivity, fetches required metadata, and sets up its internal state:
+## Choose a session mode
 
-```python
-driver = neo4j.GraphDatabase.driver(
-    uri="<uri>", auth=("<user>", "<password>")
-)
+By default, `client.session()` gives you a Loomi session. It wraps the driver session and turns returned database nodes and relationships into registered models. You can still use the driver's familiar session interface.
 
-client = Client(driver)
-# The client must be initialized before use
-client.initialize()
-```
-
-> [!NOTE]
-> Attempting to run any action that requires an active database connection without first initializing the client will raise a `ClientError`.
-
-## Client types and configuration
-
-### Synchronous vs. asynchronous clients
-
-Like the [`neo4j` package](https://pypi.org/project/neo4j/), loomi supports two client types:
-
-- `Client`: a **synchronous** client that requires a `neo4j.Driver` instance.
-- `AsyncClient`: an **asynchronous** client that requires a `neo4j.AsyncDriver` instance.
-
-Both client types expose the same interface and configuration options.
-
-### Configuration options
-
-Both clients provide a few configuration options that affect how they handle their data:
-
-- **`serialize_nested`**: loomi supports both Neo4j and Memgraph. Neo4j does not support nested properties, but Memgraph does. This option lets you store nested properties in Neo4j despite that limitation, but it comes with trade-offs — for example, you cannot query these nested properties the way you would in Memgraph. It is generally _not recommended_ to enable this option.
-- **`strict_transformations`**: During data fetching, clients attempt to parse received data into the corresponding models. By default, parsing fails if the model has not been registered with the client. Optionally, this behavior can be changed so that unregistered data is left unchanged and passed straight through to the result.
-
-## Registering models
-
-On its own, a client is little more than a wrapper. Its real value is transforming query results into their corresponding models.
-
-For the client to transform query results, you must register the models you want to work with:
+Sometimes you may need the original Neo4j session instead. Ask for native mode explicitly:
 
 ```python
-from pydantic import Field
-
-# Full model documentation lives in ./models.md
-class Child(Node):
-    name: str
-    age: int
-
-
-class Adult(Node):
-    name: str
-    age: int
-    job: str
-
-
-class FamilyRelation(Relationship):
-    loves_child: bool = Field(default=True)
-
-
-driver = neo4j.GraphDatabase.driver(
-    uri="<uri>", auth=("<user>", "<password>")
-)
-
-client = Client(driver)
-client.register(Child, Adult, FamilyRelation)
+with client.session(mode="native") as session:
+    result = session.run("MATCH (person:Person) RETURN person")
+    print(result.single())
 ```
+
+Native mode returns the driver's session directly. Its results contain native Neo4j records and entities, so Loomi does not transform or track them.
+
+The `AsyncClient` supports the same `mode` option and returns a native `neo4j.AsyncSession` when `mode="native"` is selected.
+
+## Configure driver sessions
+
+Any keyword arguments you pass to `client.session()` go to the driver's `session()` method. You can use driver options such as the database name:
+
+```python
+with client.session(database="neo4j") as session:
+    people = session.run("MATCH (person:Person) RETURN person").value()
+```
+
+You can pass the same options to `AsyncClient.session()`.
+
+## Handle unregistered entities
+
+Loomi matches returned entities by their labels or relationship type. By default, `strict_transformations=True`. If a result contains an entity without a registered model, Loomi raises `SerializationError` instead of returning a mixture of models and native entities.
+
+If you would rather leave unmatched entities as native Neo4j entities, set `strict_transformations=False`. Loomi will still transform entities with registered models:
+
+```python
+client = Client(driver, strict_transformations=False)
+```
+
+You can set this option on `AsyncClient` too. Your result handling should then be ready for both Loomi models and native driver entities.
+
+## Check the detected server
+
+During initialization, Loomi detects whether it is connected to Neo4j or Memgraph and reads the server version. After initialization, call `client.server_type()` to check the detected type. With `AsyncClient`, first await initialization, then call `async_client.server_type()`. Most of the time, you can leave server detection to Loomi. It already chooses the right metadata query.
+
+Next, visit [Model usage and configuration](./models.md) to learn how Loomi matches models to returned entities. The guide to [sessions, transactions, and results](./sessions-transactions-and-results.md) covers result methods, explicit transactions, and async usage.

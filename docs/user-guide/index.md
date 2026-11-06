@@ -1,24 +1,24 @@
 # User guide
 
-Welcome to the loomi user guide! This section covers both basic and advanced usage of everything the package has to offer.
+Welcome! This guide walks you through Loomi's everyday features and its more advanced tools.
 
 > [!IMPORTANT]
-> Found an issue with this documentation? Consider [opening a new issue](https://github.com/groc-prog/loomi/issues/new) to help us improve it.
+> Notice something that could be clearer? Please [open an issue](https://github.com/groc-prog/loomi/issues/new) and let us know.
 
-If you're new to loomi, start with the [quickstart guide](../getting-started.md).
+New to Loomi? Start with the [quickstart guide](../getting-started.md), then come back here when you are ready to explore more.
 
 ## Core guides
 
-Explore the main components used in most common tasks:
+These guides cover the parts of Loomi you will use most often:
 
-- **[Client usage, modes, and configuration](./clients.md):** How to use loomi's clients in different modes and configurations.
-- **[Model usage and configuration](./models.md):** How to define and configure your own models and work with data.
-- **[Sessions, transactions, and results](./sessions-transactions-and-results.md):** How sessions, transactions, and results work with loomi clients.
+- **[Client usage, modes, and configuration](./clients.md):** Set up a client and choose how Loomi works with your Neo4j driver.
+- **[Model usage and configuration](./models.md):** Define models for your graph data and configure their properties.
+- **[Sessions, transactions, and results](./sessions-transactions-and-results.md):** Run queries, manage transactions, and work with results.
 
 ## Advanced topics
 
-Once you've got the basics down, explore these advanced features and use cases:
+When you feel comfortable with the basics, these guides introduce some useful next steps:
 
-- **[Query API](./query-api.md):** How to run queries and filters without writing your own Cypher queries.
-- **[Change tracker](./change-tracker.md):** How to automatically track new, updated, and deleted entities.
-- **[Logging configuration](./logging.md):** How loomi logs queries and additional metadata, and how to configure it.
+- **[Query API](./query-api.md):** Build common queries and filters from model fields.
+- **[Change tracker](./change-tracker.md):** Keep track of model changes and write them to the database.
+- **[Logging configuration](./logging.md):** Choose which Loomi messages your application records.

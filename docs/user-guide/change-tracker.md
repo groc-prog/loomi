@@ -1,272 +1,111 @@
 # Change tracker
 
-This section covers how to use loomi's change tracker to automatically track changes to model entities.
+The change tracker helps you save changes to node and relationship models without writing an update query for every property. You choose when to turn tracking on. Before you begin, make sure your models are registered and your client is initialized. The [model guide](./models.md) and [client guide](./clients.md) can help with that.
 
-## Session vs. transaction change trackers
+## Track entities returned from a query
 
-Change trackers are always available on a session and its results, or on a transaction and its results.
-
-By default, change tracking is disabled, and calling `flush` has no effect:
+Pass `tracking=True` to `run()` on a Loomi session or transaction. As you consume the result, Loomi adds registered nodes and relationships to that session or transaction's tracker. Update their properties, then call `flush()` to save your changes.
 
 ```python
 with client.session() as session:
-    session.run(
-        "CREATE (a:Adult $adult)",
-        {
-            "adult": {"name": "John", "age": 28, "job": "Developer"},
-        },
-    )
+    result = session.run("MATCH (adult:Adult) RETURN adult", tracking=True)
+    adults = result.value()
 
-    result = session.run("MATCH (a:Adult) RETURN a")
-    nodes = result.values()
-
-    nodes[0][0].name = "Alex"
+    adults[0].age += 1
     session.change_tracker.flush()
-
-    result = session.run("MATCH (a:Adult) RETURN a")
-    nodes = result.values()
-
-    # Prints John
-    print(nodes[0][0].name)
 ```
 
-You can opt in by passing the `tracking` parameter when calling `run` on either a session or a transaction. This marks the returned data as tracked:
+Tracking starts off disabled. Even without `tracking=True`, Loomi still turns matching entities into models. It just does not add them to the tracker automatically. You can always add a model yourself.
+
+In async code, await `run()`, result methods, and `flush()`:
 
 ```python
-with client.session() as session:
-    session.run(
-        "CREATE (a:Adult $adult)",
-        {
-            "adult": {"name": "John", "age": 28, "job": "Developer"},
-        },
-    )
+async with async_client.session() as session:
+    result = await session.run("MATCH (adult:Adult) RETURN adult", tracking=True)
+    adults = await result.value()
 
-    result = session.run("MATCH (a:Adult) RETURN a", tracking=True)
-    nodes = result.values()
-
-    nodes[0][0].name = "Alex"
-    session.change_tracker.flush()
-
-    result = session.run("MATCH (a:Adult) RETURN a")
-    nodes = result.values()
-
-    # Prints Alex
-    print(nodes[0][0].name)
+    adults[0].age += 1
+    await session.change_tracker.flush()
 ```
 
-When used this way, the change tracker opens a new transaction and runs all pending changes inside it. If you want full control over the transaction that runs the resulting queries, you can do that as well:
+## Add, update, and delete models
+
+Call `change_tracker.add(model)` to track an unsaved model for creation or a hydrated model for updates. When you track an existing model, call `add()` before changing its fields. The tracker records the current properties as its starting point, so it will not notice changes made earlier.
 
 ```python
 with client.session() as session:
-    session.run(
-        "CREATE (a:Adult $adult)",
-        {
-            "adult": {"name": "John", "age": 28, "job": "Developer"},
-        },
-    )
+    adult = Adult(name="Ada", age=36, job="Engineer")
+    session.change_tracker.add(adult)
+    session.change_tracker.flush()
+```
 
+To update an existing entity, get a hydrated model from a Loomi query. Add it to the tracker before you edit it:
+
+```python
+with client.session() as session:
+    adult = session.run("MATCH (adult:Adult) RETURN adult").value()[0]
+    session.change_tracker.add(adult)
+    adult.job = "Mathematician"
+    session.change_tracker.flush()
+```
+
+Call `delete()` to mark a saved entity for removal. An unsaved entity is not in the database, so marking it for deletion has no effect there.
+
+```python
+with client.session() as session:
+    adult = session.run("MATCH (adult:Adult) RETURN adult").value()[0]
+    session.change_tracker.delete(adult)
+    session.change_tracker.flush()
+```
+
+Deleting a node also removes its connected relationships from the database. If you want to stop tracking an entity without saving or deleting it, call `detach(model)`. Call `clear()` to discard all pending operations. Loomi clears the tracker after `flush()` too.
+
+## Track relationships
+
+To create a relationship, give the tracker the relationship model and both endpoint nodes. The nodes can be new models or hydrated models that already exist in the database.
+
+```python
+with client.session() as session:
+    adult = Adult(name="Ada", age=36, job="Engineer")
+    child = Child(name="Byron", age=8)
+    relationship = HasChild(since=2024)
+
+    session.change_tracker.add(relationship, adult, child)
+    session.change_tracker.flush()
+```
+
+When the endpoints are new, the tracker creates them before creating the relationship. If either endpoint is missing, adding the new relationship raises `ChangeTrackerError`. You can also add an existing hydrated relationship to track its property changes, or mark it for deletion.
+
+## Choose the transaction boundary
+
+When you call `flush()` on a session tracker, Loomi opens a new transaction and commits it if the flush succeeds. A transaction tracker runs changes inside the transaction you already opened. It does not commit for you, so you decide whether to commit or roll back:
+
+```python
+with client.session() as session:
     with session.begin_transaction() as tx:
-        result = tx.run("MATCH (a:Adult) RETURN a", tracking=True)
-        nodes = result.values()
-
-        nodes[0][0].name = "Alex"
+        adult = Adult(name="Ada", age=36, job="Engineer")
+        tx.change_tracker.add(adult)
         tx.change_tracker.flush()
-
-        result = tx.run("MATCH (a:Adult) RETURN a")
-        nodes = result.values()
-
-        # Prints Alex
-        print(nodes[0][0].name)
-
-        # Roll back the transaction containing the change tracker changes
-        tx.rollback()
-
-    result = session.run("MATCH (a:Adult) RETURN a")
-    nodes = result.values()
-
-    # Still prints John because the transaction has not been committed
-    print(nodes[0][0].name)
+        tx.commit()
 ```
 
-## Change tracker operation types
+If you roll back, the flushed changes are rolled back with the transaction. Async trackers follow the same transaction rules. Just await `tracker.flush()` and the transaction operations.
 
-Change trackers can handle the most basic operations:
+## Re-query to get IDs for new models
 
-- **New entities:** Nodes or relationships that have not been persisted to the database yet. These are created when `flush` is called.
-- **Changed entities:** Nodes or relationships that have been loaded from the database. These are updated when `flush` is called.
-- **Deleted entities:** Nodes or relationships that have been marked for deletion. These are deleted from the database when `flush` is called.
-
-Each change tracker object provides a number of methods for handling each operation.
-
-### Saving and updating created entities
-
-You can use the `add` method exposed by the change tracker to save new entities to the database when `flush` is called:
+The tracker uses generated database IDs when it creates related entities, but it does not copy those IDs back to your original unsaved models. After `flush()`, a newly added model still has `id` and `element_id` set to `None`. Query the entity again to get a hydrated model with its database IDs:
 
 ```python
 with client.session() as session:
-    john = Adult(name="John", age=28, job="Developer")
-    session.change_tracker.add(john)
+    adult = Adult(name="Ada", age=36, job="Engineer")
+    session.change_tracker.add(adult)
     session.change_tracker.flush()
 
-    result = session.run("MATCH (a:Adult) RETURN a")
-    nodes = result.values()
-
-    # Prints, for example:
-    # [[<Adult element_id='551' labels={'Adult'}>]], containing only the 'John' node
-    print(nodes)
-    print(nodes[0][0].name)
+    saved_adult = session.run(
+        "MATCH (adult:Adult {name: $name}) RETURN adult",
+        {"name": "Ada"},
+    ).value()[0]
+    print(saved_adult.element_id)
 ```
 
-You can also track relationships between nodes by passing the relationship, the start node, and the end node to the `add` method:
-
-```python
-with client.session() as session:
-    john = Adult(name="John", age=28, job="Developer")
-    kevin = Child(name="Kevin", age=2)
-    is_parent_of = FamilyRelation(loves_child=True)
-    session.change_tracker.add(is_parent_of, john, kevin)
-    session.change_tracker.flush()
-
-    result = session.run("MATCH (a:Adult)-[r:IS_PARENT_OF]->(c:Child) RETURN a, r, c")
-    entities = result.values()
-
-    # Prints, for example:
-    # [[<Adult element_id='552' labels={'Adult'}>, <FamilyRelation element_id='166' type='IS_PARENT_OF'>, <Child element_id='553' labels={'Child', 'Human'}>]]
-    print(entities)
-```
-
-> [!NOTE]
-> Properties of entities can still be changed after they have been added to the change tracker. You do **not** need to call `add` again after changing a property value.
-
-Entities do not necessarily have to be fetched using the `tracking` flag to be tracked by the change tracker. You can also pass any entity fetched from the database to `add`, and any changes to its properties will be tracked automatically:
-
-> [!WARNING]
-> For property changes to be picked up by the change tracker, the properties must be updated **after the entity has been added** to the change tracker.
-
-```python
-with client.session() as session:
-    session.run(
-        "CREATE (a:Adult $adult)",
-        {
-            "adult": {"name": "John", "age": 28, "job": "Developer"},
-        },
-    )
-    result = session.run("MATCH (a:Adult) RETURN a")
-    nodes = result.values()
-
-    john = nodes[0][0]
-    session.change_tracker.add(john)
-    john.age = 40
-
-    session.change_tracker.flush()
-
-    result = session.run("MATCH (a:Adult) RETURN a")
-    nodes = result.values()
-
-    # Prints 40
-    print(nodes[0][0].age)
-```
-
-You can even combine all of these examples into a single operation:
-
-```python
-with client.session() as session:
-    session.run(
-        "CREATE (a:Adult $adult), (c:Child $child)",
-        {
-            "adult": {"name": "John", "age": 28, "job": "Developer"},
-            "child": {"name": "Kevin", "age": 2},
-        },
-    )
-
-    result = session.run("MATCH (a:Adult), (c:Child) RETURN a, c")
-    nodes = result.values()
-
-    john = nodes[0][0]
-    kevin = nodes[0][1]
-    is_parent_of = FamilyRelation(loves_child=True)
-    session.change_tracker.add(is_parent_of, john, kevin)
-
-    john.age = 40
-    kevin.age = 4
-    is_parent_of.loves_child = False
-    session.change_tracker.flush()
-
-    result = session.run("MATCH (a:Adult)-[r:IS_PARENT_OF]->(c:Child) RETURN a, r, c")
-    entities = result.values()
-
-    # Prints, for example:
-    # [[<Adult element_id='561' labels={'Adult'}>, <FamilyRelation element_id='167' type='IS_PARENT_OF'>, <Child element_id='562' labels={'Child'}>]]
-    print(entities)
-    # Prints 40
-    print(entities[0][0].age)
-    # Prints False
-    print(entities[0][1].loves_child)
-    # Prints 4
-    print(entities[0][2].age)
-```
-
-### Deleting entities
-
-The `remove` method can be called with a node or a relationship to delete it from the database once `flush` is called. Queries generated by the change tracker always use `DETACH DELETE`, so any relationship attached to a removed node is also deleted automatically:
-
-```python
-with client.session() as session:
-    session.run(
-        "CREATE (a:Adult $adult)-[r:IS_PARENT_OF $relation]->(c:Child $child)",
-        {
-            "adult": {"name": "John", "age": 28, "job": "Developer"},
-            "child": {"name": "Kevin", "age": 2},
-            "relation": {"loves_child": True}
-        },
-    )
-    result = session.run("MATCH (a:Adult) RETURN a")
-    nodes = result.values()
-
-    john = nodes[0][0]
-    session.change_tracker.remove(john)
-    session.change_tracker.flush()
-
-    result = session.run("MATCH (a:Adult)-[r:IS_PARENT_OF]->(c:Child) RETURN a, c, r")
-    nodes = result.values()
-
-    # Prints []
-    print(nodes)
-
-    result = session.run("MATCH (c:Child) RETURN c")
-    nodes = result.values()
-
-    # Prints, for example:
-    # [[<Child element_id='583' labels={'Child'}>]]
-    print(nodes)
-```
-
-`remove` can also be used to remove unsaved entities from the change tracker after they have been added but before they are flushed:
-
-```python
-with client.session() as session:
-    john = Adult(name="John", age=28, job="Developer")
-    session.change_tracker.add(john)
-    session.change_tracker.remove(john)
-    session.change_tracker.flush()
-
-    result = session.run("MATCH (a:Adult) RETURN a")
-    entities = result.values()
-
-    # Prints [] because John has never been saved
-    print(entities)
-```
-
-### Clearing the change tracker
-
-You can clear all entities from the change tracker, regardless of operation type:
-
-```python
-with client.session() as session:
-    john = Adult(name="John", age=28, job="Developer")
-    session.change_tracker.add(john)
-    session.change_tracker.clear()
-
-    # No query will be run
-    session.change_tracker.flush()
-```
+The [sessions guide](./sessions-transactions-and-results.md) explains how to work with results. For query and update builders, continue to the [Query API guide](./query-api.md).

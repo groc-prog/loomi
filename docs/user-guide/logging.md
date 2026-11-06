@@ -1,31 +1,29 @@
 # Logging configuration
 
-This section covers how loomi emits logs and how to control log verbosity.
-
-## Logger namespaces and levels
-
-loomi follows standard Python library guidelines. This means it **adds no handlers and does not modify the root logger**. Instead, loomi uses namespaced loggers for different parts of the application, allowing you to control the log output of different parts of the package independently:
-
-- **`loomi`**: Root namespace for all loomi logs.
-- **`loomi.driver`**: Clients, sessions, and transactions.
-- **`loomi.change_tracker`**: Change tracking operations (inserts, updates, flushes).
-- **`loomi.model`**: Model (de)serialization.
-- **`loomi.query_api`**: Query compilation and builders.
-
-Log levels map to different kinds of events emitted by the package:
-
-- **`debug`**: Debug logs and internal operations.
-- **`info`**: Server connection and queries.
-- **`warning`**: Duplicate setting definitions, recoverable issues during serialization, and similar conditions.
-- **`error`**: Unrecoverable errors.
+Loomi uses Python's standard `logging` module. It leaves handlers and formatters to your application, so you can set logging up the way you prefer. For example, this shows informational messages from Loomi and other loggers:
 
 ```python
 import logging
-from loomi.logger import get_logger
 
-# Enable debug logs for the whole package
-getLogger().setLevel(logging.DEBUG)
-
-# Or enable them for a single namespace only
-getLogger("change_tracker").setLevel(logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 ```
+
+## Logger names and levels
+
+Loomi writes messages under the `loomi` logger. These child loggers help you narrow down what you see:
+
+- `loomi.driver` covers client, session, transaction, and result activity
+- `loomi.change_tracker` covers change tracker operations
+- `loomi.model` covers model operations
+- `loomi.query_api` covers query compilation and builder activity
+
+At `INFO` level, the driver logger reports connection checks and query text with its parameters. If you want more detail about Loomi's work and query compilation, set the logger to `DEBUG`:
+
+```python
+logging.getLogger("loomi").setLevel(logging.DEBUG)
+```
+
+Your handlers and logging setup also affect which messages appear. Choose levels and destinations that fit your application.
+
+> [!WARNING]
+> Query logs can include parameter values. Be careful not to expose passwords, personal details, or other sensitive information in collected logs.
