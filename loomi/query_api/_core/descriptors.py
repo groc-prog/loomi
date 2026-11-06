@@ -1,0 +1,313 @@
+import re
+from dataclasses import dataclass
+from enum import StrEnum
+from functools import lru_cache
+from typing import TYPE_CHECKING, Any, Dict, List, Union, get_args, get_origin
+
+from pydantic import BaseModel
+
+import loomi.query_api.functions.arithmetic as arithmetic_functions
+import loomi.query_api.functions.comparison as comparison_functions
+from loomi._core.types import NumericValue, QueryModelType
+from loomi.constants import ServerType
+from loomi.exceptions import ModelError
+from loomi.logger import get_logger
+from loomi.query_api._core.protocols import CompilableDescriptor, CompiledDescriptor
+from loomi.query_api._core.templates import EntityIdExpressionTemplate
+
+if TYPE_CHECKING:
+    from loomi.query_api._core.context import CompilationContext
+else:
+    CompilationContext = object
+
+logger = get_logger("query_api")
+
+
+class ListPathOperator(StrEnum):
+    ANY = "$any"
+    ALL = "$all"
+    NONE = "$none"
+    SINGLE = "$single"
+
+
+@lru_cache(maxsize=512)
+def _resolve_field_metadata(name: str, full_path: str, annotation: Any) -> tuple[str, Any]:
+    """Caches only the path and annotation resolution logic, avoiding unhashable type issues."""
+    base_path = full_path
+    current_annotation = annotation
+    origin = get_origin(current_annotation)
+    args = get_args(current_annotation)
+
+    # If we encounter a list we get the first valid item type we find
+    if origin is list or origin is List or origin is Union:
+        inner_type = next((a for a in args if not isinstance(a, type(None))), None)
+        if inner_type is not None:
+            current_annotation = inner_type
+            origin = get_origin(current_annotation)
+            args = get_args(current_annotation)
+
+            # If no list path operator is defined, we fall back to ListPathOperator.ANY
+            if not base_path.endswith(tuple(member.value for member in ListPathOperator)):
+                base_path = f"{base_path}.{ListPathOperator.ANY.value}"
+
+    # Since a dict might contain any key, we allow all fields
+    if origin is dict or origin is Dict:
+        value_type = args[1] if len(args) > 1 else Any
+        return f"{base_path}.{name}", value_type
+
+    # For other Pydantic models, we validate that the field path is valid
+    if (
+        isinstance(current_annotation, type)
+        and issubclass(current_annotation, BaseModel)
+        and name in current_annotation.model_fields
+    ):
+        return (
+            f"{base_path}.{name}",
+            current_annotation.model_fields[name].annotation,
+        )
+
+    raise ModelError(f"{name} is not a valid field name for path {full_path}")
+
+
+@dataclass(frozen=True)
+class FieldDescriptor(CompilableDescriptor):
+    _full_path: str
+    _annotation: Any
+    _model_type: QueryModelType
+
+    def __eq__(self, value: Any):  # type: ignore[override]
+        return comparison_functions.equals(self, value)
+
+    def __ne__(self, value: Any):  # type: ignore[override]
+        return comparison_functions.not_equals(self, value)
+
+    def __gt__(self, value: NumericValue):
+        return comparison_functions.greater_than(self, value)
+
+    def __ge__(self, value: NumericValue):
+        return comparison_functions.greater_than_or_equal(self, value)
+
+    def __lt__(self, value: NumericValue):
+        return comparison_functions.less_than(self, value)
+
+    def __le__(self, value: NumericValue):
+        return comparison_functions.less_than_or_equal(self, value)
+
+    def __add__(self, value: NumericValue):
+        return arithmetic_functions.add(self, value)
+
+    def __radd__(self, value: NumericValue):
+        return arithmetic_functions.reflected_add(self, value)
+
+    def __sub__(self, value: NumericValue):
+        return arithmetic_functions.subtract(self, value)
+
+    def __rsub__(self, value: NumericValue):
+        return arithmetic_functions.reflected_subtract(self, value)
+
+    def __mul__(self, value: NumericValue):
+        return arithmetic_functions.multiply(self, value)
+
+    def __rmul__(self, value: NumericValue):
+        return arithmetic_functions.reflected_multiply(self, value)
+
+    def __truediv__(self, value: NumericValue):
+        return arithmetic_functions.divide(self, value)
+
+    def __rtruediv__(self, value: NumericValue):
+        return arithmetic_functions.reflected_divide(self, value)
+
+    def __mod__(self, value: NumericValue):
+        return arithmetic_functions.modulo(self, value)
+
+    def __rmod__(self, value: NumericValue):
+        return arithmetic_functions.reflected_modulo(self, value)
+
+    def __pow__(self, value: NumericValue):
+        return arithmetic_functions.pow_(self, value)
+
+    def __rpow__(self, value: NumericValue):
+        return arithmetic_functions.reflected_pow(self, value)
+
+    def __getattribute__(self, name: str):
+        if name.startswith("_"):
+            return super().__getattribute__(name)
+
+        new_path, new_annotation = _resolve_field_metadata(name, self._full_path, self._annotation)
+        return FieldDescriptor(new_path, new_annotation, self._model_type)
+
+    def __getitem__(self, index: Union[int, str]):
+        current_type = self._annotation
+        origin = get_origin(current_type)
+        args = get_args(current_type)
+
+        inner_type = Any
+        if origin in (list, List, Union):
+            logger.debug("Field descriptor used on list with index %s", index)
+            inner_type = next((a for a in args if not isinstance(a, type(None))), Any)
+            return FieldDescriptor(f"{self._full_path}[{index}]", inner_type, self._model_type)
+
+        if origin in (dict, Dict) and len(args) > 1:
+            logger.debug("Field descriptor used on dictionary with key %s", index)
+            inner_type = args[1] if len(args) > 1 else Any
+            return FieldDescriptor(f"{self._full_path}.{index}", inner_type, self._model_type)
+
+        # In some cases the inner type can not be determined (e.g. Dict[str, Any])
+        # In such cases, we just assume that a simple property access should be performed
+        logger.debug(
+            "Field descriptor used on dictionary with key %s. Type could not be determined", index
+        )
+        return FieldDescriptor(f"{self._full_path}.{index}", Any, self._model_type)
+
+    def _is_list_path(self) -> bool:
+        return any(operator.value in self._full_path for operator in ListPathOperator)
+
+    def _compile_list_path(
+        self,
+        ctx: CompilationContext,
+        parts: list[str],
+        full_path: str,
+        model_variable: str,
+    ) -> CompiledDescriptor:
+        list_operators = {op.value for op in ListPathOperator}
+
+        logger.debug(
+            "Field descriptor contains list paths, resolving innermost template to outermost template"
+        )
+        operators = [(index, part) for index, part in enumerate(parts) if part in list_operators]
+
+        # The variable ID defined here will not always be present in the final query since compound queries
+        # can be optimized later on, resulting in a variable being omitted
+        start_var_id = ctx.get_variable_count()
+        ctx.force_increment_variable_counter(len(operators))
+
+        # Build the inner-most template first, as this will be the template part which
+        # the rest of the templates will wrap around
+        inner_var_id = start_var_id + len(operators) - 1
+        full_template = "{innermost_template}"
+
+        # Iterate through the remaining paths to build in reverse order, so the rest of the
+        # expression is also build from the inside-out
+        logger.debug("Compiling %d nested list operators", len(operators))
+        for operators_index, (index, operator) in reversed(list(enumerate(operators))):
+            iter_variable = f"v{start_var_id + operators_index}"
+            parent_variable = (
+                f"v{start_var_id + operators_index - 1}" if operators_index > 0 else model_variable
+            )
+
+            # Path is the part immediately preceding the operator
+            path_segment = parts[index - 1]
+            operator_name = operator.lstrip("$")
+
+            full_template = (
+                f"{operator_name}({iter_variable} IN {parent_variable}.{path_segment} "
+                f"WHERE {full_template})"
+            )
+
+        # If there is any part of the path remaining after the last list operator, we have to append
+        # it to the final target path
+        variable_path = "{variable}"
+
+        last_operator_index = operators[-1][0]
+        if last_operator_index < (len(parts) - 1):
+            cutoff_index = last_operator_index + 1
+            remaining_paths = ".".join(parts[cutoff_index:])
+
+            variable_path = f"{variable_path}.{remaining_paths}"
+
+        logger.debug(
+            "Determined final output with full template %s and variable path %s",
+            full_template,
+            variable_path,
+        )
+        return CompiledDescriptor(
+            full_template=full_template,
+            variable_path=variable_path,
+            variable=f"v{inner_var_id}",
+            full_path=full_path,
+        )
+
+    def _compile_descriptor(self, ctx: CompilationContext) -> CompiledDescriptor:
+        logger.debug(
+            "Compiling descriptor for model %s with path %s",
+            self._model_type,
+            self._full_path,
+        )
+
+        list_operators = {op.value for op in ListPathOperator}  # Set for O(1) lookup
+        model_variable = ctx.get_variable(self._model_type)
+
+        # Split the path to be able to handle any list operators
+        path_parts = re.split(r"(\$all|\$any|\$none|\$single)", self._full_path)
+        parts = [p.strip(".") for p in path_parts if p.strip()]
+        has_list_operators = any(p in list_operators for p in parts)
+
+        # If we don't have any list operators, we can return directly
+        if not has_list_operators:
+            current_annotation = self._annotation
+            origin = get_origin(current_annotation)
+            args = get_args(current_annotation)
+
+            # If we encounter a list and no operator has been defined, we fall back to the any operator
+            if origin is list or origin is List or origin is Union:
+                inner_type = next((a for a in args if not isinstance(a, type(None))), None)
+                if inner_type is not None:
+                    current_annotation = inner_type
+                    origin = get_origin(current_annotation)
+                    args = get_args(current_annotation)
+
+                    logger.debug(
+                        "List descriptor does not contain any list paths, compiling final output immediately"
+                    )
+                    full_path = f"{self._full_path}.{ListPathOperator.ANY}"
+                    fallback_parts = [
+                        p.strip(".")
+                        for p in re.split(r"(\$all|\$any|\$none|\$single)", full_path)
+                        if p.strip()
+                    ]
+                    return self._compile_list_path(ctx, fallback_parts, full_path, model_variable)
+
+            logger.debug(
+                "Descriptor does not contain any list paths, compiling final output immediately"
+            )
+            return CompiledDescriptor(
+                full_template="{innermost_template}",
+                variable_path=f"{{variable}}.{self._full_path}",
+                variable=model_variable,
+                full_path=None,
+            )
+
+        return self._compile_list_path(ctx, parts, self._full_path, model_variable)
+
+
+@dataclass(frozen=True)
+class EntityIdDescriptor(CompilableDescriptor):
+    _model_type: QueryModelType
+    _template: EntityIdExpressionTemplate
+
+    def _compile_descriptor(self, ctx: CompilationContext) -> CompiledDescriptor:
+        logger.debug(
+            "Compiling entity ID descriptor for model %s with template %s",
+            self._model_type,
+            self._template,
+        )
+        model_variable = ctx.get_variable(self._model_type)
+
+        if ctx.server_type == ServerType.MEMGRAPH:
+            logger.warning(
+                "Server type defined as %s, which is not compatible with template %s. "
+                "Falling back to %s",
+                ctx.server_type.value,
+                self._template.name,
+                EntityIdExpressionTemplate.ID.name,
+            )
+            variable_path = EntityIdExpressionTemplate.ID.format(variable="{variable}")
+        else:
+            variable_path = self._template.format(variable="{variable}")
+
+        return CompiledDescriptor(
+            full_template="{innermost_template}",
+            variable_path=variable_path,
+            variable=model_variable,
+            full_path=None,
+        )

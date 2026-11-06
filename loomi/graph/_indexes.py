@@ -5,8 +5,6 @@ from enum import StrEnum
 
 
 class Neo4jIndexType(StrEnum):
-    """Index types supported by Neo4j."""
-
     RANGE = "RANGE"
     TEXT = "TEXT"
     POINT = "POINT"
@@ -16,8 +14,6 @@ class Neo4jIndexType(StrEnum):
 
 
 class MemgraphIndexType(StrEnum):
-    """Index types supported by Memgraph."""
-
     LABEL = "label"
     LABEL_AND_PROPERTY = "label+property"
     EDGE_TYPE = "edge-type"

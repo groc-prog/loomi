@@ -7,7 +7,8 @@ import neo4j
 from loomi._async.change_tracker import AsyncChangeTracker
 from loomi._async.result import AsyncResult
 from loomi._async.transaction import AsyncTransaction
-from loomi._logger import logger
+from loomi._core.session_mixin import SessionMixin
+from loomi.logger import get_logger
 
 if TYPE_CHECKING:
     from loomi._async.client import AsyncClient
@@ -18,9 +19,10 @@ else:
     _Base = object
 
 
-class AsyncSession(_Base):
-    """Wrapper for `neo4j.AsyncSession` allowing for additional functionality."""
+logger = get_logger("driver")
 
+
+class AsyncSession(SessionMixin, _Base):
     __session: neo4j.AsyncSession
     __client: AsyncClient
     __change_tracker: AsyncChangeTracker
@@ -45,6 +47,9 @@ class AsyncSession(_Base):
         """
         Change tracker exposed by this session. Will be used when `tracking` is set to `true` in a
         query.
+
+        Returns:
+            AsyncChangeTracker: The active change tracker object.
         """
         return self.__change_tracker
 
@@ -60,23 +65,11 @@ class AsyncSession(_Base):
         functionality. For more information on the native behavior, see `neo4j.AsyncSession.run`.
 
         Args:
-            query (Union[LiteralString, Query]): See `neo4j.AsyncSession.run`.
-            parameters (Optional[str, Any]): See `neo4j.AsyncSession.run`.
             tracking (bool): Whether results from this query should automatically be tracked
-                in the `change tracker`. Defaults to `False`.
-            kwargs: See `neo4j.AsyncSession.run`.
-
-        Returns:
-            Result: A wrapper for `neo4j.AsyncResult` objects.
+                in the change tracker. Defaults to `False`.
         """
-        logging_parameters = (
-            ", ".join(f"{key}={value}" for key, value in dict(**parameters, **kwargs).items())
-            if parameters is not None
-            else ""
-        )
-        logging_query = query if isinstance(query, str) else query.text
+        self._log_query(query, parameters, **kwargs)
 
-        logger.info("Query: %s -- Parameters: [%s]", logging_query, logging_parameters)
         original_result = await self.__session.run(query, parameters, **kwargs)
         return AsyncResult(
             original_result, self.__client, self.__change_tracker if tracking else None

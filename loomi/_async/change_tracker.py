@@ -2,43 +2,33 @@ from typing import Dict, LiteralString, Union, cast
 
 import neo4j
 
-from loomi._internal.base_change_tracker import BaseChangeTracker
-from loomi._logger import LogContextKey, logger, scoped_log_ctx
+from loomi._core.change_tracker_mixin import ChangeTrackerMixin
+from loomi.logger import get_logger
+
+logger = get_logger("change_tracker")
 
 
-class AsyncChangeTracker(BaseChangeTracker[Union[neo4j.AsyncSession, neo4j.AsyncTransaction]]):
-    """Manages state synchronization between local entities and the database state."""
-
+class AsyncChangeTracker(ChangeTrackerMixin[Union[neo4j.AsyncSession, neo4j.AsyncTransaction]]):
     async def flush(self) -> None:
         """
         Flushes the tracker by generating and running all queries for the tracked models.
 
-        If this is called on a `AsyncSession`, a `new transaction` will be created (based
-        on the current session) which will run all queries and `commit them`. If this is called
-        on a `AsyncTransaction`, the flushed queries will be `part of that transaction` and
+        If this is called on a `AsyncSession`, a **new transaction** will be created (based
+        on the current session) which will run all queries and commit them. If this is called
+        on a `AsyncTransaction`, the flushed queries will be **part of that transaction** and
         will only be committed once `tx.commit()` is called.
         """
         is_session = isinstance(self._session_or_tx, neo4j.AsyncSession)
+        self._omit_redundant_relationship_operations()
 
-        with scoped_log_ctx(
-            {
-                LogContextKey.DRIVER: self._client.__class__.__name__,
-                LogContextKey.SERVER_TYPE: self._client._server_type,
-                LogContextKey.CHANGE_TRACKER_FLUSH_SCOPE: (
-                    "session" if is_session else "transaction"
-                ),
-            }
-        ):
-            self._omit_redundant_relationship_operations()
-
-            if is_session:
-                # If the change tracker is called on a session, we create a new transaction and run
-                # every operation in that transaction
-                await self.__flush_with_session()
-            else:
-                # If this is called on a transaction already, we pass the responsibility of calling
-                # `.commit()` to the caller
-                await self.__flush_with_transactions()
+        if is_session:
+            # If the change tracker is called on a session, we create a new transaction and run
+            # every operation in that transaction
+            await self.__flush_with_session()
+        else:
+            # If this is called on a transaction already, we pass the responsibility of calling
+            # `.commit()` to the caller
+            await self.__flush_with_transactions()
 
         self.clear()
 

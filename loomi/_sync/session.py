@@ -4,10 +4,11 @@ from typing import TYPE_CHECKING, Any, Dict, LiteralString, Optional, Union
 
 import neo4j
 
-from loomi._logger import logger
+from loomi._core.session_mixin import SessionMixin
 from loomi._sync.change_tracker import ChangeTracker
 from loomi._sync.result import Result
 from loomi._sync.transaction import Transaction
+from loomi.logger import get_logger
 
 if TYPE_CHECKING:
     from loomi._sync.client import Client
@@ -17,10 +18,10 @@ else:
     Client = object
     _Base = object
 
+logger = get_logger("driver")
 
-class Session(_Base):
-    """Wrapper for `neo4j.Session` allowing for additional functionality."""
 
+class Session(SessionMixin, _Base):
     __session: neo4j.Session
     __client: Client
     __change_tracker: ChangeTracker
@@ -45,6 +46,9 @@ class Session(_Base):
         """
         Change tracker exposed by this session. Will be used when `tracking` is set to `true` in a
         query.
+
+        Returns:
+            ChangeTracker: The active change tracker object.
         """
         return self.__change_tracker
 
@@ -60,23 +64,11 @@ class Session(_Base):
         functionality. For more information on the native behavior, see `neo4j.Session.run`.
 
         Args:
-            query (Union[LiteralString, Query]): See `neo4j.Session.run`.
-            parameters (Optional[str, Any]): See `neo4j.Session.run`.
             tracking (bool): Whether results from this query should automatically be tracked
-                in the `change tracker`. Defaults to `False`.
-            kwargs: See `neo4j.Session.run`.
-
-        Returns:
-            Result: A wrapper for `neo4j.Result` objects.
+                in the change tracker. Defaults to `False`.
         """
-        logging_parameters = (
-            ", ".join(f"{key}={value}" for key, value in {**parameters, **kwargs}.items())
-            if parameters is not None
-            else ""
-        )
-        logging_query = query if isinstance(query, str) else query.text
+        self._log_query(query, parameters, **kwargs)
 
-        logger.info("Query: %s -- Parameters: [%s]", logging_query, logging_parameters)
         original_result = self.__session.run(query, parameters, **kwargs)
         return Result(original_result, self.__client, self.__change_tracker if tracking else None)
 

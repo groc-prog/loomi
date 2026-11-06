@@ -4,20 +4,26 @@ on:
   push:
     branches:
       - "feature/**"
+      - "develop"
     paths-ignore:
       - "docs/**"
       - "README.md"
+      - "LICENSE"
+      - ".gitignore"
   pull_request:
-    types: [opened]
+    types: [opened, synchronize, reopened]
     branches:
-      - main
-    paths-ignore:
-      - "docs/**"
-      - "README.md"
+      - "main"
+      - "develop"
+  workflow_dispatch:
+
+concurrency:
+  group: \({{ github.workflow }}-\){{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: "3.13"
-  POETRY_VERSION: "2.3.2"
+  PYTHON_VERSION: "3.14"
+  POETRY_VERSION: "2.5.1"
 
 jobs:
   install-dependencies:
@@ -52,17 +58,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Install Poetry
         run: pipx install poetry==${{ env.POETRY_VERSION }}
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+
       - name: Restore Cache
         uses: actions/cache@v4
         with:
           path: .venv
           key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+
       - name: Sync Dependencies
         run: poetry install --no-interaction
       - name: Run Pylint
@@ -73,42 +83,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Install Poetry
         run: pipx install poetry==${{ env.POETRY_VERSION }}
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+
       - name: Restore Cache
         uses: actions/cache@v4
         with:
           path: .venv
           key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+
       - name: Sync Dependencies
         run: poetry install --no-interaction
+
       - name: Run Pyright
         run: poetry run pyright loomi
-
-  format:
-    needs: install-dependencies
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Poetry
-        run: pipx install poetry==${{ env.POETRY_VERSION }}
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      - name: Restore Cache
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
-      - name: Sync Dependencies
-        run: poetry install --no-interaction
-      - name: Run Black
-        run: poetry run black --check loomi
 
   test:
     needs: install-dependencies
@@ -117,11 +111,12 @@ jobs:
       neo4j:
         image: neo4j:latest
         env:
-          NEO4J_AUTH: neo4j/password
+          NEO4J_AUTH: neo4j/${{ secrets.NEO4J_PWD }}
         ports:
           - 7687:7687
+          - 7474:7474
         options: >-
-          --health-cmd "cypher-shell -u neo4j -p password 'RETURN 1;'"
+          --health-cmd "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -131,7 +126,7 @@ jobs:
         env:
           MEMGRAPH: "--storage-properties-on-edges=true --log-level=TRACE"
           MEMGRAPH_USER: memgraph
-          MEMGRAPH_PASSWORD: password
+          MEMGRAPH_PASSWORD: ${{ secrets.MEMGRAPH_PWD }}
         ports:
           - 7688:7687
 
@@ -159,8 +154,8 @@ jobs:
         env:
           NEO4J_URI: "bolt://localhost:7687"
           NEO4J_USER: neo4j
-          NEO4J_PWD: password
+          NEO4J_PWD: ${{ secrets.NEO4J_PWD }}
           MEMGRAPH_URI: "bolt://localhost:7688"
           MEMGRAPH_USER: memgraph
-          MEMGRAPH_PWD: password
+          MEMGRAPH_PWD: ${{ secrets.MEMGRAPH_PWD }}
         run: poetry run pytest --cov=src tests/

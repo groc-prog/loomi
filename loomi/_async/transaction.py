@@ -6,7 +6,8 @@ import neo4j
 
 from loomi._async.change_tracker import AsyncChangeTracker
 from loomi._async.result import AsyncResult
-from loomi._logger import logger
+from loomi._core.transaction_mixin import TransactionMixin
+from loomi.logger import get_logger
 
 if TYPE_CHECKING:
     from loomi._async.client import AsyncClient
@@ -17,9 +18,10 @@ else:
     _Base = object
 
 
-class AsyncTransaction(_Base):
-    """Wrapper for `neo4j.AsyncTransaction` allowing for additional functionality."""
+logger = get_logger("driver")
 
+
+class AsyncTransaction(TransactionMixin, _Base):
     __transaction: neo4j.AsyncTransaction
     __client: AsyncClient
     __change_tracker: AsyncChangeTracker
@@ -42,8 +44,11 @@ class AsyncTransaction(_Base):
     @property
     def change_tracker(self) -> AsyncChangeTracker:
         """
-        Change tracker exposed by this transaction. Will be used when `tracking` is set to `true`
-        in a query.
+        Change tracker exposed by this transaction. Will be used when `tracking` is set to `true` in a
+        query.
+
+        Returns:
+            AsyncChangeTracker: The active change tracker object.
         """
         return self.__change_tracker
 
@@ -60,22 +65,11 @@ class AsyncTransaction(_Base):
         `neo4j.AsyncTransaction.run`.
 
         Args:
-            query (Union[LiteralString, Query]): See `neo4j.AsyncTransaction.run`.
-            parameters (Optional[str, Any]): See `neo4j.AsyncTransaction.run`.
             tracking (bool): Whether results from this query should automatically be tracked
-                in the `change tracker`. Defaults to `False`.
-            kwparameters: See `neo4j.AsyncTransaction.run`.
-
-        Returns:
-            Result: A wrapper for `neo4j.AsyncResult` objects.
+                in the change tracker. Defaults to `False`.
         """
-        logging_parameters = (
-            ", ".join(f"{key}={value}" for key, value in dict(**parameters, **kwparameters).items())
-            if parameters is not None
-            else ""
-        )
+        self._log_query(query, parameters, **kwparameters)
 
-        logger.info("Query: %s -- Parameters: [%s]", query, logging_parameters)
         original_result = await self.__transaction.run(query, parameters, **kwparameters)
         return AsyncResult(
             original_result, self.__client, self.__change_tracker if tracking else None

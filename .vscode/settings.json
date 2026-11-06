@@ -10,5 +10,14 @@
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
   "python-envs.defaultEnvManager": "ms-python.python:poetry",
-  "python-envs.defaultPackageManager": "ms-python.python:poetry"
+  "python-envs.defaultPackageManager": "ms-python.python:poetry",
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    ".pytest_cache": true,
+    ".coverage": true,
+  }
 }

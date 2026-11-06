@@ -1,0 +1,279 @@
+from dataclasses import dataclass, field
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    Generic,
+    List,
+    Optional,
+    Self,
+    Type,
+    TypeVar,
+    Union,
+    overload,
+)
+
+from pydantic import BaseModel
+
+from loomi._core.types import ModelType
+from loomi.exceptions import QueryError
+from loomi.logger import get_logger
+from loomi.query_api._core.context import CompilationContext
+from loomi.query_api._core.descriptors import FieldDescriptor
+from loomi.query_api._core.expressions import CompoundExpression
+from loomi.query_api._core.protocols import CompilableExpression
+
+if TYPE_CHECKING:
+    from loomi.graph.node import Node
+    from loomi.graph.relationship import Relationship
+    from loomi.query_api.constants import OrderBy
+else:
+    Node = object
+    Relationship = object
+    OrderBy = object
+
+T = TypeVar("T", bound=Union[Node, Relationship, Dict[str, Any], BaseModel])
+P = TypeVar("P", bound=BaseModel)
+R = TypeVar("R")
+
+logger = get_logger("query_api")
+
+
+@dataclass
+class _MatchQueryState:
+    model_type: ModelType
+    expressions: List[Union[CompoundExpression, CompilableExpression]] = field(default_factory=list)
+    projection: Optional[Union[Dict[Any, str], Type[BaseModel]]] = None
+    order_by: Dict[str, Optional[OrderBy]] = field(default_factory=dict)
+    limit: Optional[int] = None
+    skip: Optional[int] = None
+
+
+@dataclass
+class MatchQueryBuilder(Generic[T, R]):
+    _execute_fn: Callable[[str, Dict[str, Any]], R]
+    _state: _MatchQueryState
+    _compilation_ctx: CompilationContext
+
+    def where(self, expression: Any) -> Self:
+        """
+        Adds filter expression for a WHERE clause.
+
+        Args:
+            expression (Union[CompoundExpression, CompilableExpression]): A expression which can be compiled by the
+                query compiler.
+
+        Raises:
+            QueryError: If any invalid expression is provided.
+        """
+        if not isinstance(expression, (CompoundExpression, CompilableExpression)):
+            raise QueryError(
+                f"Invalid expression found. Expected {CompilableExpression.__name__} "
+                f"or {CompoundExpression.__name__}, got {expression}"
+            )
+
+        self._state.expressions.append(expression)
+        return self
+
+    @overload
+    def order_by(self, field_name: str, order: Optional[OrderBy] = None) -> Self: ...
+
+    @overload
+    def order_by(self, order: Dict[Any, OrderBy]) -> Self: ...
+
+    @overload
+    def order_by(self, descriptor: Any, order: Optional[OrderBy] = None) -> Self: ...
+
+    def order_by(  # type: ignore
+        self,
+        field_or_order: Union[str, Dict[Any, OrderBy], Any],
+        order: Optional[OrderBy] = None,
+    ) -> Self:
+        """
+        Adds one or multiple fields to order by.
+
+        Args:
+            field_or_order (Union[str, Dict[str, OrderBy], Any]): Either the field to order by or a
+                dictionary with fields and their order. Field descriptors are also supported.
+            order (Optional[OrderBy]): The order to use. Only needed when defining a field as the
+                first argument. Defaults to `None`
+
+        Raises:
+            QueryError: If a invalid field is provided.
+        """
+        order_by_map: Dict[str, Optional[OrderBy]] = {}
+
+        if isinstance(field_or_order, str):
+            order_by_map[field_or_order] = order
+        elif isinstance(field_or_order, FieldDescriptor):
+            field_name = field_or_order._full_path.rsplit(".", maxsplit=1)[-1]
+            order_by_map[field_name] = order
+        else:
+            for field_name, order_by in field_or_order.items():
+                if isinstance(field_name, FieldDescriptor):
+                    order_by_map[field_name._full_path.rsplit(".", maxsplit=1)[-1]] = order_by
+                else:
+                    order_by_map[str(field_name)] = order_by
+
+        for field_name, order_by in order_by_map.items():
+            if field_name not in self._state.model_type.model_fields:
+                raise QueryError(f"{field_name} is not a valid field to order by")
+
+            if field_name in self._state.order_by:
+                logger.warning(
+                    "A order has already been defined for field %s. The old order will be "
+                    "overwritten",
+                    field_name,
+                )
+
+            self._state.order_by[field_name] = order_by
+
+        return self
+
+    def limit(self, limit: int) -> Self:
+        """
+        Adds a limit to the number of results returned by the query.
+
+        Args:
+            limit (int): The limit to apply.
+
+        Raises:
+            QueryError: If `limit` has a invalid value.
+        """
+        if limit < 0:
+            raise QueryError("limit must be a positive integer if defined")
+
+        if self._state.limit is not None:
+            logger.warning(
+                "A limit has already been defined for this query. The old limit will "
+                "be overwritten"
+            )
+
+        self._state.limit = limit
+        return self
+
+    def skip(self, skip: int) -> Self:
+        """
+        Adds a skip to the number of results returned by the query.
+
+        Args:
+            skip (int): The skip to apply.
+
+        Raises:
+            QueryError: If `skip` has a invalid value.
+        """
+        if skip < 0:
+            raise QueryError("skip must be a positive integer if defined")
+
+        if self._state.skip is not None:
+            logger.warning(
+                "A skip has already been defined for this query. The old skip will "
+                "be overwritten"
+            )
+
+        self._state.skip = skip
+        return self
+
+    @overload
+    def project(self, projection: Dict[Any, str]) -> "MatchQueryBuilder[Dict[str, Any], R]": ...
+
+    @overload
+    def project(self, projection: Type[P]) -> "MatchQueryBuilder[P, R]": ...
+
+    def project(self, projection: Union[Dict[Any, str], Type[P]]):
+        """
+        Adds a projection to apply to the returned data.
+
+        Args:
+            projection (Union[Dict[Any, str], Type[P]]): A projection where the key is the
+                model field and the value is the name of the projected key or a pydantic model with
+                matching fields.
+        """
+        if self._state.projection is not None:
+            logger.warning(
+                "A projection has already been defined for this query. The old projection will "
+                "be overwritten"
+            )
+
+        self._state.projection = projection
+        return MatchQueryBuilder(self._execute_fn, self._state, self._compilation_ctx)
+
+    @overload
+    def execute(self: "MatchQueryBuilder[T, Awaitable[Any]]") -> Awaitable[List[T]]: ...
+
+    @overload
+    def execute(self: "MatchQueryBuilder[T, List[Any]]") -> List[T]: ...
+
+    def execute(self) -> Union[List[T], Awaitable[List[T]]]:
+        """
+        Runs the query. If a transaction has been provided at the start, it will be used instead
+            of a new session.
+
+        Returns:
+            List[T]: A list of models.
+        """
+        from loomi.graph.node import Node
+
+        model_variable = self._compilation_ctx.get_variable(self._state.model_type)
+
+        query = ""
+        if issubclass(self._state.model_type, Node):
+            query = f"MATCH ({model_variable}:{':'.join(self._state.model_type.labels())})"
+        else:
+            query = f"MATCH ()-[{model_variable}:{self._state.model_type.type()}]->()"
+
+        query_strings = []
+        for expression in self._state.expressions:
+            if isinstance(expression, CompoundExpression):
+                query_strings.append(expression.to_query_string(self._compilation_ctx))
+            else:
+                compiled_expression = expression._compile_expression(self._compilation_ctx)
+                query_strings.append(compiled_expression.to_query_string())
+
+        if len(query_strings) != 0:
+            query += f" WHERE {' AND '.join(query_strings)}"
+
+        if self._state.projection is not None:
+            if isinstance(self._state.projection, dict):
+                projected: List[str] = []
+
+                for field_name_or_descriptor, projected_name in self._state.projection.items():
+                    if isinstance(field_name_or_descriptor, FieldDescriptor):
+                        projected.append(
+                            f"{model_variable}.{field_name_or_descriptor._full_path} AS {projected_name}"
+                        )
+                    else:
+                        projected.append(
+                            f"{model_variable}.{field_name_or_descriptor} AS {projected_name}"
+                        )
+            else:
+                projected = [
+                    f"{model_variable}.{field_name} AS {field_name}"
+                    for field_name in self._state.projection.model_fields
+                ]
+
+            query += f" RETURN {', '.join(projected)}"
+        else:
+            query += f" RETURN {model_variable}"
+
+        if self._state.order_by is not None and len(self._state.order_by.keys()) != 0:
+            clauses: List[str] = []
+            for field_name, order in self._state.order_by.items():
+                clause = f"{model_variable}.{field_name}"
+
+                if order is not None:
+                    clause += f" {order.value}"
+
+                clauses.append(clause)
+
+            query += f" ORDER BY {', '.join(clauses)}"
+
+        if self._state.skip is not None:
+            query += f" SKIP {self._state.skip}"
+
+        if self._state.limit is not None:
+            query += f" LIMIT {self._state.limit}"
+
+        return self._execute_fn(query, self._compilation_ctx.get_parameters())  # type: ignore

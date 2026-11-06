@@ -1,6 +1,6 @@
 [project]
 name = "loomi"
-version = "1.1.0"
+version = "1.2.0-rc.1"
 description = ""
 authors = [{ name = "Marc Troisner", email = "marc.troisner@gmail.com" }]
 readme = "README.md"
@@ -24,6 +24,7 @@ dev = [
     "pre-commit (>=4.5.1,<5.0.0)",
     "pytest-cov (>=7.0.0,<8.0.0)",
     "pytest-dotenv (>=0.5.2,<0.6.0)",
+    "pytest-mock (>=3.17.0,<4.0.0)",
 ]
 
 [tool.semantic_release]
@@ -33,9 +34,17 @@ upload_to_release = true
 build_command = "poetry build"
 commit_message = "chore(release): 🎉 v{version} [skip ci]"
 
+[tool.semantic_release.branches.main]
+match = "main"
+prerelease = false
+
+[tool.semantic_release.branches.develop]
+match = "develop"
+prerelease = true
+prerelease_token = "rc"
+
 [tool.semantic_release.changelog]
 mode = "update"
-changelog_file = "CHANGELOG.md"
 exclude_commit_patterns = [
     '''chore(?:\([^)]*?\))?: .+''',
     '''ci(?:\([^)]*?\))?: .+''',
@@ -45,6 +54,9 @@ exclude_commit_patterns = [
     '''build\((?!deps\): .+)''',
     '''Initial [Cc]ommit.*''',
 ]
+
+[tool.semantic_release.changelog.default_templates]
+changelog_file = "CHANGELOG.md"
 
 [tool.semantic_release.changelog.sections]
 "feat" = "✨ New Features"
@@ -61,7 +73,7 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
-addopts = "--cov=loomi --cov-report=term-missing"
+addopts = ["--import-mode=importlib", "--cov=loomi", "--cov-report=term-missing"]
 env_files = [".env.test"]
 markers = ["integration"]
 
@@ -70,3 +82,4 @@ omit = ["tests/*"]
 
 [tool.coverage.report]
 show_missing = true
+exclude_also = ["def __repr__", 'Hash on model \{.+?\} is not initialized']

@@ -1,22 +1,16 @@
-class LoomiError(Exception):
-    """Base Loomi error."""
+class LoomiError(Exception): ...
 
 
-class ClientError(LoomiError):
-    """Error related to clients."""
+class ClientError(LoomiError): ...
 
 
-class ModelError(LoomiError):
-    """Error related to models."""
+class ModelError(LoomiError): ...
 
 
-class SerializationError(LoomiError):
-    """Error related to model serialization."""
+class SerializationError(LoomiError): ...
 
 
-class ChangeTrackerError(LoomiError):
-    """Error related to the change tracker."""
+class ChangeTrackerError(LoomiError): ...
 
 
-class QueryError(LoomiError):
-    """Error related to queries and query builders."""
+class QueryError(LoomiError): ...

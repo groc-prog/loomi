@@ -4,9 +4,10 @@ from typing import TYPE_CHECKING, Any, Dict, LiteralString, Optional
 
 import neo4j
 
-from loomi._logger import logger
+from loomi._core.transaction_mixin import TransactionMixin
 from loomi._sync.change_tracker import ChangeTracker
 from loomi._sync.result import Result
+from loomi.logger import get_logger
 
 if TYPE_CHECKING:
     from loomi._sync.client import Client
@@ -16,8 +17,10 @@ else:
     Client = object
     _Base = object
 
+logger = get_logger("driver")
 
-class Transaction(_Base):
+
+class Transaction(TransactionMixin, _Base):
     """Wrapper for `neo4j.Transaction` allowing for additional functionality."""
 
     __transaction: neo4j.Transaction
@@ -42,8 +45,11 @@ class Transaction(_Base):
     @property
     def change_tracker(self) -> ChangeTracker:
         """
-        Change tracker exposed by this transaction. Will be used when `tracking` is set to `true`
-        in a query.
+        Change tracker exposed by this transaction. Will be used when `tracking` is set to `true` in a
+        query.
+
+        Returns:
+            ChangeTracker: The active change tracker object.
         """
         return self.__change_tracker
 
@@ -59,21 +65,10 @@ class Transaction(_Base):
         functionality. For more information on the native behavior, see `neo4j.Transaction.run`.
 
         Args:
-            query (Union[LiteralString, Query]): See `neo4j.Transaction.run`.
-            parameters (Optional[str, Any]): See `neo4j.Transaction.run`.
             tracking (bool): Whether results from this query should automatically be tracked
-                in the `change tracker`. Defaults to `False`.
-            kwparameters: See `neo4j.Transaction.run`.
-
-        Returns:
-            Result: A wrapper for `neo4j.Result` objects.
+                in the change tracker. Defaults to `False`.er for `neo4j.Result` objects.
         """
-        logging_parameters = (
-            ", ".join(f"{key}={value}" for key, value in dict(**parameters, **kwparameters).items())
-            if parameters is not None
-            else ""
-        )
+        self._log_query(query, parameters, **kwparameters)
 
-        logger.info("Query: %s -- Parameters: [%s]", query, logging_parameters)
         original_result = self.__transaction.run(query, parameters, **kwparameters)
         return Result(original_result, self.__client, self.__change_tracker if tracking else None)

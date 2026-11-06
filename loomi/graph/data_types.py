@@ -8,7 +8,6 @@ from pydantic_core import CoreSchema, core_schema
 
 
 class Neo4jTemporalDateAnnotation:
-    """Pydantic annotation for `neo4j.time.Date`"""
 
     @classmethod
     def __get_pydantic_core_schema__(cls, *_) -> CoreSchema:
@@ -63,7 +62,6 @@ class Neo4jTemporalDateAnnotation:
 
 
 class Neo4jTemporalTimeAnnotation:
-    """Pydantic annotation for `neo4j.time.Time`"""
 
     @classmethod
     def __get_pydantic_core_schema__(cls, *_) -> CoreSchema:
@@ -118,7 +116,6 @@ class Neo4jTemporalTimeAnnotation:
 
 
 class Neo4jTemporalDateTimeAnnotation:
-    """Pydantic annotation for `neo4j.time.DateTime`"""
 
     @classmethod
     def __get_pydantic_core_schema__(cls, *_) -> CoreSchema:
@@ -182,13 +179,8 @@ class Neo4jTemporalDateTimeAnnotation:
 
 
 Neo4jTemporalDate = Annotated[neo4j.time.Date, Neo4jTemporalDateAnnotation]
-"""Pydantic compatible representation of neo4j.time.Date"""
-
 Neo4jTemporalTime = Annotated[neo4j.time.Time, Neo4jTemporalTimeAnnotation]
-"""Pydantic compatible representation of neo4j.time.Time"""
-
 Neo4jTemporalDateTime = Annotated[neo4j.time.DateTime, Neo4jTemporalDateTimeAnnotation]
-"""Pydantic compatible representation of neo4j.time.DateTime"""
 
 # TODO: Implement remaining data types which are currently not supported by Pydantic
 # See this Github issue: https://github.com/pydantic/pydantic/issues/11287

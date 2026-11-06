@@ -14,24 +14,33 @@ from typing import (
 
 import neo4j
 
-from loomi._internal.base_client import BaseClient, require_server_metadata
-from loomi._internal.query_builder.delete import DeleteQueryBuilder, _DeleteQueryState, DeleteResult
-from loomi._internal.query_builder.match import MatchQueryBuilder, _MatchQueryState
-from loomi._internal.query_builder.update import _UpdateQueryState, UpdateQueryBuilder, UpdateResult
-from loomi._logger import LogContextKey, logger, scoped_log_ctx
+from loomi._core.client_mixin import ClientMixin, require_server_metadata
 from loomi._sync.session import Session
 from loomi.constants import ServerType
 from loomi.exceptions import ClientError
 from loomi.graph.node import Node
 from loomi.graph.relationship import Relationship
-from loomi.query._context import CompilationContext
+from loomi.logger import get_logger
+from loomi.query_api._builders.delete_builder import (
+    DeleteQueryBuilder,
+    DeleteQueryState,
+    DeleteResult,
+)
+from loomi.query_api._builders.match_builder import MatchQueryBuilder, _MatchQueryState
+from loomi.query_api._builders.update_builder import (
+    UpdateQueryBuilder,
+    UpdateResult,
+    _UpdateQueryState,
+)
+from loomi.query_api._core.context import CompilationContext
 
 T = TypeVar("T", bound=Union[Node, Relationship])
 
 
-class Client(BaseClient[neo4j.Driver]):
-    """Sync database client for interacting with Loomi models."""
+logger = get_logger("driver")
 
+
+class Client(ClientMixin[neo4j.Driver]):
     def initialize(self) -> None:
         """
         Checks if the remote server is reachable and fetches additional required metadata.
@@ -40,40 +49,36 @@ class Client(BaseClient[neo4j.Driver]):
             ClientError: If the remote server can not be reached or does not return required
                 metadata.
         """
-        with scoped_log_ctx({LogContextKey.DRIVER: self._driver.__class__.__name__}):
-            try:
-                logger.info("Verifying connectivity to remote")
-                self._driver.verify_connectivity()
+        try:
+            logger.info("Verifying connectivity to server")
+            self._driver.verify_connectivity()
 
-                logger.info("Getting remote server metadata")
-                server_info = self._driver.get_server_info()
+            logger.debug("Getting server metadata")
+            server_info = self._driver.get_server_info()
 
-                self._server_type = (
-                    ServerType.MEMGRAPH
-                    if "memgraph" in server_info.agent.lower()
-                    else ServerType.NEO4J
+            self._server_type = (
+                ServerType.MEMGRAPH if "memgraph" in server_info.agent.lower() else ServerType.NEO4J
+            )
+
+            logger.debug("Checking server version")
+            with self._driver.session() as session:
+                query = (
+                    "SHOW VERSION"
+                    if self._server_type == ServerType.MEMGRAPH
+                    else (
+                        "CALL dbms.components() YIELD name, versions "
+                        'WHERE name = "Neo4j Kernel" '
+                        "RETURN versions[0] AS version"
+                    )
                 )
 
-                logger.debug("Checking server version")
-                with self._driver.session() as session:
-                    query = (
-                        "SHOW VERSION"
-                        if self._server_type == ServerType.MEMGRAPH
-                        else (
-                            "CALL dbms.components() YIELD name, versions "
-                            'WHERE name = "Neo4j Kernel" '
-                            "RETURN versions[0] AS version"
-                        )
-                    )
+                result = session.run(query)
+                version = result.value()
 
-                    result = session.run(query)
-                    version = result.value()
-                    if len(version) == 0:
-                        raise ClientError("Server did not respond with a valid version")
-
-                    self._extract_version(version[0])
-            except Exception as exc:
-                raise ClientError("Could not get required metadata from remote") from exc
+                self._extract_version(version[0])
+                logger.info("Client ready")
+        except Exception as exc:
+            raise ClientError("Could not get required metadata from remote") from exc
 
     @overload
     def session(self, mode: Literal["loomi"] = "loomi", **session_config: Any) -> Session: ...
@@ -90,26 +95,20 @@ class Client(BaseClient[neo4j.Driver]):
         **session_config: Any,
     ) -> Union[neo4j.Session, Session]:
         """
-        Start a new session. This behaves the same as the `.session()` from the driver except it
+        Start a new session. This behaves the same as `.session()` from the driver except it
         exposes additional functionality if `mode` is set to `loomi`.
 
         Args:
             mode (Union[Literal["native"], Literal["loomi"]]): Whether to use a native session or a
-            Loomi session. Defaults to `loomi`.
-                session_config: Key-word arguments passed to the session directly.
+                Loomi session. Defaults to `loomi`.
+            session_config: Key-word arguments passed to the session directly.
         """
-        with scoped_log_ctx(
-            {
-                LogContextKey.DRIVER: self._driver.__class__.__name__,
-                LogContextKey.SERVER_TYPE: self._server_type,
-            }
-        ):
-            session = self._driver.session(**session_config)
+        session = self._driver.session(**session_config)
 
-            if mode == "loomi":
-                return Session(session, self)
+        if mode == "loomi":
+            return Session(session, self)
 
-            return session
+        return session
 
     @require_server_metadata
     def query(
@@ -119,12 +118,12 @@ class Client(BaseClient[neo4j.Driver]):
         **kwparameters: Any,
     ):
         """
-        Runs the query. By default, a new session is created and used to run the query. You can
-        optionally pass a transaction, which will be used instead.
+        Queries models of a given type with automatically build queries.
 
         Args:
-            transaction (Optional[neo4j.Transaction]): A transaction to use. Defaults to
-            `None`.
+            model_Type (Type[T]): The model type to query.
+            transaction (Optional[neo4j.Transaction]): A transaction to use. Will run in
+                a new session if not defined. Defaults to `None`.
             kwparameters: Key-word arguments passed to the session/transaction directly.
         """
 
@@ -145,20 +144,29 @@ class Client(BaseClient[neo4j.Driver]):
                     result_keys = query_result.keys()
                     results = query_result.values()
 
+            if len(results) == 0:
+                return []
+
+            first_result = results[0]
+
             if (
-                len(results) == 0
-                or len(results[0]) == 0
-                or isinstance(results[0][0], (Node, Relationship))
+                not first_result
+                or isinstance(first_result[0], (Node, Relationship))
+                or state.projection is None
             ):
-                return [result[0] for result in results]
+                return [result[0] for result in results if result]
 
             transformed_results = []
-            for result in results:
-                transformed: Dict[str, Any] = {}
-                for index, field_name in enumerate(result_keys):
-                    transformed[field_name] = result[index]
+            if isinstance(state.projection, dict):
+                for result in results:
+                    transformed = dict(zip(result_keys, result))
+                    transformed_results.append(transformed)
 
-                transformed_results.append(transformed)
+                return transformed_results
+
+            for result in results:
+                projection_input = dict(zip(result_keys, result))
+                transformed_results.append(state.projection.model_validate(projection_input))
 
             return transformed_results
 
@@ -179,8 +187,8 @@ class Client(BaseClient[neo4j.Driver]):
         A query builder for deleting entities for a given model type.
 
         Args:
-            transaction (Optional[neo4j.Transaction]): A transaction to use. Defaults to
-            `None`.
+            transaction (Optional[neo4j.Transaction]): A transaction to use. Will run in
+                a new session if not defined. Defaults to `None`.
             kwparameters: Key-word arguments passed to the session/transaction directly.
         """
 
@@ -200,7 +208,7 @@ class Client(BaseClient[neo4j.Driver]):
             affected_entities = [(cast(str, result[0]), cast(int, result[1])) for result in results]
             return DeleteResult(len(affected_entities), affected_entities)
 
-        state = _DeleteQueryState(model_type)
+        state = DeleteQueryState(model_type)
         ctx = CompilationContext(cast(ServerType, self._server_type))
         ctx.add_model(model_type)
 
@@ -217,8 +225,8 @@ class Client(BaseClient[neo4j.Driver]):
         A query builder for updating entities for a given model type.
 
         Args:
-            transaction (Optional[neo4j.Transaction]): A transaction to use. Defaults to
-            `None`.
+            transaction (Optional[neo4j.Transaction]): A transaction to use. Will run in
+                a new session if not defined. Defaults to `None`.
             kwparameters: Key-word arguments passed to the session/transaction directly.
         """
 
