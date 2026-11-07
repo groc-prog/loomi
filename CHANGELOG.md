@@ -2,6 +2,17 @@
 
 <!-- version list -->
 
+## v2.0.0-rc.2 (2026-11-07)
+
+### Features
+
+- Hydrate entities after change tracker flush ([#12](https://github.com/groc-prog/loomi/pull/12),
+  [`283c88d`](https://github.com/groc-prog/loomi/commit/283c88dc093acbe061d3443ce86d1da621ace631))
+
+- Hydrate nodes after change tracker flush ([#12](https://github.com/groc-prog/loomi/pull/12),
+  [`283c88d`](https://github.com/groc-prog/loomi/commit/283c88dc093acbe061d3443ce86d1da621ace631))
+
+
 ## v2.0.0-rc.1 (2026-11-07)
 
 ### Bug Fixes
