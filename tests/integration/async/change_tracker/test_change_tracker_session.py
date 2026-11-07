@@ -387,6 +387,69 @@ class TestAsyncChangeTrackerWithSessionAdd:
             assert entity["nth_child"] == 1
             assert entity["tag"] == "oldest"
 
+    async def test_async_change_tracker_with_session_add_hydrates_nodes_after_flush_is_called(
+        self, async_driver
+    ):
+        client = AsyncClient(async_driver)
+        client.register(Adult, Child, HasChild)
+        await client.initialize()
+
+        async with client.session() as session:
+            adult = Adult(name="John", age=21)
+            session.change_tracker.add(adult)
+            await session.change_tracker.flush()
+
+        assert adult.element_id is not None
+        assert adult.id is not None
+
+        async with async_driver.session() as session:
+            result = await session.run("MATCH (a:Adult) RETURN a")
+            values = await result.values()
+            assert len(values) == 1
+
+            entity = values[0][0]
+
+            assert entity.element_id == adult.element_id
+            assert entity.id == adult.id
+
+    async def test_async_change_tracker_with_session_add_hydrates_relationships_after_flush_is_called(
+        self, async_driver
+    ):
+        client = AsyncClient(async_driver)
+        client.register(Adult, Child, HasChild)
+        await client.initialize()
+
+        async with client.session() as session:
+            adult = Adult(name="John", age=21)
+            child = Child(name="Sindy")
+            has_child = HasChild(nth_child=1, tag="first_child")
+
+            session.change_tracker.add(has_child, adult, child)
+            await session.change_tracker.flush()
+
+        assert adult.element_id is not None
+        assert adult.id is not None
+        assert child.element_id is not None
+        assert child.id is not None
+        assert has_child.element_id is not None
+        assert has_child.id is not None
+
+        async with async_driver.session() as session:
+            result = await session.run("MATCH (a:Adult)-[b:HAS_CHILD]->(c:Child) RETURN a, b, c")
+            values = await result.values()
+            assert len(values) == 1
+            assert len(values[0]) == 3
+            adult_entity = values[0][0]
+            has_child_entity = values[0][1]
+            child_entity = values[0][2]
+
+            assert adult_entity.element_id == adult.element_id
+            assert adult_entity.id == adult.id
+            assert child_entity.element_id == child.element_id
+            assert child_entity.id == child.id
+            assert has_child_entity.element_id == has_child.element_id
+            assert has_child_entity.id == has_child.id
+
 
 class TestAsyncChangeTrackerWithSessionDelete:
     async def test_async_change_tracker_with_session_delete_ignores_unsaved_node(

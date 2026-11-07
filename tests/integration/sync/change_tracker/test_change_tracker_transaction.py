@@ -323,6 +323,71 @@ class TestSyncChangeTrackerWithTransactionAdd:
             assert entity["nth_child"] == 1
             assert entity["tag"] == "oldest"
 
+    def test_sync_change_tracker_with_transaction_add_hydrates_nodes_after_flush_is_called(
+        self, sync_driver
+    ):
+        client = Client(sync_driver)
+        client.register(Adult, Child, HasChild)
+        client.initialize()
+
+        with client.session() as session:
+            with session.begin_transaction() as tx:
+                adult = Adult(name="John", age=21)
+                tx.change_tracker.add(adult)
+                tx.change_tracker.flush()
+
+        assert adult.element_id is not None
+        assert adult.id is not None
+
+        with sync_driver.session() as session:
+            result = session.run("MATCH (a:Adult) RETURN a")
+            values = result.values()
+            assert len(values) == 1
+
+            entity = values[0][0]
+
+            assert entity.element_id == adult.element_id
+            assert entity.id == adult.id
+
+    def test_sync_change_tracker_with_transaction_add_hydrates_relationships_after_flush_is_called(
+        self, sync_driver
+    ):
+        client = Client(sync_driver)
+        client.register(Adult, Child, HasChild)
+        client.initialize()
+
+        with client.session() as session:
+            with session.begin_transaction() as tx:
+                adult = Adult(name="John", age=21)
+                child = Child(name="Sindy")
+                has_child = HasChild(nth_child=1, tag="first_child")
+
+                tx.change_tracker.add(has_child, adult, child)
+                tx.change_tracker.flush()
+
+        assert adult.element_id is not None
+        assert adult.id is not None
+        assert child.element_id is not None
+        assert child.id is not None
+        assert has_child.element_id is not None
+        assert has_child.id is not None
+
+        with sync_driver.session() as session:
+            result = session.run("MATCH (a:Adult)-[b:HAS_CHILD]->(c:Child) RETURN a, b, c")
+            values = result.values()
+            assert len(values) == 1
+            assert len(values[0]) == 3
+            adult_entity = values[0][0]
+            has_child_entity = values[0][1]
+            child_entity = values[0][2]
+
+            assert adult_entity.element_id == adult.element_id
+            assert adult_entity.id == adult.id
+            assert child_entity.element_id == child.element_id
+            assert child_entity.id == child.id
+            assert has_child_entity.element_id == has_child.element_id
+            assert has_child_entity.id == has_child.id
+
 
 class TestSyncChangeTrackerWithTransactionDelete:
     def test_sync_change_tracker_with_transaction_delete_ignores_unsaved_node(
