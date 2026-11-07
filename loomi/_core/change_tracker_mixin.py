@@ -52,6 +52,7 @@ class NodeInsertBatch(TypedDict):
 
 
 class RelationshipInsertItem(TypedDict):
+    id_: int
     start_node_id: Union[str, int]
     end_node_id: Union[str, int]
     properties: Dict[str, Any]
@@ -255,13 +256,55 @@ class ChangeTrackerMixin(Generic[T]):
                 add_relationships.pop(relationship_id, None)
                 update_relationships.pop(relationship_id, None)
 
+    def _build_update_and_delete_operations(self) -> List[Tuple[str, Dict[str, Any]]]:
+        queries: List[Tuple[str, Dict[str, Any]]] = []
+
+        node_update_queries = self.__build_node_update_operations()
+        if node_update_queries is not None:
+            queries.append(node_update_queries)
+
+        relationship_update_queries = self.__build_relationship_update_operations()
+        if relationship_update_queries is not None:
+            queries.append(relationship_update_queries)
+
+        node_delete_queries = self.__build_node_delete_operations()
+        if node_delete_queries is not None:
+            queries.append(node_delete_queries)
+
+        relationship_delete_queries = self.__build_relationship_delete_operations()
+        if relationship_delete_queries is not None:
+            queries.append(relationship_delete_queries)
+
+        return queries
+
+    def _hydrate_created_entities(
+        self,
+        entity_type: EntityStateType,
+        id_map: Dict[int, Union[str, int]],
+        results: List[List[Any]],
+    ) -> None:
+        for result in results:
+            obj_id, element_id, id_ = result
+
+            id_map[obj_id] = element_id if self._client._server_type == ServerType.NEO4J else id_
+            model = self._state[TrackingOperation.ADD][entity_type].get(obj_id)
+
+            if model is None:
+                logger.warning(
+                    "No node with object ID %s found in change tracker. Skipping model hydration",
+                    obj_id,
+                )
+                continue
+
+            model[0]._element_id = element_id
+            model[0]._id = id_
+
     def _build_node_add_operations(self) -> List[Tuple[str, Dict[str, Any]]]:
         add_nodes = self._state[TrackingOperation.ADD]["nodes"]
         if not add_nodes:
             logger.debug("No added nodes to build queries for, skipping")
             return []
 
-        server_type = cast(ServerType, self._client._server_type)
         groups: Dict[str, NodeInsertBatch] = {}
         logger.debug(
             "Compiling queries for node entities with operation type %s", TrackingOperation.ADD.name
@@ -281,11 +324,10 @@ class ChangeTrackerMixin(Generic[T]):
                 "batches"
             ].append({"id_": obj_id, "properties": reference._serialize()})
 
-        entity_identifier = "elementId(e)" if server_type == ServerType.NEO4J else "id(e)"
         return [
             (
                 f"UNWIND $p0 AS r CREATE (e:{':'.join(group['labels'])}) "
-                f"SET e = r.properties RETURN r.id_, {entity_identifier}",
+                "SET e = r.properties RETURN r.id_, elementId(e), id(e)",
                 {"p0": group["batches"]},
             )
             for group in groups.values()
@@ -321,6 +363,7 @@ class ChangeTrackerMixin(Generic[T]):
             group = groups.setdefault(hash_, {"type_": reference.type(), "batches": []})
             group["batches"].append(
                 {
+                    "id_": obj_id,
                     "start_node_id": self.__resolve_node_entity_id(start_node_id, id_map, "Start"),
                     "end_node_id": self.__resolve_node_entity_id(end_node_id, id_map, "End"),
                     "properties": reference._serialize(),
@@ -334,13 +377,13 @@ class ChangeTrackerMixin(Generic[T]):
                 f"MATCH (n) WHERE {entity_identifier}(n) = r.start_node_id "
                 f"MATCH (m) WHERE {entity_identifier}(m) = r.end_node_id "
                 f"CREATE (n)-[e:{g['type_']}]->(m) "
-                f"SET e = r.properties",
+                "SET e = r.properties RETURN r.id_, elementId(e), id(e)",
                 {"p0": g["batches"]},
             )
             for g in groups.values()
         ]
 
-    def _build_node_update_operations(self) -> Optional[Tuple[str, Dict[str, Any]]]:
+    def __build_node_update_operations(self) -> Optional[Tuple[str, Dict[str, Any]]]:
         if not self._state[TrackingOperation.UPDATE]["nodes"]:
             logger.debug("No updated nodes to build queries for, skipping")
             return None
@@ -357,7 +400,7 @@ class ChangeTrackerMixin(Generic[T]):
             {"p0": batches},
         )
 
-    def _build_relationship_update_operations(self) -> Optional[Tuple[str, Dict[str, Any]]]:
+    def __build_relationship_update_operations(self) -> Optional[Tuple[str, Dict[str, Any]]]:
         if not self._state[TrackingOperation.UPDATE]["relationships"]:
             logger.debug("No updated relationships to build queries for, skipping")
             return None
@@ -374,7 +417,7 @@ class ChangeTrackerMixin(Generic[T]):
             {"p0": batches},
         )
 
-    def _build_node_delete_operations(self) -> Optional[Tuple[str, Dict[str, Any]]]:
+    def __build_node_delete_operations(self) -> Optional[Tuple[str, Dict[str, Any]]]:
         if not self._state[TrackingOperation.DELETE]["nodes"]:
             logger.debug("No deleted nodes to build queries for, skipping")
             return None
@@ -388,7 +431,7 @@ class ChangeTrackerMixin(Generic[T]):
             {"p0": ids},
         )
 
-    def _build_relationship_delete_operations(self) -> Optional[Tuple[str, Dict[str, Any]]]:
+    def __build_relationship_delete_operations(self) -> Optional[Tuple[str, Dict[str, Any]]]:
         if not self._state[TrackingOperation.DELETE]["relationships"]:
             logger.debug("No deleted relationships to build queries for, skipping")
             return None

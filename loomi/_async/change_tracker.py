@@ -38,29 +38,16 @@ class AsyncChangeTracker(ChangeTrackerMixin[Union[neo4j.AsyncSession, neo4j.Asyn
 
         async with await cast(neo4j.AsyncSession, self._session_or_tx).begin_transaction() as tx:
             for query, parameters in self._build_node_add_operations():
-                result = await tx.run(cast(LiteralString, query), parameters)
+                results = await tx.run(cast(LiteralString, query), parameters)
+                values = await results.values()
+                self._hydrate_created_entities("nodes", id_map, values)
 
-                entity_id_map = cast(Dict[int, Union[str, int]], dict(await result.values()))
-                id_map.update(entity_id_map)
+            for query, parameters in self._build_relationship_add_operations(id_map):
+                results = await tx.run(cast(LiteralString, query), parameters)
+                values = await results.values()
+                self._hydrate_created_entities("relationships", id_map, values)
 
-            queries = [*self._build_relationship_add_operations(id_map)]
-
-            node_update_queries = self._build_node_update_operations()
-            if node_update_queries is not None:
-                queries.append(node_update_queries)
-
-            relationship_update_queries = self._build_relationship_update_operations()
-            if relationship_update_queries is not None:
-                queries.append(relationship_update_queries)
-
-            node_delete_queries = self._build_node_delete_operations()
-            if node_delete_queries is not None:
-                queries.append(node_delete_queries)
-
-            relationship_delete_queries = self._build_relationship_delete_operations()
-            if relationship_delete_queries is not None:
-                queries.append(relationship_delete_queries)
-
+            queries = self._build_update_and_delete_operations()
             for query_info in queries:
                 query, parameters = query_info
                 result = await tx.run(cast(LiteralString, query), parameters)
@@ -73,29 +60,16 @@ class AsyncChangeTracker(ChangeTrackerMixin[Union[neo4j.AsyncSession, neo4j.Asyn
             "committing changes"
         )
         for query, parameters in self._build_node_add_operations():
-            result = await self._session_or_tx.run(cast(LiteralString, query), parameters)
+            results = await self._session_or_tx.run(cast(LiteralString, query), parameters)
+            values = await results.values()
+            self._hydrate_created_entities("nodes", id_map, values)
 
-            entity_id_map = cast(Dict[int, Union[str, int]], dict(await result.values()))
-            id_map.update(entity_id_map)
+        for query, parameters in self._build_relationship_add_operations(id_map):
+            results = await self._session_or_tx.run(cast(LiteralString, query), parameters)
+            values = await results.values()
+            self._hydrate_created_entities("relationships", id_map, values)
 
-        queries = [*self._build_relationship_add_operations(id_map)]
-
-        node_update_queries = self._build_node_update_operations()
-        if node_update_queries is not None:
-            queries.append(node_update_queries)
-
-        relationship_update_queries = self._build_relationship_update_operations()
-        if relationship_update_queries is not None:
-            queries.append(relationship_update_queries)
-
-        node_delete_queries = self._build_node_delete_operations()
-        if node_delete_queries is not None:
-            queries.append(node_delete_queries)
-
-        relationship_delete_queries = self._build_relationship_delete_operations()
-        if relationship_delete_queries is not None:
-            queries.append(relationship_delete_queries)
-
+        queries = self._build_update_and_delete_operations()
         for query_info in queries:
             query, parameters = query_info
             result = await self._session_or_tx.run(cast(LiteralString, query), parameters)
